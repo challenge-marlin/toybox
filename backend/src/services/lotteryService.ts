@@ -81,6 +81,23 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
     return { jpResult: 'none', probability: 0, bonusCount: 0 };
   }
 
+  // 同時多発（短時間の二重送信）対策: 直近10秒以内に同一内容の提出が存在する場合はスキップ
+  // 画像提出は imageUrl が一致、テキスト提出は aim/steps/frameType が一致するものを重複とみなす
+  try {
+    const tenSecondsAgo = new Date(Date.now() - 10_000);
+    const dup = await SubmissionModel.findOne({
+      submitterAnonId,
+      createdAt: { $gte: tenSecondsAgo },
+      ...(input.imageUrl ? { imageUrl: input.imageUrl } : { aim: input.aim, steps: input.steps, frameType: input.frameType })
+    }).lean();
+    if (dup) {
+      logger.info('submit.duplicate_skipped', { anonId: submitterAnonId });
+      // 既存ユーザメタ取得し、現在のボーナス回数を返す
+      const user = (await UserMetaModel.findOne({ anonId: submitterAnonId })) || (await UserMetaModel.create({ anonId: submitterAnonId, lotteryBonusCount: 0, cardsAlbum: [] }));
+      return { jpResult: 'none', probability: 0, bonusCount: user.lotteryBonusCount };
+    }
+  } catch {}
+
   // ユーザメタ取得/作成
   const user = (await UserMetaModel.findOne({ anonId: submitterAnonId })) ||
     (await UserMetaModel.create({ anonId: submitterAnonId, lotteryBonusCount: 0, cardsAlbum: [] }));

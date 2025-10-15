@@ -83,17 +83,155 @@ npm start       # node dist/index.js
 npm test        # jest
 ```
 
-## Docker での起動
-バッチスクリプトからまとめて起動できます（安定運用推奨）。
+## **🧩 目的**
 
-```powershell
-start-all-docker.bat
-# 停止: stop-all-docker.bat
+「Docker Desktopを使って、ToyBoxを開発モードで立ち上げる」
+
+---
+
+## **✅ 前提チェック**
+
+1. Docker Desktop が起動している（クジラのアイコンが表示されている）
+
+2. プロジェクトフォルダに以下が存在している
+
+```
+docker-compose.yml
+docker-compose.dev.yml
+frontend/
+backend/
 ```
 
-起動後の主要エンドポイント:
-- API: `http://localhost:4000`
-- Frontend: `http://localhost:3000`
+---
+
+## **🚀 手順（Windows CMD / PowerShell どちらでもOK）**
+
+### **① プロジェクトルートへ移動**
+
+例：
+
+```
+cd C:\Users\<あなたの名前>\toybox
+```
+
+`docker-compose.yml` がある場所が「ルート」です。
+
+---
+
+### **② 環境変数を設定（開発用プロジェクト名を固定）**
+
+```
+set COMPOSE_PROJECT_NAME=toybox
+```
+
+macOS/Linux の場合：
+
+```shell
+export COMPOSE_PROJECT_NAME=toybox
+```
+
+※これを設定しておくと、Docker Desktop 上で「toybox_frontend_1」「toybox_backend_1」のように統一管理されます。
+
+---
+
+### **③ コンテナを開発モードで起動**
+
+```
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+*   `-d` は「バックグラウンド実行」
+
+* もし初回起動でエラーが出た場合は、`--build` を付けて再試行してください：
+
+```
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+---
+
+### **④ 起動確認**
+
+```
+docker compose ps
+```
+
+✅ 正常なら、以下のように表示されます：
+
+```
+NAME                 STATE     PORTS
+toybox-frontend-1    Up        0.0.0.0:3000->3000/tcp
+toybox-backend-1     Up        0.0.0.0:4000->4000/tcp
+toybox-mongo-1       Up        27017/tcp
+toybox-redis-1       Up        6379/tcp
+```
+
+---
+
+### **⑤ ブラウザでアクセス**
+
+* **フロントエンド（Next.js）**  
+   → http://localhost:3000/
+
+* **バックエンドAPI**  
+   → http://localhost:4000/health  
+   （`{"status":"ok"}` が出たら正常）
+
+---
+
+### **⑥ ログをリアルタイムで見る（開発中に便利）**
+
+```
+docker compose logs -f --tail=100 backend frontend
+```
+
+終了するときは Ctrl + C
+
+---
+
+## **🧹 停止したいとき**
+
+```
+docker compose down
+```
+
+停止するだけで、データ（MongoDB や uploads フォルダ）は保持されます。
+
+---
+
+## **💡 よくある質問**
+
+| 状況 | 対処 |
+| ----- | ----- |
+| 「3000番ポートが使われている」 | 他のアプリ（ReactやVite）が起動しているかも → それを終了 or `docker-compose.dev.yml` の `ports` を `3001:3000` に変更 |
+| 「backendが落ちる」 | `.env` の接続情報（`MONGODB_URI`など）を確認。再ビルド時に `.env` が未反映のケースもあり。 |
+| 「ファイルを変更しても反映されない」 | `docker-compose.dev.yml` が正しくマウントされているか（例：`./backend:/app` があるか）確認。 |
+| 「ログをまとめて見たい」 | `docker compose logs -f`（全サービスのログを一括で追う） |
+
+---
+
+## **🚪（オプション）完全に削除して再起動したいとき**
+
+```
+docker compose down -v
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+`-v` でボリュームも削除。DBデータが消えるので注意。
+
+---
+
+これでOKです。  
+Docker DesktopのGUIでも、今の手順で起動した `toybox_frontend_1`・`toybox_backend_1` などが一覧に出ているはずです。
+
+---
+
+もしこの後、
+
+* フロントが動いてるのにAPIが返らない
+
+* アップロードが反映されない  
+  といった症状があれば、`docker compose logs backend` の出力を貼ってもらえれば、原因を一緒に見ます。
 
 ## 実装済み（Backend）
 - `models/Submission.ts`

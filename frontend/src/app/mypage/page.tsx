@@ -67,6 +67,7 @@ export default function MyPage() {
 
   async function onUploadFile(file: File) {
     if (!anonId) return;
+    if (uploading) return; // 二重起動防止
     setUploadError(null);
     setUploading(true);
     try {

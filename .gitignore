@@ -1,0 +1,64 @@
+# --- Node / Next.js / React ---
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+.turbo/
+.pnpm-store/
+.eslintcache
+.stylelintcache
+.npmrc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# --- Env / Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Monorepo (Turborepo / Nx など) ---
+**/.turbo/
+**/node_modules/
+**/dist/
+**/build/
+
+# --- Vite / Vitest ---
+.vite/
+vitest-*
+
+# --- Prisma / DB ---
+prisma/*.db
+prisma/*.db-journal
+*.sqlite
+*.sqlite-journal
+
+# --- Next/Image cache ---
+**/.next/cache/
+**/.vercel/
+
+# --- Docker ---
+**/.docker/
+**/tmp/
+**/.cache/
+docker-data/
+*.pid
+
+# --- OS / Editor junk ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.iml
+
+# --- Misc ---
+*.local
+*.swp
+*.swo

@@ -1,0 +1,82 @@
+# docker-compose.dev.yml
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+  backend:
+    image: node:22
+    working_dir: /app
+    command: sh -lc "npm ci || npm install; npm run dev"
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo:27017/toybox
+      MONGODB_DB: toybox
+      REDIS_URL: redis://redis:6379
+      PORT: 4000
+      # Windows でのファイル監視安定化
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "800"
+    volumes:
+      - ./backend:/app
+      - backend-node_modules:/app/node_modules
+      - uploads:/app/public/uploads
+    ports:
+      - "4000:4000"
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    image: node:22
+    working_dir: /app
+    command: sh -lc "npm ci || npm install; npm run dev:worker"
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo:27017/toybox
+      MONGODB_DB: toybox
+      REDIS_URL: redis://redis:6379
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "800"
+    volumes:
+      - ./backend:/app
+      - backend-node_modules:/app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  frontend:
+    image: node:22
+    working_dir: /app
+    command: sh -lc "npm ci || npm install; npm run dev"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_BASE: ""     # rewrites を使うので空（相対パス）
+      WATCHPACK_POLLING: "true"    # Next.js の監視安定化
+    volumes:
+      - ./frontend:/app
+      - frontend-node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  backend-node_modules:
+  frontend-node_modules:
+  uploads:
+  mongo-data:

@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0f0f10;
+  --fg: #eae6df;
+}
+
+html, body {
+  padding: 0;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial;
+}
+
+/* Soft float animation for hero overlay */
+@keyframes mioFloatFade {
+  0% { transform: translateY(6px) scale(0.98); opacity: 0; }
+  40% { opacity: 1; }
+  50% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(4px) scale(1.005); }
+}
+
+.mio-float {
+  animation: mioFloatFade 1800ms ease-out both;
+}

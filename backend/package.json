@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
     "start:worker": "node dist/src/workers/notificationWorker.js",
-    "test": "jest"
+    "test": "jest",
+    "clear:submission-images": "tsx src/scripts/clearSubmissionImages.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

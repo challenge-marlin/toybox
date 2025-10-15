@@ -154,14 +154,7 @@ export default function MyPage() {
       setFlowOpen(true);
       setFadeOut(false);
       setFlowPhase('card');
-      // カード自動生成（取得演出）
-      try {
-        const gen = await apiPost<{ ok: boolean; card: { card_name: string; rarity?: 'SSR'|'SR'|'R'|'N'; image_url?: string|null } }>(
-          `/api/v1/toybox/generate_card`,
-          { type: 'Character' }
-        );
-        setCardReveal({ imageUrl: gen.card.image_url, cardName: gen.card.card_name, rarity: gen.card.rarity });
-      } catch {}
+      // カード取得はバックエンドの即時報酬に一本化（フロント側の追加生成は行わない）
       await new Promise((r) => setTimeout(r, 3000));
       // フェードアウトして次のフェーズへ
       setFadeOut(true);
@@ -190,20 +183,10 @@ export default function MyPage() {
         const p = await apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(anonId)}`);
         setProfile(p);
 
-        // 自分の提出物を再フェッチしてローカル項目と置き換え（重複回避）
+        // 自分の提出物をサーバーの最新に完全同期し、ローカル一時提出をクリア（重複回避）
         const latest = await apiGet<{ items: Submission[] }>(`/api/submissions/me?limit=12`);
-        setSubmissions((prev) => {
-          const remoteIds = new Set(latest.items.map((x) => x.id));
-          const filteredLocal = prev.filter((x) => x.id.startsWith('local-') && !remoteIds.has(x.id));
-          // サーバ側の最新を先頭に、残存ローカルを後ろに（重複排除）
-          const merged = [...latest.items, ...filteredLocal];
-          const seen = new Set<string>();
-          return merged.filter((m) => {
-            if (seen.has(m.id)) return false;
-            seen.add(m.id);
-            return true;
-          });
-        });
+        setSubmissions(latest.items);
+        saveLocalSubmissions(anonId, []);
       } catch {}
     } catch (e: any) {
       setUploadError(e?.message ?? 'アップロードに失敗しました');

@@ -43,15 +43,7 @@ export default function SubmitForm() {
         setResult(data);
         // 並列演出: カード→称号→スロット→完了
         setPhase('card');
-        // 1) カード自動生成（バックエンドAPI）
-        try {
-          const gen = await apiPost<{ ok: boolean; card: { card_name: string; rarity?: 'SSR'|'SR'|'R'|'N'; image_url?: string|null } }>(
-            `/api/v1/toybox/generate_card`,
-            { type: 'Character' },
-            { anonId }
-          );
-          setReveal({ imageUrl: gen.card.image_url, cardName: gen.card.card_name, rarity: gen.card.rarity });
-        } catch {}
+        // カード演出はサーバ側の即時報酬に統合（ここでの追加生成はしない）
         await new Promise((r) => setTimeout(r, 800));
         setPhase('title');
         // 2) 称号獲得表示（ダミー画像）
@@ -74,14 +66,7 @@ export default function SubmitForm() {
         };
         setResult(mock);
         setPhase('card');
-        try {
-          const gen = await apiPost<{ ok: boolean; card: { card_name: string; rarity?: 'SSR'|'SR'|'R'|'N'; image_url?: string|null } }>(
-            `/api/v1/toybox/generate_card`,
-            { type: 'Character' },
-            { anonId }
-          );
-          setReveal({ imageUrl: gen.card.image_url, cardName: gen.card.card_name, rarity: gen.card.rarity });
-        } catch {}
+        // バックエンド停止時のフォールバックでも追加生成は行わない
         await new Promise((r) => setTimeout(r, 800));
         setPhase('title');
         await new Promise((r) => setTimeout(r, 800));

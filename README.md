@@ -6,9 +6,9 @@ ToyBox は Next.js(Frontend) と Node.js/Express(Backend) の TypeScript モノ�
 - **Frontend**: Next.js, React, Tailwind CSS, NextAuth.js (導入予定)
 - **Backend**: Express, Mongoose (MongoDB), BullMQ + ioredis, Jest, ts-jest, TypeScript
 
-### ディレクトリ構成
+### ディレクトリ構成（抜粋）
 ```text
-toybox-app/
+toybox/
   backend/
     package.json
     tsconfig.json
@@ -17,12 +17,23 @@ toybox-app/
       UserMeta.ts
     src/
       server.ts
+      api/
+        submit.ts
+        mypage.ts
+        cards.ts
       services/
         lotteryService.ts
+      scripts/
+        clearSubmissionImages.ts  # 提出画像の一括クリア
   frontend/
     package.json
     tsconfig.json
-    tailwind.config.js
+    src/
+      app/
+      components/
+  docker-compose.yml
+  start-all-docker.bat
+  stop-all-docker.bat
 ```
 
 ## 前提
@@ -34,12 +45,12 @@ toybox-app/
 PowerShell 例:
 ```powershell
 # 依存関係のインストール
-cd toybox-app\backend; npm i
+cd backend; npm i
 cd ..\frontend; npm i
 ```
 
 ## 環境変数（Backend）
-`toybox-app/backend/.env` を作成:
+`backend/.env` を作成:
 ```env
 MONGODB_URI=mongodb://127.0.0.1:27017/toybox
 MONGODB_DB=toybox
@@ -54,11 +65,11 @@ REDIS_URL=redis://127.0.0.1:6379
 2つのターミナルで実行:
 ```powershell
 # Terminal 1 (Backend)
-cd toybox-app\backend
+cd backend
 npm run dev
 
 # Terminal 2 (Frontend)
-cd toybox-app\frontend
+cd ..\frontend
 npm run dev
 ```
 - Backend: http://localhost:4000/health
@@ -66,11 +77,23 @@ npm run dev
 
 ## ビルド/実行/テスト（Backend）
 ```powershell
-cd toybox-app\backend
+cd backend
 npm run build   # tsc
 npm start       # node dist/index.js
 npm test        # jest
 ```
+
+## Docker での起動
+バッチスクリプトからまとめて起動できます（安定運用推奨）。
+
+```powershell
+start-all-docker.bat
+# 停止: stop-all-docker.bat
+```
+
+起動後の主要エンドポイント:
+- API: `http://localhost:4000`
+- Frontend: `http://localhost:3000`
 
 ## 実装済み（Backend）
 - `models/Submission.ts`
@@ -84,6 +107,28 @@ npm test        # jest
   - 抽選確率: \(P_{final}=\min(0.008+0.002\times k, 0.05)\)
   - 提出→抽選→`lotteryBonusCount` 更新（当選: 0 リセット／非当選: +1）
   - 即時報酬: ランダム称号（7日）付与 + カード1枚をアルバムに追加
+
+## メンテナンス手順
+
+### 提出画像（imageUrl）の一括クリア
+DB 上の `Submission.imageUrl` を全件削除します。物理ファイルは削除しません。
+
+実行前に MongoDB が起動していることを確認してください（Docker 推奨）。
+
+```powershell
+# Docker 環境
+start-all-docker.bat
+docker compose exec backend npm run -s clear:submission-images
+
+# ローカル MongoDB に対して実行する場合
+cd backend
+set MONGODB_URI=mongodb://127.0.0.1:27017/toybox && set MONGODB_DB=toybox && npm run -s clear:submission-images
+```
+
+出力例:
+```
+[clearSubmissionImages] matched=42 modified=42
+```
 
 ## 予定（Step 4 以降）
 - API 実装（例）

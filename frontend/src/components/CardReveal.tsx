@@ -1,6 +1,8 @@
 'use client';
 import React, { useState } from 'react';
 
+const FRAME_URL = '/uploads/cards/frame.png';
+
 type Props = {
   imageUrl?: string | null;
   cardName: string;
@@ -16,12 +18,13 @@ export default function CardReveal({ imageUrl, cardName, rarity = 'N', onClose }
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className={`rounded-md border p-3 shadow-xl ${isEpic ? 'border-yellow-500' : 'border-steam-iron-700'} bg-steam-iron-900`}>
         <div className="text-center text-steam-gold-200 mb-2">{rarity} 獲得！</div>
-        <div className="w-[280px] h-[400px] bg-steam-iron-800 flex items-center justify-center overflow-hidden rounded">
+        <div className="relative w-[280px] h-[400px] bg-steam-iron-800 overflow-hidden rounded">
           {imageUrl ? (
-            <img src={imageUrl} alt={cardName} className="w-full h-full object-cover" />
+            <img src={imageUrl} alt={cardName} className="absolute inset-0 w-full h-full object-cover" />
           ) : (
-            <div className="text-steam-iron-200">{cardName}</div>
+            <div className="absolute inset-0 flex items-center justify-center text-steam-iron-200">{cardName}</div>
           )}
+          <img src={FRAME_URL} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
         </div>
         <div className="mt-2 text-center text-steam-iron-100">{cardName}</div>
         <div className="text-center mt-3">

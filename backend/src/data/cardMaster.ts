@@ -148,17 +148,17 @@ function weightedPick(items: [string, number][]): string {
 
 const DEFAULT_TSV_FALLBACK = `
 card_id	card_type	card_name	rarity	rarity_rate	attribute	base_atk	base_def	effect_category	effect_target	effect_value	duration_turn	special_effect_code	initial_deck_count	image_url
-C001	Character	見習いプランナー	N	0.75	木	100	100	-	-	-	-	-	1	-
-C006	Character	タスク・レンジャー	R	0.20	木	150	150	-	-	-	-	-	1	-
-C101	Character	スチーム・アーキテクト	SR	0.04	金	250	250	-	-	-	-	-	1	-
-C201	Character	ネビュラの王	SSR	0.01	水	400	400	-	-	-	-	-	1	-
-C002	Character	駆け出しインフルエンサー	N	0.75	火	100	100	-	-	-	-	-	1	-
-C007	Character	炎舞のソーシャルナイト	R	0.20	火	150	150	-	-	-	-	-	1	-
-C102	Character	歯車の守護者	SR	0.04	土	250	250	-	-	-	-	-	1	-
-C202	Character	蒸気の覇者	SSR	0.01	金	400	400	-	-	-	-	-	1	-
-E001	Effect	【スプリントブースト】	-	-	-	-	-	強化	Self_ATK	50	2	-	1	-
-E002	Effect	【データガード】	-	-	-	-	-	防御	Self_DEF	50	2	-	1	-
-E003	Effect	【クリーンヒット】	-	-	-	-	-	攻撃	Opponent_HP	-100	-	-	1	-
-E004	Effect	【緊急回復】	-	-	-	-	-	回復	Self_HP	200	-	-	1	-
+C001	Character	見習いプランナー	N	0.75	木	100	100	-	-	-	-	-	1	/uploads/cards/C001.png
+C006	Character	タスク・レンジャー	R	0.20	木	150	150	-	-	-	-	-	1	/uploads/cards/C006.png
+C101	Character	スチーム・アーキテクト	SR	0.04	金	250	250	-	-	-	-	-	1	/uploads/cards/C101.png
+C201	Character	ネビュラの王	SSR	0.01	水	400	400	-	-	-	-	-	1	/uploads/cards/C201.png
+C002	Character	駆け出しインフルエンサー	N	0.75	火	100	100	-	-	-	-	-	1	/uploads/cards/C002.png
+C007	Character	炎舞のソーシャルナイト	R	0.20	火	150	150	-	-	-	-	-	1	/uploads/cards/C007.png
+C102	Character	歯車の守護者	SR	0.04	土	250	250	-	-	-	-	-	1	/uploads/cards/C102.png
+C202	Character	蒸気の覇者	SSR	0.01	金	400	400	-	-	-	-	-	1	/uploads/cards/C202.png
+E001	Effect	【スプリントブースト】	-	-	-	-	-	強化	Self_ATK	50	2	-	1	/uploads/cards/E001.png
+E002	Effect	【データガード】	-	-	-	-	-	防御	Self_DEF	50	2	-	1	/uploads/cards/E002.png
+E003	Effect	【クリーンヒット】	-	-	-	-	-	攻撃	Opponent_HP	-100	-	-	1	/uploads/cards/E003.png
+E004	Effect	【緊急回復】	-	-	-	-	-	回復	Self_HP	200	-	-	1	/uploads/cards/E004.png
 `.trim();
 

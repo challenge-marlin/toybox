@@ -20,7 +20,7 @@ export default function CardReveal({ imageUrl, cardName, rarity = 'N', onClose }
         <div className="text-center text-steam-gold-200 mb-2">{rarity} 獲得！</div>
         <div className="relative w-[280px] h-[400px] bg-steam-iron-800 overflow-hidden rounded">
           {imageUrl ? (
-            <img src={imageUrl} alt={cardName} className="absolute inset-0 w-full h-full object-cover" />
+            <img src={imageUrl} alt={cardName} className="absolute inset-0 w-full h-full object-contain" style={{ transform: 'scale(0.97)', transformOrigin: 'center' }} />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-steam-iron-200">{cardName}</div>
           )}

@@ -54,6 +54,7 @@ submitRouter.post('/submit', async (req, res, next) => {
       bonusCount: result.bonusCount,
       rewardTitle: result.rewardTitle,
       rewardCardId: result.rewardCardId,
+      rewardCard: result as any && (result as any).rewardCard ? (result as any).rewardCard : undefined,
       jackpotRecordedAt: result.jackpotRecordedAt
     };
 

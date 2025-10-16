@@ -15,6 +15,7 @@ import { rateLimitByAnonOrIp } from './middleware/rateLimit.js';
 import { mypageRouter } from './api/mypage.js';
 import { cardsRouter } from './api/cards.js';
 import path from 'path';
+import { connectMongo, disconnectMongo, isMongoReady } from './lib/db.js';
 
 dotenv.config();
 
@@ -48,9 +49,7 @@ let mongoReady = false;
 
 async function start() {
   try {
-    await mongoose.connect(mongoUri, {
-      dbName: process.env.MONGODB_DB || 'toybox'
-    } as any);
+    await connectMongo(mongoUri, process.env.MONGODB_DB || 'toybox');
     mongoReady = true;
     console.log('[server] Connected to MongoDB');
 
@@ -72,6 +71,7 @@ async function start() {
     });
 
     app.get('/ready', (_req: express.Request, res: express.Response) => {
+      mongoReady = isMongoReady();
       if (mongoReady) return res.json({ ready: true });
       return res.status(503).json({ ready: false });
     });
@@ -122,6 +122,15 @@ async function start() {
     app.listen(port, () => {
       console.log(`[server] Listening on http://localhost:${port}`);
     });
+
+    // Graceful shutdown
+    const shutdown = async (sig: string) => {
+      try { console.log(`[server] ${sig} received, shutting down...`); } catch {}
+      try { await disconnectMongo(); } catch {}
+      try { process.exit(0); } catch { process.exit(1); }
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (err) {
     console.error('[server] Failed to start:', err);
     process.exit(1);

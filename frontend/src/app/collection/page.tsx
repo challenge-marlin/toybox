@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { API_BASE, apiGet } from '../../lib/api';
+const FRAME_URL = '/uploads/cards/frame.png';
 
 type Entry = {
   id: string;
@@ -60,7 +61,8 @@ export default function CollectionPage() {
       <img
         src={src}
         alt={meta?.card_name || ''}
-        className="w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-contain"
+        style={{ transform: 'scale(0.97)', transformOrigin: 'center' }}
         onError={() => setIdx((i) => Math.min(i + 1, srcs.length - 1))}
       />
     );
@@ -121,8 +123,9 @@ export default function CollectionPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {sorted.map(e => (
             <div key={e.id} className="rounded border border-steam-iron-700 bg-steam-iron-900 p-2">
-              <div className="aspect-[2/3] bg-steam-iron-800 rounded mb-2 overflow-hidden">
+              <div className="relative aspect-[2/3] bg-steam-iron-800 rounded mb-2 overflow-hidden">
                 <CardImage meta={e.meta || undefined} />
+                <img src={FRAME_URL} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
               </div>
               <div className="text-xs text-steam-iron-200">{e.meta?.rarity ?? '-'}</div>
               <div className="text-sm text-steam-gold-200">{e.meta?.card_name ?? e.id}</div>

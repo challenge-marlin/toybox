@@ -16,6 +16,7 @@ type SubmitResult = {
   bonusCount: number;
   rewardTitle?: string;
   rewardCardId?: string;
+  rewardCard?: { card_id: string; card_name: string; rarity?: 'SSR' | 'SR' | 'R' | 'N'; image_url?: string | null };
   jackpotRecordedAt?: string | null;
 };
 
@@ -152,6 +153,16 @@ export default function MyPage() {
 
       // 演出開始（カード→称号→スロット）
       setFlowResult(submitRes);
+      // カード表示データを反映（APIが返す rewardCard を使用）
+      if (submitRes?.rewardCard) {
+        setCardReveal({
+          imageUrl: resolveUploadUrl(submitRes.rewardCard.image_url),
+          cardName: submitRes.rewardCard.card_name,
+          rarity: submitRes.rewardCard.rarity
+        });
+      } else {
+        setCardReveal(null);
+      }
       setFlowOpen(true);
       setFadeOut(false);
       setFlowPhase('card');
@@ -450,7 +461,7 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
           ))}
           {submissions.map((s) => (
             <div key={s.id} className="relative rounded border border-steam-iron-700 bg-steam-iron-900 group">
-              <img loading="lazy" src={s.displayImageUrl || s.imageUrl} alt="submission" className="w-full aspect-square object-contain p-3" />
+              <img loading="lazy" src={resolveUploadUrl(s.displayImageUrl || s.imageUrl)} alt="submission" className="w-full aspect-square object-contain p-3" />
               <div className="absolute inset-0 pointer-events-none ring-2 ring-steam-gold-500/60 rounded animate-pulse"></div>
               <button
                 onClick={async () => {

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE, apiGet } from '../../../lib/api';
 import TitleDisplay from '../../../components/TitleDisplay';
+const FRAME_URL = '/uploads/cards/frame.png';
 // 匿名IDは廃止。/api/auth/me から取得
 
 type PublicProfile = {
@@ -92,10 +93,14 @@ export default function ProfileViewPage() {
             <div className="text-sm text-steam-iron-300">カードはまだありません</div>
           )}
           {cards.map((c) => (
-            <div key={c.id} className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3 text-center">
-              <div className="text-steam-gold-200 font-semibold">{c.id}</div>
+            <div key={c.id} className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3">
+              <div className="relative aspect-[2/3] bg-steam-iron-800 rounded mb-2 overflow-hidden">
+                <CardImageById cardId={c.id} />
+                <img src={FRAME_URL} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+              </div>
+              <div className="text-sm text-steam-gold-200 text-center">{c.id}</div>
               {c.obtainedAt && (
-                <div className="mt-1 text-[11px] text-steam-iron-300">{new Date(c.obtainedAt).toLocaleDateString()}</div>
+                <div className="mt-1 text-[11px] text-steam-iron-300 text-center">{new Date(c.obtainedAt).toLocaleDateString()}</div>
               )}
             </div>
           ))}
@@ -103,6 +108,37 @@ export default function ProfileViewPage() {
       </main>
     </>
   );
+}
+
+function CardImageById({ cardId }: { cardId: string }) {
+  const srcs = candidatesForId(cardId);
+  const [idx, setIdx] = React.useState(0);
+  if (srcs.length === 0) return null;
+  const src = srcs[Math.min(idx, srcs.length - 1)];
+  return (
+    <img
+      src={src}
+      alt={cardId}
+      className="absolute inset-0 w-full h-full object-contain"
+      style={{ transform: 'scale(0.97)', transformOrigin: 'center' }}
+      onError={() => setIdx((i) => Math.min(i + 1, srcs.length - 1))}
+    />
+  );
+}
+
+function candidatesForId(cardId: string): string[] {
+  const xs: string[] = [];
+  // 文字ID（C001/E001）
+  xs.push(`${API_BASE}/uploads/cards/${cardId}.png`);
+  // 数値ID（Character=C### -> ###, Effect=E### -> 100+###）
+  const m = cardId.match(/^[CE](\d{1,3})$/i);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    const isEffect = /^E/i.test(cardId);
+    const mapped = isEffect ? 100 + n : n;
+    xs.push(`${API_BASE}/uploads/cards/${mapped}.png`);
+  }
+  return Array.from(new Set(xs));
 }
 
 

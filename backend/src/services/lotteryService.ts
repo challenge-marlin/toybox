@@ -4,6 +4,7 @@ import type { UserMeta } from '../../models/UserMeta.js';
 import { enqueueNotification } from '../queue/notificationQueue.js';
 import { JackpotWinModel } from '../../models/JackpotWin.js';
 import { logger } from '../utils/logger.js';
+import { loadCardMaster, drawCharacter, toPublicCard } from '../data/cardMaster.js';
 import { startOfJstDay, endOfJstDay } from '../utils/time.js';
 
 // 抽選確率計算: P_final = min(0.008 + 0.002 * k, 0.05)
@@ -31,7 +32,7 @@ function drawWithProbability(prob: number): boolean {
 }
 
 // 即時報酬: ランダム称号（7日）とカード1枚付与
-export async function grantImmediateRewards(user: UserMeta): Promise<{ user: UserMeta; title: string; cardId: string }> {
+export async function grantImmediateRewards(user: UserMeta): Promise<{ user: UserMeta; title: string; cardId: string; cardMeta?: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } }> {
   const titles = [
     '蒸気の旅人',
     '真鍮の探究者',
@@ -43,15 +44,31 @@ export async function grantImmediateRewards(user: UserMeta): Promise<{ user: Use
   const now = new Date();
   const until = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const newCardId = `card_${now.getTime()}`;
+  // マスターからキャラクターカードを抽選（なければフォールバックID）
+  let chosenCardId = `card_${now.getTime()}`;
+  let cardMeta: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } | undefined;
+  try {
+    const master = await loadCardMaster();
+    const picked = await drawCharacter(master);
+    if (picked) {
+      chosenCardId = picked.card_id;
+      const pub = toPublicCard(picked);
+      cardMeta = {
+        card_id: pub.card_id,
+        card_name: pub.card_name,
+        rarity: pub.rarity,
+        image_url: pub.image_url ?? undefined
+      };
+    }
+  } catch {}
 
   user.activeTitle = chosen;
   user.activeTitleUntil = until;
-  user.cardsAlbum = [...(user.cardsAlbum || []), { id: newCardId, obtainedAt: now }];
+  user.cardsAlbum = [...(user.cardsAlbum || []), { id: chosenCardId, obtainedAt: now }];
 
   await user.save();
-  logger.info('reward.granted', { anonId: user.anonId, title: chosen, cardId: newCardId });
-  return { user, title: chosen, cardId: newCardId };
+  logger.info('reward.granted', { anonId: user.anonId, title: chosen, cardId: chosenCardId });
+  return { user, title: chosen, cardId: chosenCardId, cardMeta };
 }
 
 // 提出後の全処理
@@ -69,17 +86,13 @@ export interface SubmissionResult {
   bonusCount: number; // 更新後の lotteryBonusCount
   rewardTitle?: string;
   rewardCardId?: string;
+  rewardCard?: { card_id: string; card_name: string; rarity?: 'SSR' | 'SR' | 'R' | 'N'; image_url?: string | null };
   jackpotRecordedAt?: string | null;
 }
 
 export async function handleSubmissionAndLottery(input: SubmissionInput): Promise<SubmissionResult> {
   const { submitterAnonId } = input;
-
-  // 1日1回提出制限
-  if (await hasSubmittedToday(submitterAnonId)) {
-    logger.info('submit.limited', { anonId: submitterAnonId });
-    return { jpResult: 'none', probability: 0, bonusCount: 0 };
-  }
+  const alreadyToday = await hasSubmittedToday(submitterAnonId);
 
   // 同時多発（短時間の二重送信）対策: 直近10秒以内に同一内容の提出が存在する場合はスキップ
   // 画像提出は imageUrl が一致、テキスト提出は aim/steps/frameType が一致するものを重複とみなす
@@ -112,17 +125,22 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
     imageUrl: input.imageUrl
   });
 
-  // 抽選確率
-  const p = calculateFinalProbability(user.lotteryBonusCount);
-  const isWin = drawWithProbability(p);
-  logger.info('lottery.draw', { anonId: user.anonId, p, isWin });
-
-  if (isWin) {
-    user.lotteryBonusCount = 0; // 当選でリセット
+  // 抽選（当日の初回のみ）
+  let p = 0;
+  let isWin = false;
+  if (!alreadyToday) {
+    p = calculateFinalProbability(user.lotteryBonusCount);
+    isWin = drawWithProbability(p);
+    logger.info('lottery.draw', { anonId: user.anonId, p, isWin });
+    if (isWin) {
+      user.lotteryBonusCount = 0; // 当選でリセット
+    } else {
+      user.lotteryBonusCount = (user.lotteryBonusCount || 0) + 1; // 非当選で加算
+    }
+    await user.save();
   } else {
-    user.lotteryBonusCount = (user.lotteryBonusCount || 0) + 1; // 非当選で加算
+    logger.info('lottery.skipped.already_submitted_today', { anonId: user.anonId });
   }
-  await user.save();
 
   // 即時報酬を実施（抽選結果とは独立）
   const reward = await grantImmediateRewards(user);
@@ -136,12 +154,15 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
   });
 
   // 提出に結果を反映（任意）
-  submission.jpResult = isWin ? 'win' : 'lose';
-  await submission.save();
+  // 当日の初回提出のみ抽選結果を反映
+  if (!alreadyToday) {
+    submission.jpResult = isWin ? 'win' : 'lose';
+    await submission.save();
+  }
 
   // 一日一回のみのジャックポット記録（勝利時だけ）
   let jackpotRecordedAt: string | null = null;
-  if (isWin) {
+  if (!alreadyToday && isWin) {
     const now = new Date();
     const s = startOfJstDay(now);
     const e = endOfJstDay(now);
@@ -156,11 +177,17 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
   }
 
   return {
-    jpResult: isWin ? 'win' : 'lose',
+    jpResult: alreadyToday ? 'none' : (isWin ? 'win' : 'lose'),
     probability: p,
     bonusCount: user.lotteryBonusCount,
     rewardTitle: reward.title,
     rewardCardId: reward.cardId,
+    rewardCard: reward.cardMeta ? {
+      card_id: reward.cardMeta.card_id,
+      card_name: reward.cardMeta.card_name,
+      rarity: (reward.cardMeta.rarity as any) || undefined,
+      image_url: reward.cardMeta.image_url ?? undefined
+    } : undefined,
     jackpotRecordedAt
   };
 }

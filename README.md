@@ -1,5 +1,28 @@
 ## ToyBox Monorepo
 
+### カード画像とフレーム表示（実装済み）
+- 置き場所/URL
+  - カード画像: `/uploads/cards/<ファイル名>`（例: `/uploads/cards/C001.png`）
+  - フレーム画像: `/uploads/cards/frame.png`
+  - 推奨配置先: `backend/public/uploads/cards/`（Docker dev では実体はコンテナ内 `/app/public/uploads/cards`）
+
+- 命名
+  - 既存ミニセット: `C001.png`, `E001.png` など
+  - 数値運用時: キャラ `1.png`〜`20.png`、エフェクト `101.png`〜`140.png`
+
+- フロント実装（フレーム重ね＋3%縮小、すべて `object-contain`）
+  - `frontend/src/components/CardReveal.tsx`
+    - ベース画像: `absolute inset-0 w-full h-full object-contain` + `scale(0.97)`
+    - フレーム: `absolute inset-0 w-full h-full object-contain pointer-events-none`
+  - `frontend/src/app/collection/page.tsx`
+    - 各カードの表示領域（`relative aspect-[2/3] ...`）にフレームを重ね、画像は `scale(0.97)` で中央縮小
+  - `frontend/src/app/profile/view/page.tsx`
+    - 所持カードをコレクションと同一表示（フレーム重ね、3%縮小）。`C001/E001` と数値ID双方にフォールバック
+
+- 開発時の注意（Docker dev）
+  - `docker-compose.dev.yml` で `uploads` ボリュームが `/app/public/uploads` にマウントされています
+  - ローカルに置いただけでは反映されないため、必要に応じてコンテナにコピーしてください
+
 ToyBox は Next.js(Frontend) と Node.js/Express(Backend) の TypeScript モノレポです。段階的な実装で、まずはファイル定義とコアロジックから構築します。
 
 ### 技術スタック
@@ -111,7 +134,7 @@ backend/
 例：
 
 ```
-cd C:\Users\<あなたの名前>\toybox
+cd （\toyboxのあるルート）
 ```
 
 `docker-compose.yml` がある場所が「ルート」です。

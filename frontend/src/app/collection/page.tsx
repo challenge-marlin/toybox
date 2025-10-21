@@ -36,34 +36,22 @@ export default function CollectionPage() {
 
   function candidatesFor(meta?: Entry['meta']): string[] {
     if (!meta) return [];
-    const xs: string[] = [];
-    const u = resolveUploadUrl(meta.image_url);
-    if (u) xs.push(u);
-    // 1) 旧ID形式: C001/E001
-    xs.push(`${API_BASE}/uploads/cards/${meta.card_id}.png`);
-    // 2) 数値ID形式: Character=C### -> ###, Effect=E### -> 100+###
-    const m = meta.card_id.match(/^[CE](\d{1,3})$/i);
-    if (m) {
-      const n = parseInt(m[1], 10);
-      const isEffect = /^E/i.test(meta.card_id);
-      const mapped = isEffect ? 100 + n : n;
-      xs.push(`${API_BASE}/uploads/cards/${mapped}.png`);
-    }
-    return Array.from(new Set(xs));
+    const primary = resolveUploadUrl(meta.image_url) || `${API_BASE}/uploads/cards/${meta.card_id}.png`;
+    return [primary];
   }
 
   function CardImage({ meta }: { meta?: Entry['meta'] }) {
     const [idx, setIdx] = useState(0);
     const srcs = candidatesFor(meta);
     if (srcs.length === 0) return null;
-    const src = srcs[Math.min(idx, srcs.length - 1)];
+    const src = srcs[0];
     return (
       <img
         src={src}
         alt={meta?.card_name || ''}
         className="absolute inset-0 w-full h-full object-contain"
         style={{ transform: 'scale(0.97)', transformOrigin: 'center' }}
-        onError={() => setIdx((i) => Math.min(i + 1, srcs.length - 1))}
+        onError={() => setIdx((i) => i)}
       />
     );
   }

@@ -32,7 +32,7 @@ function drawWithProbability(prob: number): boolean {
 }
 
 // 即時報酬: ランダム称号（7日）とカード1枚付与
-export async function grantImmediateRewards(user: UserMeta): Promise<{ user: UserMeta; title: string; cardId: string; cardMeta?: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } }> {
+export async function grantImmediateRewards(user: UserMeta, opts?: { boostRarity?: boolean }): Promise<{ user: UserMeta; title: string; cardId: string; cardMeta?: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } }> {
   const titles = [
     '蒸気の旅人',
     '真鍮の探究者',
@@ -49,7 +49,35 @@ export async function grantImmediateRewards(user: UserMeta): Promise<{ user: Use
   let cardMeta: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } | undefined;
   try {
     const master = await loadCardMaster();
-    const picked = await drawCharacter(master);
+    // ゲーム投稿時は SSR/SR のレアリティ抽選確率を +1% ずつ上げる（合計は N から減算）
+    let picked = null as any;
+    if (opts?.boostRarity) {
+      const byRarity = {
+        SSR: master.filter(r => r.card_type === 'Character' && r.rarity === 'SSR'),
+        SR:  master.filter(r => r.card_type === 'Character' && r.rarity === 'SR'),
+        R:   master.filter(r => r.card_type === 'Character' && r.rarity === 'R'),
+        N:   master.filter(r => r.card_type === 'Character' && r.rarity === 'N'),
+      } as const;
+      const base = { SSR: 0.01, SR: 0.04, R: 0.20, N: 0.75 };
+      const boost = 0.01;
+      const rates = { SSR: base.SSR + boost, SR: base.SR + boost, R: base.R, N: Math.max(0, 1 - (base.SSR + base.SR + base.R + base.N) + base.N - 2*boost) } as any;
+      // 上の式がやや分かりづらいので単純化
+      rates.N = Math.max(0, 1 - (rates.SSR + rates.SR + rates.R));
+      type RKey = 'SSR' | 'SR' | 'R' | 'N';
+      const items: [RKey, number][] = [['SSR', rates.SSR], ['SR', rates.SR], ['R', rates.R], ['N', rates.N]];
+      const total = items.reduce((s, [, w]) => s + w, 0);
+      let r = Math.random() * total;
+      let selected: RKey = 'N';
+      for (const [k, w] of items) { r -= w; if (r <= 0) { selected = k; break; } }
+      const pool = byRarity[selected as RKey];
+      picked = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+      if (!picked) {
+        const any = master.filter(r => r.card_type === 'Character');
+        picked = any.length ? any[Math.floor(Math.random() * any.length)] : null;
+      }
+    } else {
+      picked = await drawCharacter(master);
+    }
     if (picked) {
       chosenCardId = picked.card_id;
       const pub = toPublicCard(picked);
@@ -78,6 +106,8 @@ export interface SubmissionInput {
   steps: string[];
   frameType: string;
   imageUrl?: string; // 画像アップロード後の相対URL（/uploads/...）
+  videoUrl?: string; // 動画アップロード後の相対URL（/uploads/...）
+  gameUrl?: string;  // 展開済みゲームの index.html への相対URL（/uploads/...）
 }
 
 export interface SubmissionResult {
@@ -101,7 +131,12 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
     const dup = await SubmissionModel.findOne({
       submitterAnonId,
       createdAt: { $gte: tenSecondsAgo },
-      ...(input.imageUrl ? { imageUrl: input.imageUrl } : { aim: input.aim, steps: input.steps, frameType: input.frameType })
+      ...(input.imageUrl || input.gameUrl
+        ? { $or: [
+            input.imageUrl ? { imageUrl: input.imageUrl } : {},
+            input.gameUrl ? { gameUrl: input.gameUrl } : {}
+          ] }
+        : { aim: input.aim, steps: input.steps, frameType: input.frameType })
     }).lean();
     if (dup) {
       logger.info('submit.duplicate_skipped', { anonId: submitterAnonId });
@@ -122,7 +157,9 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
     steps: input.steps,
     jpResult: 'none',
     frameType: input.frameType,
-    imageUrl: input.imageUrl
+    imageUrl: input.imageUrl,
+    videoUrl: input.videoUrl,
+    gameUrl: input.gameUrl
   });
 
   // 抽選（当日の初回のみ）
@@ -143,7 +180,7 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
   }
 
   // 即時報酬を実施（抽選結果とは独立）
-  const reward = await grantImmediateRewards(user);
+  const reward = await grantImmediateRewards(user, { boostRarity: !!input.gameUrl });
 
   // 通知ジョブを投入
   await enqueueNotification({

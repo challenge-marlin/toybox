@@ -69,12 +69,15 @@ mypageRouter.get('/submissions/me', requireAnonAuth, async (req: Request, res: R
   const response: SubmissionsResponseDto = {
     items: docs.map((d: any, i: number) => {
       const submissionImageUrl = d.imageUrl || null;
-      const displayImageUrl = submissionImageUrl || userAvatar || sampleImageUrl(i);
+      const submissionVideoUrl = d.videoUrl || null;
+      const displayImageUrl = submissionImageUrl || submissionVideoUrl || userAvatar || sampleImageUrl(i);
       return {
         id: String(d._id),
         createdAt: d.createdAt,
         imageUrl: submissionImageUrl,
-        displayImageUrl
+        videoUrl: submissionVideoUrl,
+        displayImageUrl,
+        gameUrl: (d as any).gameUrl || null
       };
     })
   };

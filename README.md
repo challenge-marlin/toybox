@@ -1,5 +1,13 @@
 ## ToyBox Monorepo
 
+### 起動方法（クイック）
+- Windows のバッチで一括起動
+  - `start-all-docker.bat`（Docker Desktop 必須）
+  - 停止: `stop-all-docker.bat`
+- 直接コマンド（推奨）
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build`
+  - 画面: Frontend `http://localhost:3000/` / Backend `http://localhost:4000/health`
+
 ### カード画像とフレーム表示（実装済み）
 - 置き場所/URL
   - カード画像: `/uploads/cards/<ファイル名>`（例: `/uploads/cards/C001.png`）
@@ -17,7 +25,7 @@
   - `frontend/src/app/collection/page.tsx`
     - 各カードの表示領域（`relative aspect-[2/3] ...`）にフレームを重ね、画像は `scale(0.97)` で中央縮小
   - `frontend/src/app/profile/view/page.tsx`
-    - 所持カードをコレクションと同一表示（フレーム重ね、3%縮小）。`C001/E001` と数値ID双方にフォールバック
+    - 所持カードをコレクションと同一表示（フレーム重ね、3%縮小）。初回処理で得た画像のみを使用
 
 - 開発時の注意（Docker dev）
   - `docker-compose.dev.yml` で `uploads` ボリュームが `/app/public/uploads` にマウントされています
@@ -35,6 +43,9 @@ toybox/
   backend/
     package.json
     tsconfig.json
+    public/
+      uploads/
+        cards/           # 静的配信の実体（/uploads 配下として公開）
     models/
       Submission.ts
       UserMeta.ts
@@ -55,7 +66,10 @@ toybox/
       app/
       components/
   docker-compose.yml
+  docker-compose.dev.yml
   start-all-docker.bat
+  start-backend.bat
+  start-frontend-dev.bat
   stop-all-docker.bat
 ```
 
@@ -97,6 +111,14 @@ npm run dev
 ```
 - Backend: http://localhost:4000/health
 - Frontend: http://localhost:3000 （Next.js デフォルト）
+
+## 静的ファイル配信（/uploads）
+- Backend が `/uploads` を `backend/public/uploads` から配信します。
+- Docker 開発時はコンテナ内 `/app/public/uploads` に `uploads` ボリュームがマウントされます。
+- Frontend の `next.config.js` で `^/uploads` は Backend にリライトされます。
+
+確認:
+- `http://localhost:4000/uploads/cards/frame.png` が表示されること
 
 ## ビルド/実行/テスト（Backend）
 ```powershell
@@ -221,6 +243,39 @@ docker compose down
 停止するだけで、データ（MongoDB や uploads フォルダ）は保持されます。
 
 ---
+
+## 画像404のトラブルシュート（Docker 開発）
+症状: `http://localhost:4000/uploads/cards/<ファイル>.png` が 404。
+
+原因: 画像がホストではなく、コンテナ内 `/app/public/uploads/cards` に存在する必要がある。
+
+対処（PowerShell）:
+```powershell
+cd C:\github\toybox
+$cid = (docker compose -f docker-compose.dev.yml ps -q backend); if (-not $cid) { $cid = (docker compose ps -q backend) }
+docker exec $cid sh -lc "mkdir -p /app/public/uploads/cards"
+docker cp "C:\github\toybox\backend\public\uploads\cards\frame.png" "$($cid):/app/public/uploads/cards/frame.png"
+docker exec $cid sh -lc "ls -l /app/public/uploads/cards | head -n 10"
+```
+
+注意:
+- Linux は大文字小文字を区別します（例: `C001.png` と `c001.png` は別）
+- マスターの `image_url` とファイル名を一致させてください（例: `/uploads/cards/C001.png`）
+
+### 提出〜演出フロー（UI）
+1. アップロード開始で全画面オーバーレイ（操作不可・二重防止）
+2. アップロード完了（ロック解除）後に演出開始
+   - カード取得 → 称号取得 → ジャックポット
+3. カード画像は `rewardCard.image_url` を優先、未設定時は `/uploads/cards/<card_id>.png`
+
+### 提出の種類と枠
+- 画像: 黄色リング
+- 動画: 青枠＋中央に再生アイコン（クリックでライトボックス再生）
+- ゲームZIP: マゼンタ枠＋歯車ボタン（別タブで `index.html` 起動）
+
+### アップロード上限
+- 画像/動画: 1GB
+- ゲームZIP: 1GB（`/api/submit/uploadGame`、サーバ側で展開）
 
 ## **💡 よくある質問**
 

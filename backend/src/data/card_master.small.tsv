@@ -1,14 +1,61 @@
 card_id	card_type	card_name	rarity	rarity_rate	attribute	base_atk	base_def	effect_category	effect_target	effect_value	duration_turn	special_effect_code	initial_deck_count	image_url
-C001	Character	見習いプランナー	N	0.75	木	100	100	-	-	-	-	-	1	/uploads/cards/C001.png
-C006	Character	タスク・レンジャー	R	0.20	木	150	150	-	-	-	-	-	1	/uploads/cards/C006.png
-C101	Character	スチーム・アーキテクト	SR	0.04	金	250	250	-	-	-	-	-	1	/uploads/cards/C101.png
-C201	Character	ネビュラの王	SSR	0.01	水	400	400	-	-	-	-	-	1	/uploads/cards/C201.png
-C002	Character	駆け出しインフルエンサー	N	0.75	火	100	100	-	-	-	-	-	1	/uploads/cards/C002.png
-C007	Character	炎舞のソーシャルナイト	R	0.20	火	150	150	-	-	-	-	-	1	/uploads/cards/C007.png
-C102	Character	歯車の守護者	SR	0.04	土	250	250	-	-	-	-	-	1	/uploads/cards/C102.png
-C202	Character	蒸気の覇者	SSR	0.01	金	400	400	-	-	-	-	-	1	/uploads/cards/C202.png
-E001	Effect	【スプリントブースト】	-	-	-	-	-	強化	Self_ATK	50	2	-	1	/uploads/cards/E001.png
-E002	Effect	【データガード】	-	-	-	-	-	防御	Self_DEF	50	2	-	1	/uploads/cards/E002.png
-E003	Effect	【クリーンヒット】	-	-	-	-	-	攻撃	Opponent_HP	-100	-	-	1	/uploads/cards/E003.png
-E004	Effect	【緊急回復】	-	-	-	-	-	回復	Self_HP	200	-	-	1	/uploads/cards/E004.png
-
+C001	Character	見習いプランナー	N	0.75	木	100	100	-	-	-	-	-	1	-
+C002	Character	駆け出しインフルエンサー	N	0.75	火	100	100	-	-	-	-	-	1	-
+C003	Character	データの土台師	N	0.75	土	100	100	-	-	-	-	-	1	-
+C004	Character	プロンプト見習い工	N	0.75	金	100	100	-	-	-	-	-	1	-
+C005	Character	AIの水の導き手	N	0.75	水	100	100	-	-	-	-	-	1	-
+C006	Character	タスク・レンジャー	R	0.20	木	150	150	-	-	-	-	-	1	-
+C007	Character	炎舞のソーシャルナイト	R	0.20	火	150	150	-	-	-	-	-	1	-
+C008	Character	リテラシーの要塞	R	0.20	土	150	150	-	-	-	-	-	1	-
+C009	Character	データ構造の採掘士	R	0.20	金	150	150	-	-	-	-	-	1	-
+C010	Character	連携の流水術士	R	0.20	水	150	150	-	-	-	-	-	1	-
+C011	Character	AIガーデナー	SR	0.04	木	250	250	-	-	-	-	-	1	-
+C012	Character	バイラル・ウィザード	SR	0.04	火	250	250	-	-	-	-	-	1	-
+C013	Character	構築のグラウンドキーパー	SR	0.04	土	250	250	-	-	-	-	-	1	-
+C014	Character	絶対解析のメタリック・アナリスト	SR	0.04	金	250	250	-	-	-	-	-	1	-
+C015	Character	トラブルリキッド・セイバー	SR	0.04	水	250	250	-	-	-	-	-	1	-
+C016	Character	世界樹の戦略家	SSR	0.01	木	400	400	-	-	-	-	-	1	-
+C017	Character	バズを生む業火の使徒	SSR	0.01	火	400	400	-	-	-	-	-	1	-
+C018	Character	金剛不壊のITアーキテクト	SSR	0.01	土	400	400	-	-	-	-	-	1	-
+C019	Character	黄金比を操る構造設計士	SSR	0.01	金	400	400	-	-	-	-	-	1	-
+C020	Character	知識の深海王	SSR	0.01	水	400	400	-	-	-	-	-	1	-
+E101	Effect	【叡智の集中】	N	-	-	-	-	-	-	味方ATKを50アップ (1ターン)	-	-	1	-
+E102	Effect	【堅実な守り】	N	-	-	-	-	-	-	味方DEFを50アップ (1ターン)	-	-	1	-
+E107	Effect	【超速習得】	N	-	-	-	-	-	-	味方ATKを40アップ (2ターン)	-	-	1	-
+E108	Effect	【二重装甲】	N	-	-	-	-	-	-	味方DEFを40アップ (2ターン)	-	-	1	-
+E111	Effect	【思考の錯乱】	N	-	-	-	-	-	-	相手DEFを30ダウン (1ターン)	-	-	1	-
+E112	Effect	【攻撃の緩み】	N	-	-	-	-	-	-	相手ATKを30ダウン (1ターン)	-	-	1	-
+E117	Effect	【長期疲労】	N	-	-	-	-	-	-	相手ATKを20ダウン (2ターン)	-	-	1	-
+E118	Effect	【防御の剥奪】	N	-	-	-	-	-	-	相手DEFを20ダウン (2ターン)	-	-	1	-
+E125	Effect	【小休憩】	N	-	-	-	-	-	-	味方HPを50回復	-	-	1	-
+E129	Effect	【チーム応援】	N	-	-	-	-	-	-	味方HPを50回復し、相手にデバフ	-	-	1	-
+E103	Effect	【クイック思考】	R	-	-	-	-	-	-	味方ATKを70アップ (1ターン)	-	-	1	-
+E104	Effect	【プロテクト・ウォール】	R	-	-	-	-	-	-	味方DEFを80アップ (1ターン)	-	-	1	-
+E109	Effect	【攻防一体】	R	-	-	-	-	-	-	味方ATK/DEFを30アップ (1ターン)	-	-	1	-
+E113	Effect	【解析ミス】	R	-	-	-	-	-	-	相手DEFを50ダウン (1ターン)	-	-	1	-
+E114	Effect	【タスクの遅延】	R	-	-	-	-	-	-	相手ATKを60ダウン (1ターン)	-	-	1	-
+E119	Effect	【全能力低下】	R	-	-	-	-	-	-	相手ATK/DEFを20ダウン (1ターン)	-	-	1	-
+E121	Effect	【自己回復ポーション】	R	-	-	-	-	-	-	味方HPを100回復	-	-	1	-
+E122	Effect	【クイック・ヒーリング】	R	-	-	-	-	-	-	味方HPを150回復	-	-	1	-
+E127	Effect	【集中回復】	R	-	-	-	-	-	-	味方HPを80回復し、次のATKアップ	-	-	1	-
+E131	Effect	【遅延の罠】	R	-	-	-	-	-	-	次のターン、相手ATKを50ダウン	-	-	1	-
+E138	Effect	【数値変動トラップ】	R	-	-	-	-	-	-	相手ATK/DEFを20ダウン (2ターン)	-	-	1	-
+E105	Effect	【全集中ブースト】	SR	-	-	-	-	-	-	味方ATKを100アップ (1ターン)	-	-	1	-
+E106	Effect	【鋼の意思】	SR	-	-	-	-	-	-	味方DEFを120アップ (1ターン)	-	-	1	-
+E110	Effect	【会心の一撃準備】	SR	-	-	-	-	-	-	味方ATKを200アップ (1ターン、10%で失敗)	-	-	1	-
+E115	Effect	【完全遮断】	SR	-	-	-	-	-	-	相手DEFを80ダウン (1ターン)	-	-	1	-
+E120	Effect	【属性無視攻撃】	SR	-	-	-	-	-	-	相手の属性を無視して攻撃	-	-	1	-
+E123	Effect	【完全リフレッシュ】	SR	-	-	-	-	-	-	味方HPを250回復	-	-	1	-
+E126	Effect	【デバフ解除】	SR	-	-	-	-	-	-	味方のデバフを解除	-	-	1	-
+E128	Effect	【学習ログ復元】	SR	-	-	-	-	-	-	カードを1枚引く	-	-	1	-
+E130	Effect	【HPドレイン】	SR	-	-	-	-	-	-	相手HPを100吸収して回復	-	-	1	-
+E133	Effect	【カウンター準備】	SR	-	-	-	-	-	-	受けたダメージの50%を反射	-	-	1	-
+E137	Effect	【ダメージ吸収】	SR	-	-	-	-	-	-	受けたダメージの分HPを100回復	-	-	1	-
+E139	Effect	【AIエラー誘発】	SR	-	-	-	-	-	-	相手の行動を10%の確率で失敗させる	-	-	1	-
+E140	Effect	【勝利への布石】	SR	-	-	-	-	-	-	次のターン、味方ATKを100アップ	-	-	1	-
+E116	Effect	【弱点露出】	SSR	-	-	-	-	-	-	相手ATKを100ダウン (1ターン)	-	-	1	-
+E124	Effect	【緊急避難】	SSR	-	-	-	-	-	-	味方HPを400回復	-	-	1	-
+E132	Effect	【行動キャンセル】	SSR	-	-	-	-	-	-	相手の効果カードの発動をキャンセル	-	-	1	-
+E134	Effect	【防御シールド】	SSR	-	-	-	-	-	-	受けるダメージを50%軽減 (1ターン)	-	-	1	-
+E135	Effect	【属性反転】	SSR	-	-	-	-	-	-	相手の属性相性を反転	-	-	1	-
+E136	Effect	【思考ロック】	SSR	-	-	-	-	-	-	相手の行動を通常攻撃に固定	-	-	1	-

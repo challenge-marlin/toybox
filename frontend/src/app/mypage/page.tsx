@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
 import CardReveal from '../../components/CardReveal';
 import SlotMachine from '../../components/SlotMachine';
+import ImageLightbox from '../../components/ImageLightbox';
 
-type Submission = { id: string; imageUrl: string; displayImageUrl?: string; createdAt: string };
+type Submission = { id: string; imageUrl?: string; displayImageUrl?: string; createdAt: string; gameUrl?: string | null; videoUrl?: string | null };
 type FeedItem = { id: string; anonId: string; displayName?: string | null; imageUrl: string; avatarUrl?: string | null; displayImageUrl?: string; createdAt: string; title?: string | null };
   type PublicProfile = { anonId: string; displayName?: string | null; avatarUrl?: string | null; bio?: string | null; updatedAt?: string | null };
 
@@ -43,6 +44,10 @@ export default function MyPage() {
   const [fadeOut, setFadeOut] = useState(false);
   const [slotFinished, setSlotFinished] = useState(false);
   const [cardReveal, setCardReveal] = useState<{ imageUrl?: string | null; cardName: string; rarity?: 'SSR' | 'SR' | 'R' | 'N' } | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string>('');
+  const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
+  const [pendingFlow, setPendingFlow] = useState<SubmitResult | null>(null);
 
   function localKey(a: string) {
     return `toybox_local_submissions_${a}`;
@@ -71,18 +76,23 @@ export default function MyPage() {
     if (uploading) return; // 二重起動防止
     setUploadError(null);
     setUploading(true);
+    const startedAt = Date.now();
     try {
-      // PNG/JPEG のみ許可
+      // PNG/JPEG/MP4/WEBM/OGG を許可
       const isJpeg = file.type === 'image/jpeg' || /\.(jpe?g)$/i.test(file.name);
       const isPng = file.type === 'image/png' || /\.(png)$/i.test(file.name);
-      if (!isJpeg && !isPng) {
-        throw new Error('PNG または JPEG のみ対応しています');
+      const isMp4 = file.type === 'video/mp4' || /\.(mp4)$/i.test(file.name);
+      const isWebm = file.type === 'video/webm' || /\.(webm)$/i.test(file.name);
+      const isOgg = file.type === 'video/ogg' || /\.(ogg)$/i.test(file.name);
+      const isVideo = isMp4 || isWebm || isOgg;
+      if (!(isJpeg || isPng || isVideo)) {
+        throw new Error('PNG / JPEG / MP4 / WEBM / OGG のみ対応しています');
       }
-      // 10MB 制限（任意）
-      if (file.size > 10 * 1024 * 1024) {
-        throw new Error('ファイルサイズが大きすぎます（最大10MB）');
+      // 1GB 制限（サーバ設定に合わせる）
+      if (file.size > 1024 * 1024 * 1024) {
+        throw new Error('ファイルサイズが大きすぎます（最大1GB）');
       }
-      // 1) 画像を先にサーバへアップロードし、相対URLを取得
+      // 1) 先にサーバへアップロードし、相対URLを取得
       const form = new FormData();
       form.append('file', file);
       const uploadRes = await fetch(`${API_BASE}/api/submit/upload`, {
@@ -105,10 +115,14 @@ export default function MyPage() {
         } catch {}
         throw new Error(msg || `HTTP ${uploadRes.status}`);
       }
-      const { imageUrl }: { imageUrl: string } = await uploadRes.json();
+      const data: any = await uploadRes.json();
+      const imageUrl: string | undefined = data?.imageUrl;
+      const videoUrl: string | undefined = data?.videoUrl;
       const newItem: Submission = {
         id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        imageUrl: imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl,
+        imageUrl: imageUrl ? (imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl) : undefined,
+        videoUrl: videoUrl ? (videoUrl.startsWith('/uploads/') ? `${API_BASE}${videoUrl}` : videoUrl) : undefined,
+        displayImageUrl: imageUrl ? (imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl) : (videoUrl ? (videoUrl.startsWith('/uploads/') ? `${API_BASE}${videoUrl}` : videoUrl) : undefined),
         createdAt: new Date().toISOString()
       };
 
@@ -122,14 +136,14 @@ export default function MyPage() {
       });
 
       // タイムラインへ即時反映（ローカル）: アバターを使う
-      const selfAvatar = resolveUploadUrl(profile?.avatarUrl, profile?.updatedAt) || null;
+          const selfAvatar = resolveUploadUrl(profile?.avatarUrl, profile?.updatedAt) || null;
       setFeed((prev) => [
         {
           id: newItem.id,
           anonId,
-          imageUrl: newItem.imageUrl,
+          imageUrl: newItem.imageUrl || newItem.videoUrl || '',
           avatarUrl: selfAvatar || '',
-          displayImageUrl: newItem.imageUrl || selfAvatar || '',
+          displayImageUrl: newItem.imageUrl || newItem.videoUrl || selfAvatar || '',
           createdAt: newItem.createdAt,
           title: titleBadge ?? null
         },
@@ -137,11 +151,12 @@ export default function MyPage() {
       ]);
 
       // 2) 提出API（imageUrl を保存）
-      const payload = {
-        aim: '画像提出',
+      const payload: any = {
+        aim: (isVideo ? '動画提出' : '画像提出'),
         steps: ['準備', '実行', '完了'],
         frameType: 'default',
-        imageUrl
+        ...(imageUrl ? { imageUrl } : {}),
+        ...(videoUrl ? { videoUrl } : {})
       };
 
       let submitRes: SubmitResult | null = null;
@@ -151,34 +166,8 @@ export default function MyPage() {
         submitRes = { jpResult: 'none', probability: 0, bonusCount: 0, rewardTitle: undefined, rewardCardId: undefined, jackpotRecordedAt: null };
       }
 
-      // 演出開始（カード→称号→スロット）
-      setFlowResult(submitRes);
-      // カード表示データを反映（APIが返す rewardCard を使用）
-      if (submitRes?.rewardCard) {
-        setCardReveal({
-          imageUrl: resolveUploadUrl(submitRes.rewardCard.image_url),
-          cardName: submitRes.rewardCard.card_name,
-          rarity: submitRes.rewardCard.rarity
-        });
-      } else {
-        setCardReveal(null);
-      }
-      setFlowOpen(true);
-      setFadeOut(false);
-      setFlowPhase('card');
-      // カード取得はバックエンドの即時報酬に一本化（フロント側の追加生成は行わない）
-      await new Promise((r) => setTimeout(r, 3000));
-      // フェードアウトして次のフェーズへ
-      setFadeOut(true);
-      await new Promise((r) => setTimeout(r, 300));
-      setFlowPhase('title');
-      setFadeOut(false);
-      await new Promise((r) => setTimeout(r, 3000));
-      setFadeOut(true);
-      await new Promise((r) => setTimeout(r, 300));
-      setFlowPhase('slot');
-      setSlotFinished(false);
-      setFadeOut(false);
+      // アップロード中オーバーレイが閉じた後に演出開始
+      setPendingFlow(submitRes);
       // スロットはOKボタンで閉じる（自動クローズはしない）
 
       // 称号などの更新反映 + 自分の提出物の再フェッチ（重複排除）
@@ -203,6 +192,9 @@ export default function MyPage() {
     } catch (e: any) {
       setUploadError(e?.message ?? 'アップロードに失敗しました');
     } finally {
+      const elapsed = Date.now() - startedAt;
+      const remain = Math.max(0, 800 - elapsed);
+      try { await new Promise((r) => setTimeout(r, remain)); } catch {}
       setUploading(false);
     }
   }
@@ -317,6 +309,36 @@ export default function MyPage() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!uploading && pendingFlow) {
+      (async () => {
+        const res = pendingFlow; setPendingFlow(null);
+        setFlowResult(res);
+        if (res?.rewardCard) {
+          const rc = res.rewardCard;
+          const img = rc.image_url ? resolveUploadUrl(rc.image_url) : `${API_BASE}/uploads/cards/${rc.card_id}.png`;
+          setCardReveal({ imageUrl: img, cardName: rc.card_name, rarity: rc.rarity });
+        } else {
+          setCardReveal(null);
+        }
+        setFlowOpen(true);
+        setFadeOut(false);
+        setFlowPhase('card');
+        await new Promise((r) => setTimeout(r, 3000));
+        setFadeOut(true);
+        await new Promise((r) => setTimeout(r, 300));
+        setFlowPhase('title');
+        setFadeOut(false);
+        await new Promise((r) => setTimeout(r, 3000));
+        setFadeOut(true);
+        await new Promise((r) => setTimeout(r, 300));
+        setFlowPhase('slot');
+        setSlotFinished(false);
+        setFadeOut(false);
+      })();
+    }
+  }, [uploading, pendingFlow]);
+
 function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string | undefined {
   if (!u) return undefined;
   const base = u.startsWith('/uploads/') ? `${API_BASE}${u}` : u;
@@ -339,6 +361,14 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
 
   return (
     <main className="mx-auto max-w-6xl p-4 grid grid-cols-12 gap-4">
+      {/* アップロード中オーバーレイ */}
+      {uploading && (
+        <div className="fixed inset-0 z-[2000] bg-black/70 flex items-center justify-center">
+          <div className="rounded-md border border-steam-iron-700 bg-steam-iron-900 text-steam-gold-200 px-6 py-4 shadow-xl">
+            アップロード中…完了までお待ちください
+          </div>
+        </div>
+      )}
       {/* 提出演出オーバーレイ */}
       {flowOpen && flowResult && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -347,14 +377,7 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
               {flowPhase === 'card' && (
                 cardReveal ? (
                   <CardReveal imageUrl={cardReveal.imageUrl || undefined} cardName={cardReveal.cardName} rarity={cardReveal.rarity} onClose={() => setCardReveal(null)} />
-                ) : (
-                  <div className="text-center space-y-4">
-                    <div className="text-steam-gold-300 font-semibold text-lg md:text-xl">カードを取得しました！</div>
-                    <div className="mt-2 flex justify-center">
-                      <img src="/uploads/sample_1.svg" alt="dummy card" className="h-28 md:h-36 w-auto" />
-                    </div>
-                  </div>
-                )
+                ) : null
               )}
               {flowPhase === 'title' && (
                 <div className="text-center space-y-4">
@@ -460,9 +483,56 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
             <div key={i} className="h-40 animate-pulse rounded border border-steam-iron-800 bg-steam-iron-900" />
           ))}
           {submissions.map((s) => (
-            <div key={s.id} className="relative rounded border border-steam-iron-700 bg-steam-iron-900 group">
-              <img loading="lazy" src={resolveUploadUrl(s.displayImageUrl || s.imageUrl)} alt="submission" className="w-full aspect-square object-contain p-3" />
-              <div className="absolute inset-0 pointer-events-none ring-2 ring-steam-gold-500/60 rounded animate-pulse"></div>
+            <div
+              key={s.id}
+              className={`relative rounded border ${s.gameUrl ? 'border-fuchsia-500' : (s.videoUrl ? 'border-sky-500' : 'border-steam-iron-700')} bg-steam-iron-900 group`}
+            >
+              {s.videoUrl ? (
+                <div
+                  className="w-full aspect-square flex items-center justify-center p-3 cursor-pointer"
+                  onClick={() => { const u = resolveUploadUrl(s.videoUrl); if (u) { setLightboxSrc(u); setLightboxType('video'); setLightboxOpen(true); } }}
+                >
+                  <video
+                    src={resolveUploadUrl(s.displayImageUrl || s.videoUrl)}
+                    className="max-h-full max-w-full object-contain rounded"
+                    muted
+                    preload="metadata"
+                  />
+                  {/* play overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-full bg-black/60 text-white flex items-center justify-center shadow-lg">
+                      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  loading="lazy"
+                  src={resolveUploadUrl(s.displayImageUrl || s.imageUrl)}
+                  alt="submission"
+                  className="w-full aspect-square object-contain p-3 cursor-zoom-in"
+                  onClick={() => { const u = resolveUploadUrl(s.displayImageUrl || s.imageUrl); if (u) { setLightboxSrc(u); setLightboxType('image'); setLightboxOpen(true); } }}
+                />
+              )}
+              <div className={`absolute inset-0 pointer-events-none rounded ${s.gameUrl ? 'ring-2 ring-fuchsia-500/70' : (s.videoUrl ? 'ring-2 ring-sky-500/70' : 'ring-2 ring-steam-gold-500/60')} animate-pulse`}></div>
+              {s.gameUrl && (
+                <a
+                  href={resolveUploadUrl(s.gameUrl) || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg:black/80"
+                  title="ゲームを開く"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                  </svg>
+                  開く
+                </a>
+              )}
               <button
                 onClick={async () => {
                   if (!confirm('この提出を削除します。よろしいですか？')) return;
@@ -501,12 +571,15 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
         </div>
       </section>
 
+      {/* Lightbox */}
+      <ImageLightbox src={lightboxSrc} alt="submission" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type={lightboxType} />
+
       {/* 右カラム */}
       <aside className="col-span-12 md:col-span-3 space-y-4">
         <section className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3">
           <h2 className="mb-2 text-steam-gold-300 font-semibold">本日の課題提出</h2>
           <div className="space-y-2">
-            <input id="upload-input" type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => {
+            <input id="upload-input" type="file" accept="image/png,image/jpeg,video/mp4,video/webm,video/ogg" className="hidden" onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) onUploadFile(f);
               e.currentTarget.value = '';
@@ -529,12 +602,63 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
                 <path d="M8 8l4-4 4 4" />
                 <rect x="3" y="16" width="18" height="4" rx="1" ry="1" />
               </svg>
-              <div className="text-sm text-steam-gold-200">課題をアップロード（PNG/JPEG）</div>
+              <div className="text-sm text-steAM-gold-200">課題をアップロード（PNG/JPEG/MP4）</div>
               <div className="text-xs text-steam-iron-300">ここにドラッグ＆ドロップ、またはクリックして選択</div>
               {uploading && <div className="mt-2 text-xs text-steam-iron-200">アップロード中…</div>}
             </div>
             {uploadError && <div className="text-xs text-red-400">{uploadError}</div>}
             <p className="text-xs text-steam-iron-300">選んだ画像は「自分の提出物」に即時反映・ローカル保存されます。</p>
+          </div>
+        </section>
+
+        {/* ゲームZIPアップロード */}
+        <section className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3">
+          <h2 className="mb-2 text-steam-gold-300 font-semibold">ゲームをアップロード（ZIP）</h2>
+          <div className="space-y-2">
+            <input id="upload-game-input" type="file" accept=".zip,application/zip" className="hidden" onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) { try { (e.target as HTMLInputElement).value=''; } catch {} return; }
+              try {
+                const form = new FormData();
+                form.append('file', f);
+                const res = await fetch(`${API_BASE}/api/submit/uploadGame`, { method: 'POST', body: form, headers: { 'Accept': 'application/json' }, credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const { gameUrl }: { gameUrl: string } = await res.json();
+                const payload: any = { aim: 'ゲーム提出', steps: ['準備','実行','完了'], frameType: 'default', gameUrl };
+                let submitRes: SubmitResult | null = null;
+                try { submitRes = await apiPost<SubmitResult, typeof payload>(`/api/submit`, payload); } catch { submitRes = { jpResult: 'none', probability: 0, bonusCount: 0, rewardTitle: undefined, rewardCardId: undefined, jackpotRecordedAt: null }; }
+                const now = new Date().toISOString();
+                const tmp: Submission = { id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`, imageUrl: '/uploads/sample_3.svg', displayImageUrl: '/uploads/sample_3.svg', createdAt: now, gameUrl };
+                setSubmissions((prev) => [tmp, ...prev]);
+                // 演出開始（カード→称号→スロット）
+                setFlowResult(submitRes);
+                if (submitRes?.rewardCard) {
+                  setCardReveal({
+                    imageUrl: resolveUploadUrl(submitRes.rewardCard.image_url),
+                    cardName: submitRes.rewardCard.card_name,
+                    rarity: submitRes.rewardCard.rarity
+                  });
+                } else {
+                  setCardReveal(null);
+                }
+                setFlowOpen(true);
+                setFadeOut(false);
+                setFlowPhase('title');
+                setFadeOut(false);
+                await new Promise((r) => setTimeout(r, 3000));
+                setFadeOut(true);
+                await new Promise((r) => setTimeout(r, 300));
+                setFlowPhase('slot');
+                setSlotFinished(false);
+                setFadeOut(false);
+              } catch (err: any) {
+                alert(err?.message || 'ゲームのアップロードに失敗しました');
+              } finally {
+                try { (e.target as HTMLInputElement).value=''; } catch {}
+              }
+            }} />
+            <button onClick={() => document.getElementById('upload-game-input')?.click()} className="w-full rounded bg-fuchsia-600 px-4 py-2 text-white hover:bg-fuchsia-500">ZIPを選択</button>
+            <p className="text-xs text-steam-iron-300">必ずindex.htmlを含む <strong className="text-steam-gold-300">Webブラウザでできるミニゲームで構成されたZIPファイル</strong> をアップロードするようにしてください。</p>
           </div>
         </section>
 

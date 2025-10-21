@@ -17,17 +17,31 @@ const storage = multer.diskStorage({
 });
 
 // 許可MIME: jpg, jpeg, png, webp
-const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const allowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const allowedVideoMimeTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+const allowedZipMimeTypes = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
 
-function fileFilter(_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) {
-  if (allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Invalid file type. Only jpg, jpeg, png, webp are allowed.'));
-  }
+function makeFileFilter(type: UploadType) {
+  return (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (type === 'gamezip') {
+      const isZip = allowedZipMimeTypes.includes(file.mimetype) || /\.zip$/i.test(file.originalname || '');
+      if (isZip) return cb(null, true);
+      return cb(new Error('Invalid file type. Only .zip is allowed for game uploads.'));
+    }
+    if (type === 'post') {
+      const isImage = allowedImageMimeTypes.includes(file.mimetype);
+      const isVideo = allowedVideoMimeTypes.includes(file.mimetype) || /\.(mp4|webm|ogg)$/i.test(file.originalname || '');
+      if (isImage || isVideo) return cb(null, true);
+      return cb(new Error('Invalid file type. Only jpg, jpeg, png, webp, mp4, webm, ogg are allowed.'));
+    }
+    if (allowedImageMimeTypes.includes(file.mimetype)) {
+      return cb(null, true);
+    }
+    return cb(new Error('Invalid file type. Only jpg, jpeg, png, webp are allowed.'));
+  };
 }
 
-type UploadType = 'avatar' | 'header' | 'post';
+type UploadType = 'avatar' | 'header' | 'post' | 'gamezip';
 
 function getSizeLimit(type: UploadType): number {
   const envKey = `MAX_UPLOAD_MB_${type.toUpperCase()}`;
@@ -42,7 +56,8 @@ function getSizeLimit(type: UploadType): number {
   const defaults: Record<UploadType, number> = {
     avatar: 2,
     header: 5,
-    post: 10
+    post: 1024,
+    gamezip: 1024
   };
   return defaults[type] * 1024 * 1024;
 }
@@ -51,7 +66,7 @@ export function createUploadMiddleware(type: UploadType) {
   return multer({
     storage,
     limits: { fileSize: getSizeLimit(type) },
-    fileFilter
+    fileFilter: makeFileFilter(type)
   });
 }
 
@@ -59,12 +74,13 @@ export function createUploadMiddleware(type: UploadType) {
 export const upload = multer({
   storage,
   limits: { fileSize: (parseInt(process.env.MAX_UPLOAD_MB || '500', 10)) * 1024 * 1024 },
-  fileFilter
+  fileFilter: makeFileFilter('post')
 });
 
 // Typed uploads
 export const uploadAvatar = createUploadMiddleware('avatar');
 export const uploadHeader = createUploadMiddleware('header');
 export const uploadPost = createUploadMiddleware('post');
+export const uploadGameZip = createUploadMiddleware('gamezip');
 
 

@@ -18,6 +18,21 @@ type PublicProfile = {
 
 type CardEntry = { id: string; obtainedAt?: string };
 
+type CardMeta = {
+  card_id: string;
+  card_type: 'Character' | 'Effect';
+  card_name: string;
+  rarity?: 'SSR' | 'SR' | 'R' | 'N';
+  attribute?: string;
+  image_url?: string;
+} | null;
+
+type CardsMeEntry = {
+  id: string;
+  obtainedAt: string | null;
+  meta: CardMeta;
+};
+
 function resolveUploadUrl(u?: string | null): string | undefined {
   if (!u) return undefined;
   if (u.startsWith('/uploads/')) return `${API_BASE}${u}`;
@@ -27,6 +42,7 @@ function resolveUploadUrl(u?: string | null): string | undefined {
 export default function ProfileViewPage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [cards, setCards] = useState<CardEntry[]>([]);
+  const [metaById, setMetaById] = useState<Map<string, CardMeta>>(new Map());
 
   useEffect(() => {
     (async () => {
@@ -40,6 +56,14 @@ export default function ProfileViewPage() {
         const p = await apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(a)}`);
         setProfile(p);
         setCards(p.cardsAlbum || []);
+      } catch { /* noop */ }
+
+      // 画像URL等は /api/cards/me から取得（マスター連携で安定）
+      try {
+        const mine = await apiGet<{ ok: boolean; entries: CardsMeEntry[] }>(`/api/cards/me`);
+        const map = new Map<string, CardMeta>();
+        for (const e of (mine.entries || [])) map.set(e.id, e.meta || null);
+        setMetaById(map);
       } catch { /* noop */ }
     })();
   }, []);
@@ -95,10 +119,10 @@ export default function ProfileViewPage() {
           {cards.map((c) => (
             <div key={c.id} className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3">
               <div className="relative aspect-[2/3] bg-steam-iron-800 rounded mb-2 overflow-hidden">
-                <CardImageById cardId={c.id} />
+                <CardImageById cardId={c.id} meta={metaById.get(c.id) || undefined} />
                 <img src={FRAME_URL} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
               </div>
-              <div className="text-sm text-steam-gold-200 text-center">{c.id}</div>
+              <div className="text-sm text-steam-gold-200 text-center">{metaById.get(c.id)?.card_name || c.id}</div>
               {c.obtainedAt && (
                 <div className="mt-1 text-[11px] text-steam-iron-300 text-center">{new Date(c.obtainedAt).toLocaleDateString()}</div>
               )}
@@ -110,15 +134,15 @@ export default function ProfileViewPage() {
   );
 }
 
-function CardImageById({ cardId }: { cardId: string }) {
-  const srcs = candidatesForId(cardId);
+function CardImageById({ cardId, meta }: { cardId: string; meta?: CardMeta }) {
+  const srcs = candidatesFor(cardId, meta);
   const [idx, setIdx] = React.useState(0);
   if (srcs.length === 0) return null;
   const src = srcs[Math.min(idx, srcs.length - 1)];
   return (
     <img
       src={src}
-      alt={cardId}
+      alt={meta?.card_name || cardId}
       className="absolute inset-0 w-full h-full object-contain"
       style={{ transform: 'scale(0.97)', transformOrigin: 'center' }}
       onError={() => setIdx((i) => Math.min(i + 1, srcs.length - 1))}
@@ -126,19 +150,12 @@ function CardImageById({ cardId }: { cardId: string }) {
   );
 }
 
-function candidatesForId(cardId: string): string[] {
-  const xs: string[] = [];
-  // 文字ID（C001/E001）
-  xs.push(`${API_BASE}/uploads/cards/${cardId}.png`);
-  // 数値ID（Character=C### -> ###, Effect=E### -> 100+###）
-  const m = cardId.match(/^[CE](\d{1,3})$/i);
-  if (m) {
-    const n = parseInt(m[1], 10);
-    const isEffect = /^E/i.test(cardId);
-    const mapped = isEffect ? 100 + n : n;
-    xs.push(`${API_BASE}/uploads/cards/${mapped}.png`);
-  }
-  return Array.from(new Set(xs));
+function candidatesFor(cardId: string, meta?: CardMeta): string[] {
+  // 1枚のみを使用（第二候補へのフェイルオーバーは行わない）
+  const primary = meta?.image_url
+    ? (meta.image_url.startsWith('/uploads/') ? `${API_BASE}${meta.image_url}` : meta.image_url)
+    : `${API_BASE}/uploads/cards/${cardId}.png`;
+  return [primary];
 }
 
 

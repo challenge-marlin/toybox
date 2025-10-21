@@ -18,7 +18,9 @@ export interface SubmissionItemDto {
   id: string;
   createdAt: Date;
   imageUrl: string | null;
+  videoUrl?: string | null;
   displayImageUrl: string | null; // 表示用画像URL（post.imageUrl 優先、無ければ author.avatarUrl）
+  gameUrl?: string | null;
 }
 
 export interface SubmissionsResponseDto {

@@ -9,6 +9,8 @@ export interface Submission extends Document {
   jpResult: LotteryResult; // 抽選結果
   frameType: string; // フレーム種別
   imageUrl?: string; // 提出画像の相対URL（/uploads/...）
+  videoUrl?: string; // 提出動画の相対URL（/uploads/...）
+  gameUrl?: string;  // 展開済みゲームの index.html への相対URL（/uploads/...）
   // 添付資料の要件にある全フィールド（必要に応じて拡張）
   // 例: 作成日時、タグ、添付リソースの参照など
   createdAt: Date;
@@ -35,6 +37,8 @@ const SubmissionSchema = new Schema<Submission>(
     },
     frameType: { type: String, required: true },
     imageUrl: { type: String },
+    videoUrl: { type: String },
+    gameUrl: { type: String },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() }
   },

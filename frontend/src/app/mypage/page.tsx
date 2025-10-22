@@ -7,7 +7,7 @@ import CardReveal from '../../components/CardReveal';
 import SlotMachine from '../../components/SlotMachine';
 import ImageLightbox from '../../components/ImageLightbox';
 
-type Submission = { id: string; imageUrl?: string; displayImageUrl?: string; createdAt: string; gameUrl?: string | null; videoUrl?: string | null };
+type Submission = { id: string; imageUrl?: string; displayImageUrl?: string; createdAt: string; gameUrl?: string | null; videoUrl?: string | null; likesCount?: number; liked?: boolean };
 type FeedItem = { id: string; anonId: string; displayName?: string | null; imageUrl: string; avatarUrl?: string | null; displayImageUrl?: string; createdAt: string; title?: string | null };
   type PublicProfile = { anonId: string; displayName?: string | null; avatarUrl?: string | null; bio?: string | null; updatedAt?: string | null };
 
@@ -217,6 +217,20 @@ export default function MyPage() {
     setIsDragging(false);
     const f = e.dataTransfer.files?.[0];
     if (f) onUploadFile(f);
+  }
+
+  async function toggleLike(submissionId: string, currentLiked?: boolean) {
+    setSubmissions((prev) => prev.map((it) => it.id === submissionId ? { ...it, liked: !currentLiked, likesCount: Math.max(0, (it.likesCount ?? 0) + (currentLiked ? -1 : 1)) } : it));
+    try {
+      if (currentLiked) {
+        await apiDelete<{ ok: boolean; likesCount: number; liked: boolean }>(`/api/submissions/${encodeURIComponent(submissionId)}/like`);
+      } else {
+        await apiPost<{ ok: boolean; likesCount: number; liked: boolean }>(`/api/submissions/${encodeURIComponent(submissionId)}/like`, {} as any);
+      }
+    } catch {
+      // rollback
+      setSubmissions((prev) => prev.map((it) => it.id === submissionId ? { ...it, liked: currentLiked, likesCount: Math.max(0, (it.likesCount ?? 0) + (currentLiked ? 1 : -1)) } : it));
+    }
   }
 
   useEffect(() => {
@@ -487,7 +501,17 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
               key={s.id}
               className={`relative rounded border ${s.gameUrl ? 'border-fuchsia-500' : (s.videoUrl ? 'border-sky-500' : 'border-steam-iron-700')} bg-steam-iron-900 group`}
             >
-              {s.videoUrl ? (
+              {s.gameUrl ? (
+                <div className="w-full aspect-square flex items-center justify-center p-3 select-none">
+                  <div className="flex flex-col items-center justify-center text-steam-iron-200">
+                    <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" className="text-steam-gold-300 mb-1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                    </svg>
+                    <div className="text-xs tracking-widest font-semibold">GAME</div>
+                  </div>
+                </div>
+              ) : s.videoUrl ? (
                 <div
                   className="w-full aspect-square flex items-center justify-center p-3 cursor-pointer"
                   onClick={() => { const u = resolveUploadUrl(s.videoUrl); if (u) { setLightboxSrc(u); setLightboxType('video'); setLightboxOpen(true); } }}
@@ -517,6 +541,16 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
                 />
               )}
               <div className={`absolute inset-0 pointer-events-none rounded ${s.gameUrl ? 'ring-2 ring-fuchsia-500/70' : (s.videoUrl ? 'ring-2 ring-sky-500/70' : 'ring-2 ring-steam-gold-500/60')} animate-pulse`}></div>
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleLike(s.id, s.liked); }}
+                className="absolute bottom-2 right-2 z-10 inline-flex items-center gap-1 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+                aria-label="いいね"
+              >
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill={s.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" className={s.liked ? 'text-rose-400' : 'text-steam-iron-200'}>
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+                <span>{s.likesCount ?? 0}</span>
+              </button>
               {s.gameUrl && (
                 <a
                   href={resolveUploadUrl(s.gameUrl) || '#'}
@@ -618,6 +652,9 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
             <input id="upload-game-input" type="file" accept=".zip,application/zip" className="hidden" onChange={async (e) => {
               const f = e.target.files?.[0];
               if (!f) { try { (e.target as HTMLInputElement).value=''; } catch {} return; }
+              setUploadError(null);
+              setUploading(true);
+              const startedAt = Date.now();
               try {
                 const form = new FormData();
                 form.append('file', f);
@@ -630,30 +667,15 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
                 const now = new Date().toISOString();
                 const tmp: Submission = { id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`, imageUrl: '/uploads/sample_3.svg', displayImageUrl: '/uploads/sample_3.svg', createdAt: now, gameUrl };
                 setSubmissions((prev) => [tmp, ...prev]);
-                // 演出開始（カード→称号→スロット）
-                setFlowResult(submitRes);
-                if (submitRes?.rewardCard) {
-                  setCardReveal({
-                    imageUrl: resolveUploadUrl(submitRes.rewardCard.image_url),
-                    cardName: submitRes.rewardCard.card_name,
-                    rarity: submitRes.rewardCard.rarity
-                  });
-                } else {
-                  setCardReveal(null);
-                }
-                setFlowOpen(true);
-                setFadeOut(false);
-                setFlowPhase('title');
-                setFadeOut(false);
-                await new Promise((r) => setTimeout(r, 3000));
-                setFadeOut(true);
-                await new Promise((r) => setTimeout(r, 300));
-                setFlowPhase('slot');
-                setSlotFinished(false);
-                setFadeOut(false);
+                // 画像/動画アップロードと同じフロー制御（アップロード完了後に演出開始）
+                setPendingFlow(submitRes);
               } catch (err: any) {
                 alert(err?.message || 'ゲームのアップロードに失敗しました');
               } finally {
+                const elapsed = Date.now() - startedAt;
+                const remain = Math.max(0, 800 - elapsed);
+                try { await new Promise((r) => setTimeout(r, remain)); } catch {}
+                setUploading(false);
                 try { (e.target as HTMLInputElement).value=''; } catch {}
               }
             }} />

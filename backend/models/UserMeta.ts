@@ -15,14 +15,37 @@ export interface UserMeta extends Document {
   bio?: string; // 自己紹介文
   avatarUrl?: string; // アイコン画像URL
   headerUrl?: string; // ヘッダー画像URL
+  likedSubmissionIds?: string[]; // いいね済み投稿ID配列（文字列化されたObjectId）
+  notifications?: NotificationEntry[]; // 通知
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface NotificationEntry {
+  type: 'like';
+  fromAnonId: string;
+  submissionId: string;
+  message: string;
+  createdAt: Date;
+  read?: boolean;
 }
 
 const CardEntrySchema = new Schema<CardEntry>(
   {
     id: { type: String, required: true },
     obtainedAt: { type: Date }
+  },
+  { _id: false }
+);
+
+const NotificationEntrySchema = new Schema<NotificationEntry>(
+  {
+    type: { type: String, enum: ['like'], required: true },
+    fromAnonId: { type: String, required: true },
+    submissionId: { type: String, required: true },
+    message: { type: String, required: true },
+    createdAt: { type: Date, required: true, default: () => new Date() },
+    read: { type: Boolean, default: false }
   },
   { _id: false }
 );
@@ -37,7 +60,9 @@ const UserMetaSchema = new Schema<UserMeta>(
     displayName: { type: String },
     bio: { type: String },
     avatarUrl: { type: String },
-    headerUrl: { type: String }
+    headerUrl: { type: String },
+    likedSubmissionIds: { type: [String], default: [] },
+    notifications: { type: [NotificationEntrySchema], default: [] }
   },
   {
     timestamps: true

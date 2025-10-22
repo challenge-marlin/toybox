@@ -272,6 +272,7 @@ docker exec $cid sh -lc "ls -l /app/public/uploads/cards | head -n 10"
 - 画像: 黄色リング
 - 動画: 青枠＋中央に再生アイコン（クリックでライトボックス再生）
 - ゲームZIP: マゼンタ枠＋歯車ボタン（別タブで `index.html` 起動）
+  - ゲーム提出物のサムネイルは、プロフィールアイコンの代わりに中央に歯車SVG＋「GAME」テキストを表示（クリックで拡大しない）
 
 ### アップロード上限
 - 画像/動画: 1GB
@@ -366,3 +367,43 @@ set MONGODB_URI=mongodb://127.0.0.1:27017/toybox && set MONGODB_DB=toybox && npm
 
 ---
 不明点や追加要望があれば issue/タスク化して進めます。
+
+---
+
+## 機能追加（2025-10-22）
+
+- みんなの投稿ページ（`/feed`）
+  - 全ユーザーの投稿を新着順で表示、ページング対応
+  - 種別ごとに枠色（画像/動画/ゲーム）、動画はライトボックス再生、ゲームは別タブ起動
+  - ゲームサムネイルは歯車＋「GAME」アイコン（拡大なし）
+
+- いいね機能
+  - モデル: `Submission.likesCount`、`UserMeta.likedSubmissionIds`
+  - API: `POST /api/submissions/:id/like`、`DELETE /api/submissions/:id/like`
+  - 取得APIは `likesCount` と `liked`（自分が押したか）を返却
+  - フロント: 各カード右下にハート＋数、楽観的トグル/失敗ロールバック
+
+- 通知（いいね）
+  - モデル: `UserMeta.notifications`（type/fromAnonId/message/createdAt/read）
+  - 生成: いいね時に投稿者へ通知（自分自身は除外）。メッセージは表示名で「◯◯さんからいいねがつきました」
+  - API: `GET /api/notifications?limit&offset`（未読件数 `unread` と `nextOffset` を返却）、`POST /api/notifications/read`（全件/指定index既読）
+  - フロント: ヘッダーにベル＋未読バッジ、ドロップダウンで一覧表示。「もっと見る」で追加読み込み。開いたタイミングで既読化
+
+- ゲームZIPアップロードのUI改善
+  - 画像/動画と同様に「アップロード中」オーバーレイを表示
+  - 完了後、カード→称号→ジャックポットの演出フローを開始
+
+### API エンドポイント（追加/更新）
+
+- いいね
+  - `POST /api/submissions/:id/like`
+  - `DELETE /api/submissions/:id/like`
+
+- 通知
+  - `GET /api/notifications?limit=10&offset=0`
+  - `POST /api/notifications/read`（body: `{ indexes?: number[] }`。未指定なら全件既読）
+
+- 取得系（拡張フィールド）
+  - `GET /api/feed` → 各アイテムに `videoUrl`/`gameUrl`/`likesCount`/`liked` を含む
+  - `GET /api/user/submissions/:anonId` → 各アイテムに `videoUrl`/`gameUrl`/`likesCount`/`liked` を含む
+  - `GET /api/submissions/me` → 各アイテムに `videoUrl`/`gameUrl`/`likesCount`/`liked` を含む

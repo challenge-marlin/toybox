@@ -11,6 +11,7 @@ export interface Submission extends Document {
   imageUrl?: string; // 提出画像の相対URL（/uploads/...）
   videoUrl?: string; // 提出動画の相対URL（/uploads/...）
   gameUrl?: string;  // 展開済みゲームの index.html への相対URL（/uploads/...）
+  likesCount?: number; // いいね数
   // 添付資料の要件にある全フィールド（必要に応じて拡張）
   // 例: 作成日時、タグ、添付リソースの参照など
   createdAt: Date;
@@ -39,6 +40,7 @@ const SubmissionSchema = new Schema<Submission>(
     imageUrl: { type: String },
     videoUrl: { type: String },
     gameUrl: { type: String },
+    likesCount: { type: Number, default: 0, min: 0 },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() }
   },

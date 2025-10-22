@@ -4,9 +4,13 @@ export interface FeedItemDto {
   displayName: string | null;
   createdAt: Date;
   imageUrl: string | null;
+  videoUrl?: string | null;
   avatarUrl: string | null;
   displayImageUrl: string | null; // 表示用画像URL（post.imageUrl 優先、無ければ author.avatarUrl）
   title: string | null;
+  gameUrl?: string | null;
+  likesCount?: number;
+  liked?: boolean;
 }
 
 export interface FeedResponseDto {
@@ -21,6 +25,8 @@ export interface SubmissionItemDto {
   videoUrl?: string | null;
   displayImageUrl: string | null; // 表示用画像URL（post.imageUrl 優先、無ければ author.avatarUrl）
   gameUrl?: string | null;
+  likesCount?: number;
+  liked?: boolean;
 }
 
 export interface SubmissionsResponseDto {

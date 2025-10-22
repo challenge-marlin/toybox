@@ -1,59 +1,66 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
-import { getAnonId } from '../../lib/auth';
 import ImageLightbox from '../../components/ImageLightbox';
 
-type Submission = { id: string; imageUrl?: string | null; videoUrl?: string | null; gameUrl?: string | null; displayImageUrl?: string | null; createdAt: string; likesCount?: number; liked?: boolean };
-type PublicProfile = {
+type FeedItem = {
+  id: string;
   anonId: string;
-  activeTitle?: string | null;
-  activeTitleUntil?: string | null;
   displayName?: string | null;
+  createdAt: string;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
   avatarUrl?: string | null;
-  headerUrl?: string | null;
-  bio?: string;
+  displayImageUrl?: string | null;
+  title?: string | null;
+  gameUrl?: string | null;
+  likesCount?: number;
+  liked?: boolean;
 };
 
-export default function UserProfilePage() {
-  const params = useParams<{ anonId: string }>();
-  const anonId = params?.anonId;
-  const [profile, setProfile] = useState<PublicProfile | null>(null);
-  const [items, setItems] = useState<Submission[]>([]);
+function resolveUploadUrl(u?: string | null): string | undefined {
+  if (!u) return undefined;
+  if (u.startsWith('/uploads/')) return `${API_BASE}${u}`;
+  return u;
+}
+
+export default function GlobalFeedPage() {
+  const [items, setItems] = useState<FeedItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string>('');
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
 
   useEffect(() => {
-    if (!anonId) return;
     (async () => {
+      setLoading(true);
       try {
-        const p = await apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(anonId)}`);
-        setProfile(p);
-      } catch { setProfile(null); }
-      try {
-        const s = await apiGet<{ items: Submission[]; nextCursor: string | null }>(`/api/user/submissions/${encodeURIComponent(anonId)}?limit=12`);
-        setItems(s.items);
-        setNextCursor(s.nextCursor ?? null);
-      } catch { setItems([]); setNextCursor(null); }
+        const res = await apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=24`);
+        setItems(res.items);
+        setNextCursor(res.nextCursor ?? null);
+      } catch {
+        setItems([]);
+        setNextCursor(null);
+      } finally {
+        setLoading(false);
+      }
     })();
-  }, [anonId]);
-
-  function resolveUploadUrl(u?: string | null): string | undefined {
-    if (!u) return undefined;
-    if (u.startsWith('/uploads/')) return `${API_BASE}${u}`;
-    return u;
-  }
+  }, []);
 
   async function loadMore() {
-    if (!nextCursor || !anonId) return;
+    if (!nextCursor || loading) return;
+    setLoading(true);
     try {
-      const s = await apiGet<{ items: Submission[]; nextCursor: string | null }>(`/api/user/submissions/${encodeURIComponent(anonId)}?limit=12&cursor=${encodeURIComponent(nextCursor)}`);
-      setItems((prev) => [...prev, ...s.items]);
-      setNextCursor(s.nextCursor ?? null);
-    } catch {}
+      const res = await apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=24&cursor=${encodeURIComponent(nextCursor)}`);
+      setItems((prev) => [...prev, ...res.items]);
+      setNextCursor(res.nextCursor ?? null);
+    } catch {
+      // noop
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function toggleLike(submissionId: string, currentLiked?: boolean) {
@@ -71,49 +78,17 @@ export default function UserProfilePage() {
 
   return (
     <main className="mx-auto max-w-6xl p-4">
-      <h1 className="mb-3 text-2xl font-bold text-steam-gold-300">プロフィール</h1>
-      {profile ? (
-        <section className="mb-6 overflow-hidden rounded border border-steam-iron-700 bg-steam-iron-900">
-          <div className="relative h-40 w-full bg-steam-iron-800">
-            {resolveUploadUrl(profile.headerUrl) ? (
-              <img src={resolveUploadUrl(profile.headerUrl)} alt="header" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-steam-iron-400 text-sm">NO Image</div>
-            )}
-          </div>
-          <div className="flex items-start gap-4 p-3">
-            <div className="relative -mt-10 h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border-2 border-steam-iron-700 bg-steam-iron-800">
-              {resolveUploadUrl(profile.avatarUrl) ? (
-                <img src={resolveUploadUrl(profile.avatarUrl)} alt="avatar" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-steam-iron-400 text-xs">未設定</div>
-              )}
-            </div>
-            <div className="flex-1">
-              <div className="text-steam-iron-100 text-lg font-semibold">{profile.displayName || profile.anonId}</div>
-              <div className="mt-1 text-sm text-steam-iron-300">@{profile.anonId}</div>
-              <div className="text-sm text-steam-gold-300">称号: {profile.activeTitle || '—'}</div>
-              {profile.activeTitleUntil && (
-                <div className="text-xs text-steam-iron-300">有効期限: {new Date(profile.activeTitleUntil).toLocaleDateString()}</div>
-              )}
-            </div>
-          </div>
-          {profile.bio ? (
-            <div className="px-3 pb-3 text-sm leading-relaxed text-steam-iron-200 whitespace-pre-wrap">
-              {profile.bio}
-            </div>
-          ) : null}
-        </section>
-      ) : (
-        <div className="mb-6 h-20 animate-pulse rounded border border-steam-iron-800 bg-steam-iron-900" />
-      )}
-      <h2 className="mb-3 text-steam-gold-300 font-semibold">提出一覧</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <h1 className="mb-4 text-2xl font-bold text-steam-gold-300">みんなの投稿</h1>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        {items.length === 0 && !loading && <div className="col-span-full text-sm text-steam-iron-300">投稿はまだありません</div>}
         {items.map((s) => (
           <div
             key={s.id}
             className={`relative rounded border ${s.gameUrl ? 'border-fuchsia-500' : (s.videoUrl ? 'border-sky-500' : 'border-steam-iron-700')} bg-steam-iron-900 group`}
           >
+            <div className="absolute top-2 left-2 z-10 text-[10px] px-2 py-0.5 rounded bg-black/60 text-white">
+              <Link href={`/${encodeURIComponent(s.anonId)}`} className="hover:underline">{s.displayName || s.anonId}</Link>
+            </div>
             {s.gameUrl ? (
               <div className="w-full aspect-square flex items-center justify-center p-3 select-none">
                 <div className="flex flex-col items-center justify-center text-steam-iron-200">
@@ -168,7 +143,7 @@ export default function UserProfilePage() {
                 href={resolveUploadUrl(s.gameUrl) || '#'}
                 target="_blank"
                 rel="noreferrer"
-                className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg:black/80"
+                className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg:black/80"
                 title="ゲームを開く"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -182,13 +157,12 @@ export default function UserProfilePage() {
           </div>
         ))}
       </div>
-      <ImageLightbox src={lightboxSrc} alt="submission" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type={lightboxType} />
       {nextCursor && (
-        <button onClick={loadMore} className="mt-4 rounded bg-steam-iron-800 px-3 py-1 text-steam-gold-300 hover:bg-steam-iron-700">さらに読み込む</button>
+        <div className="mt-4">
+          <button onClick={loadMore} disabled={loading} className="rounded bg-steam-iron-800 px-3 py-1 text-steam-gold-300 hover:bg-steam-iron-700 disabled:opacity-60">さらに読み込む</button>
+        </div>
       )}
+      <ImageLightbox src={lightboxSrc} alt="submission" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type={lightboxType} />
     </main>
   );
 }
-
-
-

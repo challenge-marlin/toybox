@@ -7,6 +7,7 @@ import { incFeedServed, incProfileView } from '../utils/metrics.js';
 import { startOfJstDay, endOfJstDay } from '../utils/time.js';
 import type { FeedResponseDto, SubmissionsResponseDto } from '../dto/FeedItemDto.js';
 import type { UserProfileDto } from '../dto/UserDto.js';
+import { UserModel } from '../../models/User.js';
 
 export const mypageRouter = Router();
 
@@ -66,6 +67,13 @@ mypageRouter.get('/submissions/me', requireAnonAuth, async (req: Request, res: R
   const userMeta = await UserMetaModel.findOne({ anonId }, { avatarUrl: 1 }).lean();
   const userAvatar = (userMeta as any)?.avatarUrl ?? null;
   
+  // リクエストユーザーの likedSubmissionIds
+  let likedSet: Set<string> = new Set();
+  try {
+    const meMeta = await UserMetaModel.findOne({ anonId }, { likedSubmissionIds: 1 }).lean();
+    if (meMeta && Array.isArray((meMeta as any).likedSubmissionIds)) likedSet = new Set<string>((meMeta as any).likedSubmissionIds.map(String));
+  } catch {}
+
   const response: SubmissionsResponseDto = {
     items: docs.map((d: any, i: number) => {
       const submissionImageUrl = d.imageUrl || null;
@@ -77,11 +85,51 @@ mypageRouter.get('/submissions/me', requireAnonAuth, async (req: Request, res: R
         imageUrl: submissionImageUrl,
         videoUrl: submissionVideoUrl,
         displayImageUrl,
-        gameUrl: (d as any).gameUrl || null
+        gameUrl: (d as any).gameUrl || null,
+        likesCount: Number((d as any).likesCount || 0),
+        liked: likedSet.has(String(d._id))
       };
     })
   };
   res.json(response);
+});
+
+// 通知一覧（新しい順）
+mypageRouter.get('/notifications', requireAnonAuth, async (req: Request, res: Response) => {
+  const anonId = (req as any).anonId as string;
+  const limit = Math.min(100, Math.max(1, Number((req.query.limit as string) || 20)));
+  const offset = Math.max(0, Number((req.query.offset as string) || 0));
+  try {
+    const meta = await UserMetaModel.findOne({ anonId }, { notifications: 1 }).lean();
+    const all = Array.isArray((meta as any)?.notifications) ? (meta as any).notifications : [];
+    const items = all.slice(offset, offset + limit);
+    const unread = all.filter((n: any) => !n.read).length;
+    return res.json({ items, unread, nextOffset: offset + items.length < all.length ? offset + items.length : null });
+  } catch (err) {
+    return res.json({ items: [], unread: 0, nextOffset: null });
+  }
+});
+
+// 通知を既読化
+mypageRouter.post('/notifications/read', requireAnonAuth, async (req: Request, res: Response) => {
+  const anonId = (req as any).anonId as string;
+  const ids: number[] = Array.isArray(req.body?.indexes) ? req.body.indexes.map((x: any) => Number(x)).filter((x: any) => Number.isFinite(x)) : [];
+  try {
+    if (ids.length === 0) {
+      await UserMetaModel.updateOne({ anonId }, { $set: { 'notifications.$[].read': true } });
+      return res.json({ ok: true });
+    }
+    // 指定indexを既読化（位置ベース）
+    const meta = await UserMetaModel.findOne({ anonId }, { notifications: 1 }).lean();
+    const all = Array.isArray((meta as any)?.notifications) ? (meta as any).notifications : [];
+    for (const i of ids) {
+      if (i >= 0 && i < all.length) all[i].read = true;
+    }
+    await UserMetaModel.updateOne({ anonId }, { $set: { notifications: all } });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.json({ ok: false });
+  }
 });
 
 // フィード（降順ページング、cursor は ISO 日時）
@@ -105,20 +153,40 @@ mypageRouter.get('/feed', async (req: Request, res: Response) => {
     anonIdToName.set(String(m.anonId), (m as any).displayName ?? null);
   }
 
+  // リクエストユーザーの likedSubmissionIds（存在すれば）
+  let likedSet: Set<string> | null = null;
+  try {
+    let reqUserAnonId: string | undefined = (req as any).anonId;
+    if (!reqUserAnonId && (req as any).userId) {
+      const u = await UserModel.findById((req as any).userId, { anonId: 1 }).lean();
+      reqUserAnonId = (u as any)?.anonId || undefined;
+    }
+    if (reqUserAnonId) {
+      const meMeta = await UserMetaModel.findOne({ anonId: reqUserAnonId }, { likedSubmissionIds: 1 }).lean();
+      if (meMeta && Array.isArray((meMeta as any).likedSubmissionIds)) likedSet = new Set<string>((meMeta as any).likedSubmissionIds.map(String));
+    }
+  } catch {}
+
   const response: FeedResponseDto = {
     items: docs.map((d) => {
       const submissionImageUrl = (d as any).imageUrl || null;
+      const submissionVideoUrl = (d as any).videoUrl || null;
+      const submissionGameUrl = (d as any).gameUrl || null;
       const userAvatar = anonIdToAvatar.get(String((d as any).submitterAnonId)) ?? null;
-      const displayImageUrl = submissionImageUrl || userAvatar;
+      const displayImageUrl = submissionImageUrl || submissionVideoUrl || userAvatar;
       return {
         id: String(d._id),
         anonId: (d as any).submitterAnonId,
         displayName: anonIdToName.get(String((d as any).submitterAnonId)) ?? null,
         createdAt: (d as any).createdAt,
         imageUrl: submissionImageUrl,
+        videoUrl: submissionVideoUrl,
         avatarUrl: userAvatar,
         displayImageUrl,
-        title: anonIdToTitle.get(String((d as any).submitterAnonId)) ?? null
+        title: anonIdToTitle.get(String((d as any).submitterAnonId)) ?? null,
+        gameUrl: submissionGameUrl,
+        likesCount: Number((d as any).likesCount || 0),
+        liked: likedSet ? likedSet.has(String((d as any)._id)) : false
       };
     }),
     nextCursor: docs.length > 0 ? (docs[docs.length - 1] as any).createdAt : null
@@ -222,16 +290,36 @@ mypageRouter.get('/user/submissions/:anonId', async (req: Request, res: Response
   // ユーザーのアバター取得
   const userMeta = await UserMetaModel.findOne({ anonId }, { avatarUrl: 1 }).lean();
   const userAvatar = (userMeta as any)?.avatarUrl ?? null;
+
+  // リクエストユーザーの likedSubmissionIds（存在すれば）
+  let likedSet: Set<string> | null = null;
+  try {
+    let reqUserAnonId: string | undefined = (req as any).anonId;
+    if (!reqUserAnonId && (req as any).userId) {
+      const u = await UserModel.findById((req as any).userId, { anonId: 1 }).lean();
+      reqUserAnonId = (u as any)?.anonId || undefined;
+    }
+    if (reqUserAnonId) {
+      const meMeta = await UserMetaModel.findOne({ anonId: reqUserAnonId }, { likedSubmissionIds: 1 }).lean();
+      if (meMeta && Array.isArray((meMeta as any).likedSubmissionIds)) likedSet = new Set<string>((meMeta as any).likedSubmissionIds.map(String));
+    }
+  } catch {}
   
   const response: SubmissionsResponseDto = {
     items: docs.map((d, i) => {
       const submissionImageUrl = (d as any).imageUrl || null;
-      const displayImageUrl = submissionImageUrl || userAvatar || sampleImageUrl(i);
+      const submissionVideoUrl = (d as any).videoUrl || null;
+      const submissionGameUrl = (d as any).gameUrl || null;
+      const displayImageUrl = submissionImageUrl || submissionVideoUrl || userAvatar || sampleImageUrl(i);
       return {
         id: String(d._id),
         createdAt: (d as any).createdAt,
         imageUrl: submissionImageUrl,
-        displayImageUrl
+        videoUrl: submissionVideoUrl,
+        displayImageUrl,
+        gameUrl: submissionGameUrl,
+        likesCount: Number((d as any).likesCount || 0),
+        liked: likedSet ? likedSet.has(String((d as any)._id)) : false
       };
     }),
     nextCursor: docs.length > 0 ? (docs[docs.length - 1] as any).createdAt : null
@@ -248,6 +336,65 @@ mypageRouter.delete('/submissions/:id', requireAnonAuth, async (req: Request, re
     if (!doc) return res.status(404).json({ error: 'Not Found' });
     await SubmissionModel.deleteOne({ _id: id });
     return res.json({ ok: true });
+  } catch (err) {
+    throw err;
+  }
+});
+
+// いいね（追加）
+mypageRouter.post('/submissions/:id/like', requireAnonAuth, async (req: Request, res: Response) => {
+  const anonId = (req as any).anonId as string;
+  const id = String(req.params.id);
+  try {
+    const sub = await SubmissionModel.findById(id).lean();
+    if (!sub) return res.status(404).json({ error: 'Not Found' });
+
+    const r = await UserMetaModel.updateOne(
+      { anonId },
+      { $addToSet: { likedSubmissionIds: id } },
+      { upsert: true }
+    );
+    if ((r as any).modifiedCount > 0 || (r as any).upsertedCount > 0) {
+      await SubmissionModel.updateOne({ _id: id }, { $inc: { likesCount: 1 } });
+      // 通知作成（自分で自分にいいねは通知しない）
+      try {
+        const targetAnon = String((sub as any).submitterAnonId);
+        if (targetAnon && targetAnon !== anonId) {
+          const likerMeta = await UserMetaModel.findOne({ anonId }, { displayName: 1 }).lean();
+          const likerName = ((likerMeta as any)?.displayName || anonId) as string;
+          const msg = `${likerName} さんからいいねがつきました`;
+          await UserMetaModel.updateOne(
+            { anonId: targetAnon },
+            { $push: { notifications: { $each: [{ type: 'like', fromAnonId: anonId, submissionId: id, message: msg, createdAt: new Date(), read: false }], $position: 0 } } },
+            { upsert: true }
+          );
+        }
+      } catch {}
+    }
+    const doc = await SubmissionModel.findById(id, { likesCount: 1 }).lean();
+    return res.json({ ok: true, likesCount: Number((doc as any)?.likesCount || 0), liked: true });
+  } catch (err) {
+    throw err;
+  }
+});
+
+// いいね（削除）
+mypageRouter.delete('/submissions/:id/like', requireAnonAuth, async (req: Request, res: Response) => {
+  const anonId = (req as any).anonId as string;
+  const id = String(req.params.id);
+  try {
+    const sub = await SubmissionModel.findById(id).lean();
+    if (!sub) return res.status(404).json({ error: 'Not Found' });
+
+    const r = await UserMetaModel.updateOne(
+      { anonId },
+      { $pull: { likedSubmissionIds: id } }
+    );
+    if ((r as any).modifiedCount > 0) {
+      await SubmissionModel.updateOne({ _id: id, likesCount: { $gt: 0 } }, { $inc: { likesCount: -1 } });
+    }
+    const doc = await SubmissionModel.findById(id, { likesCount: 1 }).lean();
+    return res.json({ ok: true, likesCount: Number((doc as any)?.likesCount || 0), liked: false });
   } catch (err) {
     throw err;
   }

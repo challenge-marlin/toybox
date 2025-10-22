@@ -99,8 +99,25 @@ export default function Page() {
                     ログアウト
                   </button>
                 </div>
-                <div className="mt-6">
+                <div className="mt-6 translate-y-0">
                   <img src="/hero/mio.png" alt="綾鳥みお" className="mio-float pointer-events-none mx-auto block h-[800px] max-h-[60vh] w-auto select-none" />
+                </div>
+                {/* Feature cards for logged-in users as well */}
+                <div className="absolute inset-x-0 bottom-[228px] z-30 flex justify-center">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3 w-full max-w-6xl px-6">
+                    <div className="rounded-lg border border-steam-iron-800 bg-steam-iron-900/90 p-4">
+                      <div className="mb-2 text-steam-gold-300 font-semibold">続けるほど当たりやすい</div>
+                      <p className="text-sm text-steam-iron-200">毎日の提出でボーナスが蓄積。未当選が続くほど確率が少しずつ上がります。</p>
+                    </div>
+                    <div className="rounded-lg border border-steam-iron-800 bg-steam-iron-900/90 p-4">
+                      <div className="mb-2 text-steam-gold-300 font-semibold">称号とカードをコレクション</div>
+                      <p className="text-sm text-steam-iron-200">当選すると限定称号やカードを獲得。プロフィールで自慢できます。</p>
+                    </div>
+                    <div className="rounded-lg border border-steam-iron-800 bg-steam-iron-900/90 p-4">
+                      <div className="mb-2 text-steam-gold-300 font-semibold">コミュニティで刺激を受ける</div>
+                      <p className="text-sm text-steam-iron-200">他の参加者の取り組みからヒントを得て、継続のモチベーションに。</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -114,7 +131,7 @@ export default function Page() {
                     <Link href="/login" className="rounded bg-steam-gold-500 px-6 py-3 text-black text-base md:text-lg hover:bg-steam-gold-400">
                       ログイン
                     </Link>
-                    <Link href="/signup" className="rounded border border-steam-gold-500 px-6 py-3 text-steam-gold-200 text-base md:text-lg hover:bg-steAM-iron-800">
+                    <Link href="/signup" className="rounded border border-steam-gold-500 px-6 py-3 text-steam-gold-200 text-base md:text-lg hover:bg-steam-iron-800 hover:text-steam-gold-300 transition-colors">
                       アカウント作成
                     </Link>
                   </div>
@@ -123,7 +140,7 @@ export default function Page() {
                   </div>
                 </div>
                 {/* Feature cards overlayed above mio.png to avoid scroll */}
-                <div className="absolute inset-x-0 bottom-32 z-30 flex justify-center">
+                <div className="absolute inset-x-0 bottom-[228px] z-30 flex justify-center">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3 w-full max-w-6xl px-6">
                     <div className="rounded-lg border border-steam-iron-800 bg-steam-iron-900/90 p-4">
                       <div className="mb-2 text-steam-gold-300 font-semibold">続けるほど当たりやすい</div>

@@ -30,6 +30,7 @@ export default function MyPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const FEED_MAX_ITEMS = 100;
   const [submitters, setSubmitters] = useState<{ anonId: string; displayName?: string | null }[]>([]);
   const [ranking, setRanking] = useState<{ anonId: string; displayName?: string | null; count: number }[]>([]);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -47,6 +48,7 @@ export default function MyPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string>('');
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
+  const [lightboxAsset, setLightboxAsset] = useState<{ id: string; type: 'image' | 'video' | 'game' | 'other'; title?: string; authorName?: string; mimeType: string; sizeBytes?: number; fileUrl: string } | null>(null);
   const [pendingFlow, setPendingFlow] = useState<SubmitResult | null>(null);
 
   function localKey(a: string) {
@@ -366,9 +368,13 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
 
   async function loadMore() {
     if (!nextCursor) return;
+    if (feed.length >= FEED_MAX_ITEMS) return;
     try {
       const f = await apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=6&cursor=${encodeURIComponent(nextCursor)}`);
-      setFeed((prev) => [...prev, ...f.items]);
+      setFeed((prev) => {
+        const merged = [...prev, ...f.items];
+        return merged.slice(0, FEED_MAX_ITEMS);
+      });
       setNextCursor(f.nextCursor ?? null);
     } catch {}
   }
@@ -484,6 +490,24 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
           <div className="text-steam-iron-100 text-sm">{topicPlay}</div>
           <a href="https://ayatori-inc.co.jp/toybox-game/" target="_blank" rel="noreferrer" className="inline-block mt-3 rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600 text-base">お題を見る</a>
         </section>
+
+        <section className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3">
+          <h2 className="mb-2 text-steam-gold-300 font-semibold">アカウント</h2>
+          <button
+            onClick={async () => {
+              if (!confirm('アカウントを削除します。提出物・プロフィールを含む全データが消えます。よろしいですか？')) return;
+              try {
+                const res = await fetch(`${API_BASE}/api/auth/deleteAccount`, { method: 'POST', credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                alert('アカウントを削除しました');
+                try { window.location.href = '/'; } catch {}
+              } catch (e: any) {
+                alert(e?.message || 'アカウント削除に失敗しました');
+              }
+            }}
+            className="w-full rounded bg-red-700 px-4 py-2 text-white hover:bg-red-600"
+          >アカウント削除</button>
+        </section>
       </aside>
 
       {/* 中央カラム */}
@@ -514,7 +538,7 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
               ) : s.videoUrl ? (
                 <div
                   className="w-full aspect-square flex items-center justify-center p-3 cursor-pointer"
-                  onClick={() => { const u = resolveUploadUrl(s.videoUrl); if (u) { setLightboxSrc(u); setLightboxType('video'); setLightboxOpen(true); } }}
+                  onClick={() => { const u = resolveUploadUrl(s.videoUrl); if (u) { setLightboxSrc(u); setLightboxType('video'); setLightboxAsset({ id: s.id, type: 'video', title: s.id, authorName: profile?.displayName || anonId || undefined, mimeType: 'video/mp4', fileUrl: u }); setLightboxOpen(true); } }}
                 >
                   <video
                     src={resolveUploadUrl(s.displayImageUrl || s.videoUrl)}
@@ -537,7 +561,7 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
                   src={resolveUploadUrl(s.displayImageUrl || s.imageUrl)}
                   alt="submission"
                   className="w-full aspect-square object-contain p-3 cursor-zoom-in"
-                  onClick={() => { const u = resolveUploadUrl(s.displayImageUrl || s.imageUrl); if (u) { setLightboxSrc(u); setLightboxType('image'); setLightboxOpen(true); } }}
+                  onClick={() => { const u = resolveUploadUrl(s.displayImageUrl || s.imageUrl); if (u) { setLightboxSrc(u); setLightboxType('image'); setLightboxAsset({ id: s.id, type: 'image', title: s.id, authorName: profile?.displayName || anonId || undefined, mimeType: 'image/png', fileUrl: u }); setLightboxOpen(true); } }}
                 />
               )}
               <div className={`absolute inset-0 pointer-events-none rounded ${s.gameUrl ? 'ring-2 ring-fuchsia-500/70' : (s.videoUrl ? 'ring-2 ring-sky-500/70' : 'ring-2 ring-steam-gold-500/60')} animate-pulse`}></div>
@@ -606,7 +630,7 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
       </section>
 
       {/* Lightbox */}
-      <ImageLightbox src={lightboxSrc} alt="submission" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type={lightboxType} />
+      <ImageLightbox src={lightboxSrc} alt="submission" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type={lightboxType} asset={lightboxAsset || undefined} />
 
       {/* 右カラム */}
       <aside className="col-span-12 md:col-span-3 space-y-4">
@@ -708,7 +732,7 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
               </li>
             ))}
           </ul>
-          {nextCursor && (
+          {nextCursor && feed.length < FEED_MAX_ITEMS && (
             <button onClick={loadMore} className="mt-3 w-full rounded bg-steam-iron-800 px-3 py-1 text-steam-gold-300 hover:bg-steam-iron-700">
               さらに読み込む
             </button>

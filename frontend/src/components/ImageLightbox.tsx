@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useCallback } from 'react';
+import { ShareToDiscordButton } from './ShareToDiscordButton';
 
 type Props = {
   src: string;
@@ -7,9 +8,19 @@ type Props = {
   open: boolean;
   onClose: () => void;
   type?: 'image' | 'video';
+  // Optional extra fields to support share caption
+  asset?: {
+    id: string;
+    type: 'image' | 'video' | 'game' | 'other';
+    title?: string;
+    authorName?: string;
+    mimeType: string;
+    sizeBytes?: number;
+    fileUrl: string;
+  };
 };
 
-export default function ImageLightbox({ src, alt, open, onClose, type = 'image' }: Props) {
+export default function ImageLightbox({ src, alt, open, onClose, type = 'image', asset }: Props) {
   const onKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
   }, [onClose]);
@@ -52,6 +63,12 @@ export default function ImageLightbox({ src, alt, open, onClose, type = 'image' 
             onClick={(e) => e.stopPropagation()}
           />
         )}
+        {/* actions overlay */}
+        {asset && (asset.type === 'image' || asset.type === 'video') ? (
+          <div className="absolute top-2 right-2 z-[1002]">
+            <ShareToDiscordButton asset={asset} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

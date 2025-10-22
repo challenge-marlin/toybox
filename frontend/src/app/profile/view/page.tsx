@@ -31,6 +31,7 @@ export default function ProfileViewPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string>('');
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
+  const [lightboxAsset, setLightboxAsset] = useState<{ id: string; type: 'image' | 'video' | 'game' | 'other'; title?: string; authorName?: string; mimeType: string; sizeBytes?: number; fileUrl: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -142,7 +143,7 @@ export default function ProfileViewPage() {
               ) : s.videoUrl ? (
                 <div
                   className="w-full aspect-square flex items-center justify-center p-3 cursor-pointer"
-                  onClick={() => { const u = resolveUploadUrl(s.videoUrl); if (u) { setLightboxSrc(u); setLightboxType('video'); setLightboxOpen(true); } }}
+                  onClick={() => { const u = resolveUploadUrl(s.videoUrl); if (u) { setLightboxSrc(u); setLightboxType('video'); setLightboxAsset({ id: s.id, type: 'video', title: undefined, authorName: profile?.displayName || profile?.anonId, mimeType: 'video/mp4', fileUrl: u }); setLightboxOpen(true); } }}
                 >
                   <video
                     src={resolveUploadUrl(s.displayImageUrl || s.videoUrl)}
@@ -164,7 +165,7 @@ export default function ProfileViewPage() {
                   src={resolveUploadUrl(s.displayImageUrl || s.imageUrl || null)}
                   alt="submission"
                   className="w-full aspect-square object-contain p-2 cursor-zoom-in"
-                  onClick={() => { const u = resolveUploadUrl(s.displayImageUrl || s.imageUrl || null); if (u) { setLightboxSrc(u); setLightboxType('image'); setLightboxOpen(true); } }}
+                  onClick={() => { const u = resolveUploadUrl(s.displayImageUrl || s.imageUrl || null); if (u) { setLightboxSrc(u); setLightboxType('image'); setLightboxAsset({ id: s.id, type: 'image', title: undefined, authorName: profile?.displayName || profile?.anonId, mimeType: 'image/png', fileUrl: u }); setLightboxOpen(true); } }}
                 />
               )}
               <div className={`absolute inset-0 pointer-events-none rounded ${s.gameUrl ? 'ring-2 ring-fuchsia-500/70' : (s.videoUrl ? 'ring-2 ring-sky-500/70' : 'ring-2 ring-steam-gold-500/60')} animate-pulse`}></div>
@@ -200,7 +201,7 @@ export default function ProfileViewPage() {
       {nextCursor && (
         <button onClick={loadMore} className="mt-4 rounded bg-steam-iron-800 px-3 py-1 text-steam-gold-300 hover:bg-steam-iron-700">さらに読み込む</button>
       )}
-      <ImageLightbox src={lightboxSrc} alt="submission" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type={lightboxType} />
+      <ImageLightbox src={lightboxSrc} alt="submission" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type={lightboxType} asset={lightboxAsset || undefined} />
     </main>
   </>
   );

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 		const arrayBuffer = await fileRes.arrayBuffer();
 		const buffer = arrayBuffer;
 		const filename = getFilenameFromAsset({ title: asset.title, mimeType: asset.mimeType, id: asset.id });
-		const caption = sanitizeCaption(`ToyBoxからのシェア: ${asset.title ?? 'Untitled'} — by ${asset.authorName ?? 'unknown'} (${asset.id})`);
+		const caption = sanitizeCaption(`ToyBoxからのシェア: ${asset.title ?? 'Untitled'} — by ${asset.authorName ?? 'unknown'}`);
 		const r = await postToDiscord({ buffer, filename, caption });
         if (!('ok' in r) || !r.ok) return NextResponse.json(r, { status: (r as any).status ?? 502 });
 

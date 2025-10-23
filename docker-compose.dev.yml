@@ -30,6 +30,7 @@ services:
       - ./backend:/app
       - backend-node_modules:/app/node_modules
       - uploads:/app/public/uploads
+      - ./backend/public/uploads/cards:/app/public/uploads/cards:ro
     ports:
       - "4000:4000"
     depends_on:

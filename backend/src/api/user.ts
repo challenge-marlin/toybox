@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { UserMetaModel } from '../../models/UserMeta.js';
 import { logger } from '../utils/logger.js';
 import { uploadAvatar, uploadHeader } from '../lib/upload.js';
+import { v2 as cloudinary } from 'cloudinary';
 import { UpdateBioSchema, UpdateDisplayNameSchema } from '../validation/user.js';
 import { UnauthorizedError, BadRequestError } from '../middleware/errorHandler.js';
 import type { UserMeDto, UpdateProfileResponse } from '../dto/UserDto.js';
@@ -158,8 +159,27 @@ userRouter.post('/user/profile/upload', async (req, res, next) => {
     try {
       const anonId = (req as any).anonId as string;
       if (!req.file) throw new BadRequestError('No file uploaded');
-      
-      const relUrl = `/uploads/${req.file.filename}`;
+
+      // Cloudinary 設定
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET
+      });
+
+      const folder = `toybox/profile/${anonId}`;
+      const result: any = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder, resource_type: 'image' },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
+        stream.end(req.file.buffer);
+      });
+
+      const relUrl = result.secure_url as string;
       const updateField = type === 'avatar' ? { avatarUrl: relUrl } : { headerUrl: relUrl };
       
       await UserMetaModel.findOneAndUpdate(
@@ -168,8 +188,8 @@ userRouter.post('/user/profile/upload', async (req, res, next) => {
         { upsert: true }
       );
       
-      const response: UpdateProfileResponse = { ok: true, ...updateField };
-      logger.info('user.profile.upload', { anonId, type, path: relUrl });
+      const response: UpdateProfileResponse = { ok: true, public_id: result.public_id, secure_url: result.secure_url, ...updateField } as any;
+      logger.info('user.profile.upload', { anonId, type, public_id: result.public_id, url: result.secure_url });
       return res.json(response);
     } catch (err) {
       next(err);

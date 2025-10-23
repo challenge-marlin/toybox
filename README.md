@@ -407,3 +407,47 @@ set MONGODB_URI=mongodb://127.0.0.1:27017/toybox && set MONGODB_DB=toybox && npm
   - `GET /api/feed` → 各アイテムに `videoUrl`/`gameUrl`/`likesCount`/`liked` を含む
   - `GET /api/user/submissions/:anonId` → 各アイテムに `videoUrl`/`gameUrl`/`likesCount`/`liked` を含む
   - `GET /api/submissions/me` → 各アイテムに `videoUrl`/`gameUrl`/`likesCount`/`liked` を含む
+
+---
+
+## 無料ホスティング手順（Vercel + MongoDB Atlas + Cloudinary）
+
+### 概要
+- フロント: Vercel（Next.js）
+- バックエンドAPI: 現行のExpressを使う場合は外部APIとして運用、将来は Next.js API Routes へ段階移行可
+- ストレージ: Cloudinary（S3代替）
+- DB: MongoDB Atlas（無料枠）
+
+### 必要な環境変数（Vercel）
+- `NEXT_PUBLIC_API_BASE`（フロント用。バックエンドの公開URL or 相対 `/api`）
+- `MONGODB_URI`（Atlas の接続文字列）
+- `MONGODB_DB`（DB名）
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+### 手順（最短）
+1. MongoDB Atlas で無料クラスタ作成 → 接続文字列（SRV）を取得
+2. Cloudinary アカウント作成 → Cloud Name / API Key / Secret を取得
+3. Vercel で `frontend/` をプロジェクトとしてインポート
+4. Vercel の環境変数に上記を設定し、`vercel-build` でビルド（`frontend/package.json` に追加済み）
+5. フロントからの API 呼び先 `NEXT_PUBLIC_API_BASE` をバックエンドURLに設定
+
+### Cloudinary 連携の仕様
+- `POST /api/submit/upload` は Cloudinary にアップロードし、成功時 `public_id` と `secure_url` を返す（既存互換の `imageUrl`/`videoUrl` も返却）
+- `POST /api/user/profile/upload?type=avatar|header` も Cloudinary にアップロードし、保存URLをDBへ反映
+
+### ローカルでの確認
+```bash
+# Backend
+cd backend
+export CLOUDINARY_CLOUD_NAME=xxxx
+export CLOUDINARY_API_KEY=xxxx
+export CLOUDINARY_API_SECRET=xxxx
+npm run dev
+
+# Frontend（APIベースURLをBackendに合わせる）
+cd ../frontend
+export NEXT_PUBLIC_API_BASE=http://localhost:4000
+npm run dev
+```

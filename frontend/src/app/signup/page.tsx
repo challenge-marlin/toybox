@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { apiPost } from '../../lib/api';
+import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
   const [username, setUsername] = useState('');
@@ -9,6 +10,7 @@ export default function SignupPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -18,7 +20,11 @@ export default function SignupPage() {
     try {
       const body: any = { username, displayName, password };
       const res = await apiPost<{ ok: boolean }>(`/api/auth/register`, body);
-      if (res?.ok) setMsg('アカウントを作成しました。ログイン済みです。');
+      if (res?.ok) {
+        setMsg('アカウントを作成しました。マイページへ移動します…');
+        try { localStorage.setItem('toybox_mypage_force_reload', '1'); } catch {}
+        router.push('/mypage');
+      }
     } catch (e: any) {
       setError(e?.message || '登録に失敗しました');
     } finally {

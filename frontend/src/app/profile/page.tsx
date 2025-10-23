@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { API_BASE, apiGet, apiPost, apiPatch, apiUpload } from '../../lib/api';
+import { useRouter } from 'next/navigation';
 // 匿名IDは廃止。/api/auth/me から取得
 
 type PublicProfile = {
@@ -22,10 +23,16 @@ type UserMe = {
 };
 
 export default function ProfileSettingsPage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [headerFile, setHeaderFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [headerPreviewUrl, setHeaderPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -50,24 +57,27 @@ export default function ProfileSettingsPage() {
     return u;
   }
 
-  async function saveName() {
+  async function onSaveAll() {
+    setSaving(true);
+    setMsg(null);
     try {
-      await apiPatch<UserMe>(`/api/user/profile`, { displayName: name });
-      // /api/user/me を再フェッチしてグローバル状態を更新
-      await refreshProfile();
-      setMsg('名前を保存しました');
-      setTimeout(() => setMsg(null), 2000);
-    } catch {}
-  }
-
-  async function saveBio() {
-    try {
-      await apiPatch<UserMe>(`/api/user/profile`, { bio });
-      // /api/user/me を再フェッチしてグローバル状態を更新
-      await refreshProfile();
-      setMsg('プロフィール文を保存しました');
-      setTimeout(() => setMsg(null), 2000);
-    } catch {}
+      // 画像アップロード（選択されている場合のみ）
+      if (headerFile) {
+        await apiUpload<{ ok: boolean; headerUrl?: string }>(`/api/user/profile/upload?${new URLSearchParams({ type: 'header' })}`, headerFile);
+      }
+      if (avatarFile) {
+        await apiUpload<{ ok: boolean; avatarUrl?: string }>(`/api/user/profile/upload?${new URLSearchParams({ type: 'avatar' })}`, avatarFile);
+      }
+      // テキスト一括保存
+      await apiPatch<UserMe>(`/api/user/profile`, { displayName: name, bio });
+      setMsg('保存しました。マイページへ移動します…');
+      try { localStorage.setItem('toybox_mypage_force_reload', '1'); } catch {}
+      router.push('/mypage');
+    } catch {
+      setMsg('保存に失敗しました');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function refreshProfile() {
@@ -85,20 +95,18 @@ export default function ProfileSettingsPage() {
     } catch {}
   }
 
-  async function upload(kind: 'avatar' | 'header', file: File) {
-    try {
-      // サーバ側は type パラメータを期待（kind は互換）
-      const q = new URLSearchParams({ type: kind }).toString();
-      const res = await apiUpload<{ ok: boolean; avatarUrl?: string; headerUrl?: string }>(`/api/user/profile/upload?${q}`, file);
-      const bust = `?t=${Date.now()}`;
-      const nextAvatar = res.avatarUrl ? (res.avatarUrl.includes('?') ? res.avatarUrl : res.avatarUrl + bust) : undefined;
-      const nextHeader = res.headerUrl ? (res.headerUrl.includes('?') ? res.headerUrl : res.headerUrl + bust) : undefined;
-      setProfile((p) => (p ? { ...p, ...(nextAvatar ? { avatarUrl: nextAvatar } : {}), ...(nextHeader ? { headerUrl: nextHeader } : {}) } : p));
-      // /api/user/me を再フェッチしてグローバル状態を更新
-      await refreshProfile();
-      setMsg(kind === 'avatar' ? 'アイコンを更新しました' : 'ヘッダーを更新しました');
-      setTimeout(() => setMsg(null), 2000);
-    } catch {}
+  // ファイル選択時のプレビュー管理
+  function onSelectHeader(file?: File) {
+    if (!file) return;
+    try { if (headerPreviewUrl) URL.revokeObjectURL(headerPreviewUrl); } catch {}
+    setHeaderFile(file);
+    setHeaderPreviewUrl(URL.createObjectURL(file));
+  }
+  function onSelectAvatar(file?: File) {
+    if (!file) return;
+    try { if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl); } catch {}
+    setAvatarFile(file);
+    setAvatarPreviewUrl(URL.createObjectURL(file));
   }
 
   return (
@@ -108,14 +116,14 @@ export default function ProfileSettingsPage() {
       <section className="mb-6 rounded border border-steam-iron-700 bg-steam-iron-900 p-3">
         <h2 className="mb-2 text-steam-gold-300 font-semibold">ヘッダー</h2>
         <div className="relative h-40 w-full bg-steam-iron-800 mb-2">
-          {resolveUploadUrl(profile?.headerUrl) ? (
-            <img src={resolveUploadUrl(profile?.headerUrl)} alt="header" className="h-full w-full object-cover" />
+          {(headerPreviewUrl || resolveUploadUrl(profile?.headerUrl)) ? (
+            <img src={headerPreviewUrl || resolveUploadUrl(profile?.headerUrl)} alt="header" className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-steam-iron-400 text-sm">NO Image</div>
           )}
           <label className="absolute right-3 bottom-3 cursor-pointer rounded bg-steam-iron-800/80 px-2 py-1 text-xs text-steam-gold-300 hover:bg-steam-iron-700">
             変更
-            <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload('header', f); }} />
+            <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; onSelectHeader(f); }} />
           </label>
         </div>
       </section>
@@ -124,15 +132,15 @@ export default function ProfileSettingsPage() {
         <h2 className="mb-2 text-steam-gold-300 font-semibold">アイコン</h2>
         <div className="flex items-center gap-3">
           <div className="h-20 w-20 overflow-hidden rounded-full border border-steam-iron-700 bg-steam-iron-800 flex items-center justify-center text-xs text-steam-iron-400">
-            {resolveUploadUrl(profile?.avatarUrl) ? (
-              <img src={resolveUploadUrl(profile?.avatarUrl)} alt="avatar" className="h-full w-full object-cover" />
+            {(avatarPreviewUrl || resolveUploadUrl(profile?.avatarUrl)) ? (
+              <img src={avatarPreviewUrl || resolveUploadUrl(profile?.avatarUrl)} alt="avatar" className="h-full w-full object-cover" />
             ) : (
               <span>未設定</span>
             )}
           </div>
           <label className="cursor-pointer rounded bg-steam-iron-800 px-2 py-1 text-xs text-steam-gold-300 hover:bg-steam-iron-700">
             画像を選択
-            <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload('avatar', f); }} />
+            <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; onSelectAvatar(f); }} />
           </label>
         </div>
       </section>
@@ -141,7 +149,6 @@ export default function ProfileSettingsPage() {
         <h2 className="mb-2 text-steam-gold-300 font-semibold">表示名</h2>
         <div className="flex items-center gap-2">
           <input value={name} onChange={(e) => setName(e.target.value.slice(0, 50))} className="w-72 rounded border border-steam-iron-700 bg-steam-iron-900 p-2 text-sm text-steam-iron-100" placeholder="名前（50文字まで）" />
-          <button onClick={saveName} className="rounded bg-steam-iron-800 px-3 py-2 text-xs text-steam-gold-300 hover:bg-steam-iron-700">保存</button>
         </div>
       </section>
 
@@ -150,9 +157,19 @@ export default function ProfileSettingsPage() {
         <textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 1000))} className="w-full rounded border border-steam-iron-700 bg-steam-iron-900 p-2 text-sm text-steam-iron-100" rows={5} placeholder="プロフィール文（1000文字まで）" />
         <div className="mt-2 flex items-center justify-between text-xs text-steam-iron-300">
           <span>{bio.length}/1000</span>
-          <button onClick={saveBio} className="rounded bg-steam-iron-800 px-3 py-2 text-xs text-steam-gold-300 hover:bg-steam-iron-700">保存</button>
         </div>
       </section>
+
+      <div className="mb-10" />
+      <div className="sticky bottom-4 flex justify-center">
+        <button
+          onClick={onSaveAll}
+          disabled={saving}
+          className="rounded bg-steam-gold-500 text-black font-semibold px-8 py-3 shadow-lg hover:bg-steam-gold-400 disabled:opacity-60"
+        >
+          {saving ? '保存中…' : '変更を保存してマイページへ'}
+        </button>
+      </div>
     </main>
   );
 }

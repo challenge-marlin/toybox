@@ -77,7 +77,7 @@ export default function HeaderNav() {
     <header className="border-b border-steam-iron-800 bg-steam-iron-900/70">
       <div className="mx-auto flex max-w-6xl items-center justify-between p-3 text-sm">
         <nav className="flex items-center gap-4">
-          <Link href="/">
+          <Link href={anonId ? "/mypage" : "/"}>
             <img src="/hero/toybox-title.png" alt="ToyBox" className="h-8 md:h-10 w-auto" />
           </Link>
           {!simpleHeader && (

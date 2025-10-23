@@ -3,15 +3,12 @@ import path from 'path';
 import fs from 'fs';
 
 const uploadDirectory = path.join(process.cwd(), 'public', 'uploads');
-// Ensure upload directory exists at startup (for ZIP/gameなどのローカル展開に引き続き使用)
+// Ensure upload directory exists at startup
 try {
   fs.mkdirSync(uploadDirectory, { recursive: true });
 } catch {}
 
-// 画像/動画: Cloudinary へ送るためメモリストレージに変更
-const memoryStorage = multer.memoryStorage();
-// ZIP(ゲーム用) は従来通りディスクに保存してから展開
-const diskStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDirectory),
   filename: (_req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
@@ -66,13 +63,16 @@ function getSizeLimit(type: UploadType): number {
 }
 
 export function createUploadMiddleware(type: UploadType) {
-  const storage = type === 'gamezip' ? diskStorage : memoryStorage;
-  return multer({ storage, limits: { fileSize: getSizeLimit(type) }, fileFilter: makeFileFilter(type) });
+  return multer({
+    storage,
+    limits: { fileSize: getSizeLimit(type) },
+    fileFilter: makeFileFilter(type)
+  });
 }
 
 // Default generic upload (fallback, 500MB for compatibility)
 export const upload = multer({
-  storage: memoryStorage,
+  storage,
   limits: { fileSize: (parseInt(process.env.MAX_UPLOAD_MB || '500', 10)) * 1024 * 1024 },
   fileFilter: makeFileFilter('post')
 });

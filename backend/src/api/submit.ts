@@ -4,7 +4,6 @@ import { requireString, requireStringArrayLen, pickValidationErrors } from '../u
 import { logger } from '../utils/logger.js';
 import type { SubmissionResultDto } from '../dto/SubmissionDto.js';
 import { uploadPost, uploadGameZip } from '../lib/upload.js';
-import { v2 as cloudinary } from 'cloudinary';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
@@ -18,32 +17,13 @@ submitRouter.post('/submit/upload', uploadPost.single('file'), async (req, res, 
   try {
     const anonId = (req as any).anonId as string;
     if (!req.file) throw new BadRequestError('No file uploaded');
+    const mime = req.file.mimetype || '';
+    const isVideo = mime.startsWith('video/');
+    const url = `/uploads/${req.file.filename}`;
 
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
-
-    const folder = `toybox/submissions/${anonId}`;
-    const resourceType = (req.file.mimetype || '').startsWith('video/') ? 'video' : 'image';
-    const result: any = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: resourceType },
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
-        }
-      );
-      stream.end(req.file.buffer);
-    });
-
-    const response = resourceType === 'video'
-      ? { ok: true, public_id: result.public_id, secure_url: result.secure_url, videoUrl: result.secure_url }
-      : { ok: true, public_id: result.public_id, secure_url: result.secure_url, imageUrl: result.secure_url };
-
-    logger.info('submit.upload.success', { anonId, public_id: result.public_id, url: result.secure_url, type: resourceType });
-    return res.json(response);
+    logger.info('submit.upload.success', { anonId, url, type: isVideo ? 'video' : 'image' });
+    // ここではURLのみ返却し、/api/submit で提出・報酬処理を行う
+    return res.json(isVideo ? { ok: true, videoUrl: url } : { ok: true, imageUrl: url });
   } catch (err) {
     next(err);
   }

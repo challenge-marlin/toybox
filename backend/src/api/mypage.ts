@@ -10,6 +10,50 @@ import type { UserProfileDto } from '../dto/UserDto.js';
 import { UserModel } from '../../models/User.js';
 
 export const mypageRouter = Router();
+// お問い合わせメール送信（SMTP経由）
+mypageRouter.post('/contact', async (req: Request, res: Response) => {
+  try {
+    const { name, email, message } = req.body || {};
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: 'お名前は必須です' });
+    }
+    if (!message || typeof message !== 'string' || message.trim().length < 5) {
+      return res.status(400).json({ error: 'メッセージが短すぎます' });
+    }
+    const to = 'contact@ayatori-inc.co.jp';
+    const subject = '[ToyBox] お問い合わせ';
+
+    const nodemailer = await import('nodemailer');
+    const hasSmtp = !!process.env.SMTP_HOST;
+    const transporter = hasSmtp ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: !!process.env.SMTP_SECURE && process.env.SMTP_SECURE !== 'false',
+      auth: process.env.SMTP_USER ? {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      } : undefined,
+    } as any) : nodemailer.createTransport({ jsonTransport: true } as any);
+
+    const lines = [
+      `Name: ${String(name).trim()}`,
+      `From: ${email || '-'}`,
+      '---',
+      String(message || '').trim(),
+    ].join('\n');
+
+    const info = await transporter.sendMail({
+      from: process.env.MAIL_FROM || 'no-reply@toybox.local',
+      to,
+      subject,
+      text: lines,
+    });
+
+    return res.json({ ok: true, preview: hasSmtp ? undefined : info && (info as any).message?.toString?.() });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'メール送信に失敗しました' });
+  }
+});
 
 function startOfDay(d: Date): Date { return startOfJstDay(d); }
 function endOfDay(d: Date): Date { return endOfJstDay(d); }

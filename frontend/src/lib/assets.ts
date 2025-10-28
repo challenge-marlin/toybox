@@ -19,7 +19,7 @@ function getBaseUrl(): string {
 	return process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 }
 
-function resolveUploadUrl(u?: string | null): string | undefined {
+export function resolveUploadUrl(u?: string | null): string | undefined {
 	if (!u) return undefined;
 	const base = getBaseUrl();
 	if (u.startsWith('/uploads/')) return `${base}${u}`;

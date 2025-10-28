@@ -2,9 +2,8 @@ import { SubmissionModel } from '../../models/Submission.js';
 import { UserMetaModel } from '../../models/UserMeta.js';
 import type { UserMeta } from '../../models/UserMeta.js';
 import { enqueueNotification } from '../queue/notificationQueue.js';
-import { JackpotWinModel } from '../../models/JackpotWin.js';
 import { logger } from '../utils/logger.js';
-import { loadCardMaster, drawCharacter, toPublicCard } from '../data/cardMaster.js';
+import { loadCardMaster, drawCharacter, drawEffect, toPublicCard } from '../data/cardMaster.js';
 import { startOfJstDay, endOfJstDay } from '../utils/time.js';
 
 // 抽選確率計算: P_final = min(0.008 + 0.002 * k, 0.05)
@@ -44,26 +43,31 @@ export async function grantImmediateRewards(user: UserMeta, opts?: { boostRarity
   const now = new Date();
   const until = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // マスターからキャラクターカードを抽選（なければフォールバックID）
+  // マスターからカードを抽選（キャラクター/エフェクトを50%で選択。なければフォールバックID）
   let chosenCardId = `card_${now.getTime()}`;
   let cardMeta: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } | undefined;
   try {
     const master = await loadCardMaster();
-    // ゲーム投稿時は SSR/SR のレアリティ抽選確率を +1% ずつ上げる（合計は N から減算）
+    // まずカードタイプを50/50で選択
+    const pickEffectType = Math.random() < 0.5;
     let picked = null as any;
     if (opts?.boostRarity) {
-      const byRarity = {
-        SSR: master.filter(r => r.card_type === 'Character' && r.rarity === 'SSR'),
-        SR:  master.filter(r => r.card_type === 'Character' && r.rarity === 'SR'),
-        R:   master.filter(r => r.card_type === 'Character' && r.rarity === 'R'),
-        N:   master.filter(r => r.card_type === 'Character' && r.rarity === 'N'),
-      } as const;
+      // ゲーム投稿時は SSR/SR のレアリティ抽選確率を +1% ずつ上げる（合計は N から減算）
       const base = { SSR: 0.01, SR: 0.04, R: 0.20, N: 0.75 };
       const boost = 0.01;
-      const rates = { SSR: base.SSR + boost, SR: base.SR + boost, R: base.R, N: Math.max(0, 1 - (base.SSR + base.SR + base.R + base.N) + base.N - 2*boost) } as any;
-      // 上の式がやや分かりづらいので単純化
+      const rates = { SSR: base.SSR + boost, SR: base.SR + boost, R: base.R, N: 0 } as { SSR: number; SR: number; R: number; N: number };
       rates.N = Math.max(0, 1 - (rates.SSR + rates.SR + rates.R));
       type RKey = 'SSR' | 'SR' | 'R' | 'N';
+
+      const inEffectRange = (id: string) => /^E(10[1-9]|11[0-9]|12[0-9]|13[0-6])$/.test(id);
+      const poolByRarity = (type: 'Character' | 'Effect') => ({
+        SSR: master.filter(r => r.card_type === type && r.rarity === 'SSR' && (type === 'Character' || inEffectRange(r.card_id))),
+        SR:  master.filter(r => r.card_type === type && r.rarity === 'SR'  && (type === 'Character' || inEffectRange(r.card_id))),
+        R:   master.filter(r => r.card_type === type && r.rarity === 'R'   && (type === 'Character' || inEffectRange(r.card_id))),
+        N:   master.filter(r => r.card_type === type && r.rarity === 'N'   && (type === 'Character' || inEffectRange(r.card_id))),
+      } as const);
+
+      const byRarity = poolByRarity(pickEffectType ? 'Effect' : 'Character');
       const items: [RKey, number][] = [['SSR', rates.SSR], ['SR', rates.SR], ['R', rates.R], ['N', rates.N]];
       const total = items.reduce((s, [, w]) => s + w, 0);
       let r = Math.random() * total;
@@ -72,11 +76,18 @@ export async function grantImmediateRewards(user: UserMeta, opts?: { boostRarity
       const pool = byRarity[selected as RKey];
       picked = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
       if (!picked) {
-        const any = master.filter(r => r.card_type === 'Character');
+        const any = master.filter(r => r.card_type === (pickEffectType ? 'Effect' : 'Character'))
+          .filter(r => !pickEffectType || inEffectRange(r.card_id));
         picked = any.length ? any[Math.floor(Math.random() * any.length)] : null;
       }
     } else {
-      picked = await drawCharacter(master);
+      if (pickEffectType) {
+        const inEffectRange = (id: string) => /^E(10[1-9]|11[0-9]|12[0-9]|13[0-6])$/.test(id);
+        const effects = master.filter(r => r.card_type === 'Effect' && inEffectRange(r.card_id));
+        picked = effects.length ? effects[Math.floor(Math.random() * effects.length)] : null;
+      } else {
+        picked = await drawCharacter(master);
+      }
     }
     if (picked) {
       chosenCardId = picked.card_id;
@@ -111,7 +122,7 @@ export interface SubmissionInput {
 }
 
 export interface SubmissionResult {
-  jpResult: 'win' | 'lose' | 'none';
+  jpResult: 'none';
   probability: number;
   bonusCount: number; // 更新後の lotteryBonusCount
   rewardTitle?: string;
@@ -162,22 +173,9 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
     gameUrl: input.gameUrl
   });
 
-  // 抽選（当日の初回のみ）
-  let p = 0;
-  let isWin = false;
-  if (!alreadyToday) {
-    p = calculateFinalProbability(user.lotteryBonusCount);
-    isWin = drawWithProbability(p);
-    logger.info('lottery.draw', { anonId: user.anonId, p, isWin });
-    if (isWin) {
-      user.lotteryBonusCount = 0; // 当選でリセット
-    } else {
-      user.lotteryBonusCount = (user.lotteryBonusCount || 0) + 1; // 非当選で加算
-    }
-    await user.save();
-  } else {
-    logger.info('lottery.skipped.already_submitted_today', { anonId: user.anonId });
-  }
+  // ジャックポット機能は廃止: 抽選は実施せず、確率は常に0・結果は常に none
+  const p = 0;
+  logger.info('lottery.disabled', { anonId: user.anonId });
 
   // 即時報酬を実施（抽選結果とは独立）
   const reward = await grantImmediateRewards(user, { boostRarity: !!input.gameUrl });
@@ -185,36 +183,18 @@ export async function handleSubmissionAndLottery(input: SubmissionInput): Promis
   // 通知ジョブを投入
   await enqueueNotification({
     anonId: user.anonId,
-    message: isWin ? 'ジャックポット当選！' : '提出ありがとうございます！',
+    message: '提出ありがとうございます！',
     title: reward.title,
     cardId: reward.cardId,
   });
 
-  // 提出に結果を反映（任意）
-  // 当日の初回提出のみ抽選結果を反映
-  if (!alreadyToday) {
-    submission.jpResult = isWin ? 'win' : 'lose';
-    await submission.save();
-  }
+  // ジャックポット結果の反映は廃止
 
-  // 一日一回のみのジャックポット記録（勝利時だけ）
-  let jackpotRecordedAt: string | null = null;
-  if (!alreadyToday && isWin) {
-    const now = new Date();
-    const s = startOfJstDay(now);
-    const e = endOfJstDay(now);
-    const already = await JackpotWinModel.findOne({
-      anonId: user.anonId,
-      createdAt: { $gte: s, $lte: e }
-    }).lean();
-    if (!already) {
-      const doc = await JackpotWinModel.create({ anonId: user.anonId, displayName: (user as any).displayName || '' });
-      jackpotRecordedAt = doc.createdAt.toISOString();
-    }
-  }
+  // ジャックポット記録は廃止
+  const jackpotRecordedAt: string | null = null;
 
   return {
-    jpResult: alreadyToday ? 'none' : (isWin ? 'win' : 'lose'),
+    jpResult: 'none',
     probability: p,
     bonusCount: user.lotteryBonusCount,
     rewardTitle: reward.title,

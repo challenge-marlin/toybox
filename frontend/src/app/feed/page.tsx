@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
+import { resolveUploadUrl } from '../../lib/assets';
 import ImageLightbox from '../../components/ImageLightbox';
 
 type FeedItem = {
@@ -19,11 +20,7 @@ type FeedItem = {
   liked?: boolean;
 };
 
-function resolveUploadUrl(u?: string | null): string | undefined {
-  if (!u) return undefined;
-  if (u.startsWith('/uploads/')) return `${API_BASE}${u}`;
-  return u;
-}
+// 画像/動画URL解決は共通関数を使用
 
 export default function GlobalFeedPage() {
   const [items, setItems] = useState<FeedItem[]>([]);

@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { API_BASE, apiGet, apiPost, apiDelete } from '../../../lib/api';
+import { resolveUploadUrl } from '../../../lib/assets';
 import TitleDisplay from '../../../components/TitleDisplay';
 import ImageLightbox from '../../../components/ImageLightbox';
 // 匿名IDは廃止。/api/auth/me から取得
@@ -18,11 +19,7 @@ type PublicProfile = {
 
 type Submission = { id: string; imageUrl?: string | null; videoUrl?: string | null; gameUrl?: string | null; displayImageUrl?: string | null; createdAt: string; likesCount?: number; liked?: boolean };
 
-function resolveUploadUrl(u?: string | null): string | undefined {
-  if (!u) return undefined;
-  if (u.startsWith('/uploads/')) return `${API_BASE}${u}`;
-  return u;
-}
+// 画像/動画URL解決は共通関数を使用
 
 export default function ProfileViewPage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null);

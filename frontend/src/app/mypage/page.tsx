@@ -4,7 +4,6 @@ import Link from 'next/link';
 // 匿名IDは廃止。必要時は /api/auth/me から取得
 import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
 import CardReveal from '../../components/CardReveal';
-import SlotMachine from '../../components/SlotMachine';
 import ImageLightbox from '../../components/ImageLightbox';
 
 type Submission = { id: string; imageUrl?: string; displayImageUrl?: string; createdAt: string; gameUrl?: string | null; videoUrl?: string | null; likesCount?: number; liked?: boolean };
@@ -12,7 +11,7 @@ type FeedItem = { id: string; anonId: string; displayName?: string | null; image
   type PublicProfile = { anonId: string; displayName?: string | null; avatarUrl?: string | null; bio?: string | null; updatedAt?: string | null };
 
 type SubmitResult = {
-  jpResult: 'win' | 'lose' | 'none';
+  jpResult: 'none';
   probability: number;
   bonusCount: number;
   rewardTitle?: string;
@@ -40,10 +39,9 @@ export default function MyPage() {
 
   // 提出後の演出オーバーレイ
   const [flowOpen, setFlowOpen] = useState(false);
-  const [flowPhase, setFlowPhase] = useState<'idle'|'card'|'title'|'slot'|'done'>('idle');
+  const [flowPhase, setFlowPhase] = useState<'idle'|'card'|'title'|'done'>('idle');
   const [flowResult, setFlowResult] = useState<SubmitResult | null>(null);
   const [fadeOut, setFadeOut] = useState(false);
-  const [slotFinished, setSlotFinished] = useState(false);
   const [cardReveal, setCardReveal] = useState<{ imageUrl?: string | null; cardName: string; rarity?: 'SSR' | 'SR' | 'R' | 'N' } | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string>('');
@@ -262,48 +260,37 @@ export default function MyPage() {
         window.location.href = '/login';
         return;
       }
-      // API 取得
-      try { const tw = await apiGet<{ topic: string }>(`/api/topic/work`); setTopicWork(tw.topic); } catch { setTopicWork('—'); }
-      try { const tp = await apiGet<{ topic: string }>(`/api/topic/play`); setTopicPlay(tp.topic); } catch { setTopicPlay('—'); }
-      try {
-        const subs = await apiGet<{ items: Submission[] }>(`/api/submissions/me?limit=12`);
-        setSubmissions(subs.items);
-      } catch {
-        setSubmissions([]);
-      }
-      // 称号は当面 user/me から（null 許容）
-      try {
-        const user = await apiGet<{ activeTitle?: string | null; activeTitleUntil?: string | null }>(`/api/user/me`);
-        setTitleBadge(user.activeTitle ?? null);
-        setTitleUntil(user.activeTitleUntil ?? null);
-      } catch {
+      // API 取得（並列）
+      const results = await Promise.allSettled([
+        apiGet<{ topic: string }>(`/api/topic/work`),
+        apiGet<{ topic: string }>(`/api/topic/play`),
+        apiGet<{ items: Submission[] }>(`/api/submissions/me?limit=12`),
+        apiGet<{ activeTitle?: string | null; activeTitleUntil?: string | null }>(`/api/user/me`),
+        apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(userId!)}`),
+        apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=6`),
+        apiGet<{ submitters: { anonId: string; displayName?: string | null }[] }>(`/api/submitters/today`),
+        apiGet<{ ranking: { anonId: string; displayName?: string | null; count: number }[] }>(`/api/ranking/daily`),
+      ]);
+      const [twR, tpR, subsR, userR, profR, feedR, subsTodayR, rankR] = results;
+      setTopicWork(twR.status === 'fulfilled' ? twR.value.topic : '—');
+      setTopicPlay(tpR.status === 'fulfilled' ? tpR.value.topic : '—');
+      setSubmissions(subsR.status === 'fulfilled' ? subsR.value.items : []);
+      if (userR.status === 'fulfilled') {
+        setTitleBadge(userR.value.activeTitle ?? null);
+        setTitleUntil(userR.value.activeTitleUntil ?? null);
+      } else {
         setTitleBadge(null);
         setTitleUntil(null);
       }
-
-      // 公開プロフィール（アイコン・プロフィール文）
-      try {
-        const p = await apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(userId!)}`);
-        setProfile(p);
-      } catch {
-        setProfile(null);
+      setProfile(profR.status === 'fulfilled' ? profR.value : null);
+      if (feedR.status === 'fulfilled') {
+        setFeed(feedR.value.items);
+        setNextCursor(feedR.value.nextCursor ?? null);
+      } else {
+        setFeed([]); setNextCursor(null);
       }
-
-      try {
-        const f = await apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=6`);
-        setFeed(f.items);
-        setNextCursor(f.nextCursor ?? null);
-      } catch { setFeed([]); setNextCursor(null); }
-
-      try {
-        const s = await apiGet<{ submitters: { anonId: string; displayName?: string | null }[] }>(`/api/submitters/today`);
-        setSubmitters(s.submitters);
-      } catch { setSubmitters([]); }
-
-      try {
-        const r = await apiGet<{ ranking: { anonId: string; displayName?: string | null; count: number }[] }>(`/api/ranking/daily`);
-        setRanking(r.ranking);
-      } catch { setRanking([]); }
+      setSubmitters(subsTodayR.status === 'fulfilled' ? subsTodayR.value.submitters : []);
+      setRanking(rankR.status === 'fulfilled' ? rankR.value.ranking : []);
 
       // ローカル提出のマージ（サーバー未構築時の代替）+ 重複削除
       try {
@@ -345,12 +332,7 @@ export default function MyPage() {
         await new Promise((r) => setTimeout(r, 300));
         setFlowPhase('title');
         setFadeOut(false);
-        await new Promise((r) => setTimeout(r, 3000));
-        setFadeOut(true);
-        await new Promise((r) => setTimeout(r, 300));
-        setFlowPhase('slot');
-        setSlotFinished(false);
-        setFadeOut(false);
+        // この後はユーザーのOK操作で閉じる
       })();
     }
   }, [uploading, pendingFlow]);
@@ -406,33 +388,15 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
                     <img src="/uploads/sample_2.svg" alt="dummy title" className="h-24 md:h-32 w-auto" />
                   </div>
                   <div className="mt-1 text-xl md:text-2xl font-bold text-steam-gold-300">{flowResult.rewardTitle || '—'}</div>
+                  <div className="mt-4">
+                    <button
+                      onClick={() => { setFlowOpen(false); setFlowPhase('done'); try { window.location.reload(); } catch {} }}
+                      className="rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600"
+                    >OK</button>
+                  </div>
                 </div>
               )}
-              {flowPhase === 'slot' && (
-                <div>
-                  <div className="mb-2 text-center text-steam-iron-100">ジャックポット抽選（本日初投稿のみ対象）</div>
-                  <SlotMachine result={flowResult.jpResult} onFinished={() => setSlotFinished(true)} durationMs={3000} />
-                  {slotFinished && (
-                    <div className="mt-3 text-center">
-                      {flowResult.jpResult === 'win' ? (
-                        <div className="space-y-2">
-                          <div className="text-lg font-semibold text-steam-gold-300">当たり！</div>
-                          <div className="text-sm text-steam-iron-200">おめでとうございます！</div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="text-lg font-semibold text-steam-brown-300">残念…</div>
-                          <div className="text-sm text-steam-iron-200">また明日チャレンジ！</div>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => { setFlowOpen(false); setFlowPhase('done'); try { window.location.reload(); } catch {} }}
-                        className="mt-4 rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600"
-                      >OK</button>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* スロット演出はジャックポット廃止のため削除 */}
             </div>
           </div>
         </div>
@@ -476,6 +440,8 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
             <li><a href="https://discord.com/" target="_blank" rel="noreferrer" className="text-steam-gold-400 underline">Discord</a></li>
             <li><a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="text-steam-gold-400 underline">AI サイト</a></li>
             <li><a href="/" className="text-steam-gold-400 underline">当社LP</a></li>
+            <li><a href="/terms" className="text-steam-gold-400 underline">利用規約</a></li>
+            <li><a href="/contact" className="text-steam-gold-400 underline">お問い合わせ</a></li>
           </ul>
         </section>
 

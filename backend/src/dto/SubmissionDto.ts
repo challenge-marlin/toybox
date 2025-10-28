@@ -1,5 +1,5 @@
 export interface SubmissionResultDto {
-  jpResult: 'win' | 'lose' | 'none';
+  jpResult: 'none';
   probability: number;
   bonusCount: number;
   rewardTitle?: string;

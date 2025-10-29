@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 
 const uploadDirectory = path.join(process.cwd(), 'public', 'uploads');
 // Ensure upload directory exists at startup
@@ -83,4 +84,33 @@ export const uploadHeader = createUploadMiddleware('header');
 export const uploadPost = createUploadMiddleware('post');
 export const uploadGameZip = createUploadMiddleware('gamezip');
 
+
+export function buildVariantPath(relUrl: string, width: number, format: 'webp' | 'avif'): { rel: string; abs: string } {
+  const baseRel = relUrl.replace(/\\/g, '/');
+  const withoutExt = baseRel.replace(/\.[a-zA-Z0-9]+$/i, '');
+  const variantRel = `${withoutExt}.w${width}.${format}`;
+  const abs = path.join(process.cwd(), 'public', variantRel);
+  return { rel: variantRel, abs };
+}
+
+export async function generateOptimizedImages(absPath: string, relUrl: string): Promise<{ displayRel?: string }> {
+  try {
+    const variants = [640, 1280] as const;
+    let displayRel: string | undefined;
+    for (const w of variants) {
+      const webp = buildVariantPath(relUrl, w, 'webp');
+      const avif = buildVariantPath(relUrl, w, 'avif');
+      try {
+        await sharp(absPath).resize({ width: w, withoutEnlargement: true }).webp({ quality: 82 }).toFile(webp.abs);
+      } catch {}
+      try {
+        await sharp(absPath).resize({ width: w, withoutEnlargement: true }).avif({ quality: 60 }).toFile(avif.abs);
+      } catch {}
+      if (!displayRel && w === 640) displayRel = webp.rel; // 既定の表示用
+    }
+    return { displayRel };
+  } catch {
+    return {};
+  }
+}
 

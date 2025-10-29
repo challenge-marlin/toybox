@@ -8,6 +8,27 @@
   - `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build`
   - 画面: Frontend `http://localhost:3000/` / Backend `http://localhost:4000/health`
 
+### 環境変数ファイル（.env）
+
+はじめに、見本をコピーして値を編集してください。
+
+```bash
+cp backend/env.example backend/.env
+cp frontend/env.example frontend/.env
+```
+
+主な設定ポイント:
+
+- Backend (`backend/.env`)
+  - `CORS_ORIGINS`: 許可するフロントのオリジン（例: `https://toybox.example.com`）
+  - `JWT_SECRET`: 本番では十分長い乱数に変更
+  - `MAX_UPLOAD_MB_*`: 種別ごとのアップロード上限
+
+- Frontend (`frontend/.env`)
+  - `NEXT_PUBLIC_API_BASE`: バックエンドの公開URL（例: `http://localhost:4000` or `https://api.toybox.example.com`）
+  - `BACKEND_INTERNAL_URL`（任意）: SSR/ビルド時の内部到達先（例: `http://backend:4000`）
+  - `NEXT_PUBLIC_SITE_URL`（任意）: サイトのフルURL（OGP向け）
+
 ### カード画像とフレーム表示（実装済み）
 - 置き場所/URL
   - カード画像: `/uploads/cards/<ファイル名>`（例: `/uploads/cards/C001.png`）
@@ -111,6 +132,21 @@ npm run dev
 ```
 - Backend: http://localhost:4000/health
 - Frontend: http://localhost:3000 （Next.js デフォルト）
+
+## E2E テスト（Playwright）
+
+前提: フロント/バックが起動中（上の手順でOK）
+
+実行（frontend ディレクトリで）:
+
+```bash
+cd frontend
+npm run test:e2e
+```
+
+オプション:
+- `E2E_BASE_URL` でベースURLを上書き可能（デフォルト `http://localhost:3000`）
+- `E2E_API_BASE` でAPIのURLを上書き可能（デフォルト `http://localhost:4000`）
 
 ## 静的ファイル配信（/uploads）
 - Backend が `/uploads` を `backend/public/uploads` から配信します。

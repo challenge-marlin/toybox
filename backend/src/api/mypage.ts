@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { requireAnonAuth } from '../middleware/auth.js';
 import { SubmissionModel } from '../../models/Submission.js';
 import { UserMetaModel } from '../../models/UserMeta.js';
-import { incFeedServed, incProfileView } from '../utils/metrics.js';
+import { incFeedServed, incProfileView, incLikeAdded, incLikeRemoved, recordWebVital, recordFrontendTiming } from '../utils/metrics.js';
 import { startOfJstDay, endOfJstDay } from '../utils/time.js';
 import type { FeedResponseDto, SubmissionsResponseDto } from '../dto/FeedItemDto.js';
 import type { UserProfileDto } from '../dto/UserDto.js';
@@ -122,7 +122,7 @@ mypageRouter.get('/submissions/me', requireAnonAuth, async (req: Request, res: R
     items: docs.map((d: any, i: number) => {
       const submissionImageUrl = d.imageUrl || null;
       const submissionVideoUrl = d.videoUrl || null;
-      const displayImageUrl = submissionImageUrl || submissionVideoUrl || userAvatar || sampleImageUrl(i);
+      const displayImageUrl = (submissionImageUrl ? String(submissionImageUrl).replace(/\.[a-zA-Z0-9]+$/i, '.w640.webp') : null) || submissionVideoUrl || userAvatar || sampleImageUrl(i);
       return {
         id: String(d._id),
         createdAt: d.createdAt,
@@ -217,7 +217,7 @@ mypageRouter.get('/feed', async (req: Request, res: Response) => {
       const submissionVideoUrl = (d as any).videoUrl || null;
       const submissionGameUrl = (d as any).gameUrl || null;
       const userAvatar = anonIdToAvatar.get(String((d as any).submitterAnonId)) ?? null;
-      const displayImageUrl = submissionImageUrl || submissionVideoUrl || userAvatar;
+      const displayImageUrl = (submissionImageUrl ? String(submissionImageUrl).replace(/\.[a-zA-Z0-9]+$/i, '.w640.webp') : null) || submissionVideoUrl || userAvatar;
       return {
         id: String(d._id),
         anonId: (d as any).submitterAnonId,
@@ -354,7 +354,7 @@ mypageRouter.get('/user/submissions/:anonId', async (req: Request, res: Response
       const submissionImageUrl = (d as any).imageUrl || null;
       const submissionVideoUrl = (d as any).videoUrl || null;
       const submissionGameUrl = (d as any).gameUrl || null;
-      const displayImageUrl = submissionImageUrl || submissionVideoUrl || userAvatar || sampleImageUrl(i);
+      const displayImageUrl = (submissionImageUrl ? String(submissionImageUrl).replace(/\.[a-zA-Z0-9]+$/i, '.w640.webp') : null) || submissionVideoUrl || userAvatar || sampleImageUrl(i);
       return {
         id: String(d._id),
         createdAt: (d as any).createdAt,
@@ -369,6 +369,55 @@ mypageRouter.get('/user/submissions/:anonId', async (req: Request, res: Response
     nextCursor: docs.length > 0 ? (docs[docs.length - 1] as any).createdAt : null
   };
   res.json(response);
+});
+
+// 単一提出の詳細（前後ナビ用の隣接ID含む）
+mypageRouter.get('/submissions/:id', async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  try {
+    const doc = await SubmissionModel.findById(id).lean();
+    if (!doc) return res.status(404).json({ error: 'Not Found' });
+
+    // 投稿者の表示名・アバター
+    const submitterAnonId = String((doc as any).submitterAnonId);
+    const meta = await UserMetaModel.findOne({ anonId: submitterAnonId }, { displayName: 1, avatarUrl: 1 }).lean();
+
+    // liked 状態（リクエストユーザーが存在する場合）
+    let liked = false;
+    try {
+      const reqUserAnonId: string | undefined = (req as any).anonId || undefined;
+      if (reqUserAnonId) {
+        const meMeta = await UserMetaModel.findOne({ anonId: reqUserAnonId }, { likedSubmissionIds: 1 }).lean();
+        if (meMeta && Array.isArray((meMeta as any).likedSubmissionIds)) {
+          liked = (meMeta as any).likedSubmissionIds.map(String).includes(String((doc as any)._id));
+        }
+      }
+    } catch {}
+
+    // 前後（新しい←→古い）
+    const createdAt: Date = (doc as any).createdAt as Date;
+    const newer = await SubmissionModel.findOne({ createdAt: { $gt: createdAt } }).sort({ createdAt: 1 }).lean();
+    const older = await SubmissionModel.findOne({ createdAt: { $lt: createdAt } }).sort({ createdAt: -1 }).lean();
+
+    const payload = {
+      id: String((doc as any)._id),
+      anonId: submitterAnonId,
+      displayName: (meta as any)?.displayName ?? null,
+      avatarUrl: (meta as any)?.avatarUrl ?? null,
+      createdAt: (doc as any).createdAt,
+      imageUrl: (doc as any).imageUrl || null,
+      videoUrl: (doc as any).videoUrl || null,
+      gameUrl: (doc as any).gameUrl || null,
+      displayImageUrl: (doc as any).imageUrl || (doc as any).videoUrl || ((meta as any)?.avatarUrl ?? null),
+      likesCount: Number((doc as any).likesCount || 0),
+      liked,
+      prevId: newer ? String((newer as any)._id) : null,
+      nextId: older ? String((older as any)._id) : null,
+    };
+    return res.json(payload);
+  } catch (err) {
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // 自分の提出を削除（所有者のみ）
@@ -400,6 +449,7 @@ mypageRouter.post('/submissions/:id/like', requireAnonAuth, async (req: Request,
     );
     if ((r as any).modifiedCount > 0 || (r as any).upsertedCount > 0) {
       await SubmissionModel.updateOne({ _id: id }, { $inc: { likesCount: 1 } });
+      try { incLikeAdded(); } catch {}
       // 通知作成（自分で自分にいいねは通知しない）
       try {
         const targetAnon = String((sub as any).submitterAnonId);
@@ -436,11 +486,40 @@ mypageRouter.delete('/submissions/:id/like', requireAnonAuth, async (req: Reques
     );
     if ((r as any).modifiedCount > 0) {
       await SubmissionModel.updateOne({ _id: id, likesCount: { $gt: 0 } }, { $inc: { likesCount: -1 } });
+      try { incLikeRemoved(); } catch {}
     }
     const doc = await SubmissionModel.findById(id, { likesCount: 1 }).lean();
     return res.json({ ok: true, likesCount: Number((doc as any)?.likesCount || 0), liked: false });
   } catch (err) {
     throw err;
+  }
+});
+
+// Web Vitals 受け取り（CLS/LCP/FID/INP）
+mypageRouter.post('/metrics/webvitals', async (req: Request, res: Response) => {
+  try {
+    const { name, value } = req.body || {};
+    const n = String(name).toUpperCase();
+    const v = Number(value);
+    if (!['CLS','LCP','FID','INP'].includes(n) || !Number.isFinite(v)) return res.status(400).json({ ok: false });
+    try { recordWebVital(n as any, v); } catch {}
+    return res.json({ ok: true });
+  } catch {
+    return res.status(500).json({ ok: false });
+  }
+});
+
+// Frontend timings 受け取り（feed_load_ms）
+mypageRouter.post('/metrics/fevent', async (req: Request, res: Response) => {
+  try {
+    const { name, value } = req.body || {};
+    const n = String(name);
+    const v = Number(value);
+    if (n !== 'feed_load_ms' || !Number.isFinite(v)) return res.status(400).json({ ok: false });
+    try { recordFrontendTiming('feed_load_ms', v); } catch {}
+    return res.json({ ok: true });
+  } catch {
+    return res.status(500).json({ ok: false });
   }
 });
 

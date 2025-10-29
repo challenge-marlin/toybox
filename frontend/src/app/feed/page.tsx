@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
 import { resolveUploadUrl } from '../../lib/assets';
@@ -26,6 +26,8 @@ export default function GlobalFeedPage() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [initialized, setInitialized] = useState<boolean>(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string>('');
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
@@ -35,16 +37,27 @@ export default function GlobalFeedPage() {
 
   useEffect(() => {
     (async () => {
+      const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       setLoading(true);
       try {
         const res = await apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=24`);
-        setItems(res.items);
+        setItems(Array.isArray(res.items) ? res.items : []);
         setNextCursor(res.nextCursor ?? null);
+        const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const ms = Math.max(0, t1 - t0);
+        try {
+          const base = process.env.NEXT_PUBLIC_API_BASE || '';
+          const url = base ? `${base}/api/metrics/fevent` : '/api/metrics/fevent';
+          const payload = { name: 'feed_load_ms', value: Math.round(ms) } as any;
+          navigator.sendBeacon?.(url, new Blob([JSON.stringify(payload)], { type: 'application/json' }))
+            || fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true });
+        } catch {}
       } catch {
         setItems([]);
         setNextCursor(null);
       } finally {
         setLoading(false);
+        setInitialized(true);
       }
     })();
   }, []);
@@ -54,7 +67,11 @@ export default function GlobalFeedPage() {
     setLoading(true);
     try {
       const res = await apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=24&cursor=${encodeURIComponent(nextCursor)}`);
-      setItems((prev) => [...prev, ...res.items]);
+      setItems((prev) => {
+        const existingIds = new Set(prev.map((x) => x.id));
+        const incoming = Array.isArray(res.items) ? res.items.filter((x) => !existingIds.has(x.id)) : [];
+        return [...prev, ...incoming];
+      });
       setNextCursor(res.nextCursor ?? null);
     } catch {
       // noop
@@ -62,6 +79,23 @@ export default function GlobalFeedPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          // 末尾に達したら追加ロード
+          if (nextCursor && !loading) {
+            void loadMore();
+          }
+        }
+      }
+    }, { root: null, rootMargin: '200px', threshold: 0 });
+    observer.observe(el);
+    return () => { try { observer.disconnect(); } catch {} };
+  }, [nextCursor, loading]);
 
   async function toggleLike(submissionId: string, currentLiked?: boolean) {
     setItems((prev) => prev.map((it) => it.id === submissionId ? { ...it, liked: !currentLiked, likesCount: Math.max(0, (it.likesCount ?? 0) + (currentLiked ? -1 : 1)) } : it));
@@ -157,11 +191,20 @@ export default function GlobalFeedPage() {
           </div>
         ))}
       </div>
-      {nextCursor && (
-        <div className="mt-4">
-          <button onClick={loadMore} disabled={loading} className="rounded bg-steam-iron-800 px-3 py-1 text-steam-gold-300 hover:bg-steam-iron-700 disabled:opacity-60">さらに読み込む</button>
-        </div>
+      {/* 無限スクロール用の番兵要素 */}
+      <div ref={sentinelRef} className="h-1" />
+
+      {/* ロード中表示 */}
+      {loading && (
+        <div className="mt-4 text-center text-sm text-steam-iron-300">読み込み中…</div>
       )}
+
+      {/* 末端表示（初回ロード済みかつ次カーソル無し） */}
+      {initialized && !loading && !nextCursor && items.length > 0 && (
+        <div className="mt-4 text-center text-xs text-steam-iron-400">すべて表示しました</div>
+      )}
+      {/* タイルの詳細リンク（小さく重ねて表示） */}
+      <style>{`.feed-card-detail{position:absolute;bottom:6px;left:6px;z-index:10}`}</style>
       <ImageLightbox src={lightboxSrc} alt="submission" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type={lightboxType} asset={lightboxAsset || undefined} />
     </main>
   );

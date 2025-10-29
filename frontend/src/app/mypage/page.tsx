@@ -3,8 +3,10 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 // 匿名IDは廃止。必要時は /api/auth/me から取得
 import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
+import { resolveUploadUrl } from '../../lib/assets';
 import CardReveal from '../../components/CardReveal';
 import ImageLightbox from '../../components/ImageLightbox';
+import { useToast } from '../../components/ToastProvider';
 
 type Submission = { id: string; imageUrl?: string; displayImageUrl?: string; createdAt: string; gameUrl?: string | null; videoUrl?: string | null; likesCount?: number; liked?: boolean };
 type FeedItem = { id: string; anonId: string; displayName?: string | null; imageUrl: string; avatarUrl?: string | null; displayImageUrl?: string; createdAt: string; title?: string | null };
@@ -21,6 +23,7 @@ type SubmitResult = {
 };
 
 export default function MyPage() {
+  const toast = useToast();
   const [anonId, setAnonId] = useState<string | null>(null);
   const [topicWork, setTopicWork] = useState<string>('読み込み中…');
   const [topicPlay, setTopicPlay] = useState<string>('読み込み中…');
@@ -75,6 +78,7 @@ export default function MyPage() {
     if (!anonId) return;
     if (uploading) return; // 二重起動防止
     setUploadError(null);
+    toast.info('アップロードを開始しました');
     setUploading(true);
     const startedAt = Date.now();
     try {
@@ -118,11 +122,13 @@ export default function MyPage() {
       const data: any = await uploadRes.json();
       const imageUrl: string | undefined = data?.imageUrl;
       const videoUrl: string | undefined = data?.videoUrl;
+      const displayFromServer: string | undefined = data?.displayImageUrl;
       const newItem: Submission = {
         id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         imageUrl: imageUrl ? (imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl) : undefined,
         videoUrl: videoUrl ? (videoUrl.startsWith('/uploads/') ? `${API_BASE}${videoUrl}` : videoUrl) : undefined,
-        displayImageUrl: imageUrl ? (imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl) : (videoUrl ? (videoUrl.startsWith('/uploads/') ? `${API_BASE}${videoUrl}` : videoUrl) : undefined),
+        displayImageUrl: displayFromServer ? (displayFromServer.startsWith('/uploads/') ? `${API_BASE}${displayFromServer}` : displayFromServer)
+          : (imageUrl ? (imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl) : (videoUrl ? (videoUrl.startsWith('/uploads/') ? `${API_BASE}${videoUrl}` : videoUrl) : undefined)),
         createdAt: new Date().toISOString()
       };
 
@@ -136,7 +142,7 @@ export default function MyPage() {
       });
 
       // タイムラインへ即時反映（ローカル）: アバターを使う
-          const selfAvatar = resolveUploadUrl(profile?.avatarUrl, profile?.updatedAt) || null;
+      const selfAvatar = resolveUploadUrl(profile?.avatarUrl) || null;
       setFeed((prev) => [
         {
           id: newItem.id,
@@ -190,12 +196,15 @@ export default function MyPage() {
         saveLocalSubmissions(anonId, []);
       } catch {}
     } catch (e: any) {
-      setUploadError(e?.message ?? 'アップロードに失敗しました');
+      const msg = e?.message ?? 'アップロードに失敗しました';
+      setUploadError(msg);
+      toast.error(msg);
     } finally {
       const elapsed = Date.now() - startedAt;
       const remain = Math.max(0, 800 - elapsed);
       try { await new Promise((r) => setTimeout(r, remain)); } catch {}
       setUploading(false);
+      toast.success('アップロードが完了しました');
     }
   }
 
@@ -337,13 +346,7 @@ export default function MyPage() {
     }
   }, [uploading, pendingFlow]);
 
-function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string | undefined {
-  if (!u) return undefined;
-  const base = u.startsWith('/uploads/') ? `${API_BASE}${u}` : u;
-  if (!updatedAt) return base;
-  const q = `t=${new Date(updatedAt).getTime()}`;
-  return base.includes('?') ? base : `${base}?${q}`;
-}
+ 
 
   async function refreshWork() { try { const t = await apiGet<{ topic: string }>(`/api/topic/work`); setTopicWork(t.topic); } catch {} }
   async function refreshPlay() { try { const t = await apiGet<{ topic: string }>(`/api/topic/play`); setTopicPlay(t.topic); } catch {} }
@@ -660,7 +663,7 @@ function resolveUploadUrl(u?: string | null, updatedAt?: string | null): string 
                 // 画像/動画アップロードと同じフロー制御（アップロード完了後に演出開始）
                 setPendingFlow(submitRes);
               } catch (err: any) {
-                alert(err?.message || 'ゲームのアップロードに失敗しました');
+                toast.error(err?.message || 'ゲームのアップロードに失敗しました');
               } finally {
                 const elapsed = Date.now() - startedAt;
                 const remain = Math.max(0, 800 - elapsed);

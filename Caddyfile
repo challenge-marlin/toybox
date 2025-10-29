@@ -1,0 +1,9 @@
+toybox.example.com {
+  encode gzip
+  reverse_proxy frontend:3000
+}
+
+api.toybox.example.com {
+  encode gzip
+  reverse_proxy backend:4000
+}

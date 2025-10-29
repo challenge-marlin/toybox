@@ -4,6 +4,7 @@ import { requireString, requireStringArrayLen, pickValidationErrors } from '../u
 import { logger } from '../utils/logger.js';
 import type { SubmissionResultDto } from '../dto/SubmissionDto.js';
 import { uploadPost, uploadGameZip } from '../lib/upload.js';
+import { generateOptimizedImages } from '../lib/upload.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
@@ -20,10 +21,17 @@ submitRouter.post('/submit/upload', uploadPost.single('file'), async (req, res, 
     const mime = req.file.mimetype || '';
     const isVideo = mime.startsWith('video/');
     const url = `/uploads/${req.file.filename}`;
+    let displayImageUrl: string | undefined;
+    if (!isVideo) {
+      try {
+        const { displayRel } = await generateOptimizedImages(req.file.path, url);
+        if (displayRel) displayImageUrl = displayRel;
+      } catch {}
+    }
 
     logger.info('submit.upload.success', { anonId, url, type: isVideo ? 'video' : 'image' });
     // ここではURLのみ返却し、/api/submit で提出・報酬処理を行う
-    return res.json(isVideo ? { ok: true, videoUrl: url } : { ok: true, imageUrl: url });
+    return res.json(isVideo ? { ok: true, videoUrl: url } : { ok: true, imageUrl: url, displayImageUrl });
   } catch (err) {
     next(err);
   }

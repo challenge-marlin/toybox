@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { API_BASE, apiGet, apiPost, apiPatch, apiUpload } from '../../lib/api';
+import { useToast } from '../../components/ToastProvider';
+import { UpdateBioSchema, UpdateDisplayNameSchema } from '../../validation/user';
 import { useRouter } from 'next/navigation';
 // 匿名IDは廃止。/api/auth/me から取得
 
@@ -23,6 +25,7 @@ type UserMe = {
 };
 
 export default function ProfileSettingsPage() {
+  const toast = useToast();
   const router = useRouter();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [name, setName] = useState('');
@@ -61,6 +64,14 @@ export default function ProfileSettingsPage() {
     setSaving(true);
     setMsg(null);
     try {
+      try {
+        UpdateDisplayNameSchema.parse({ displayName: name });
+        UpdateBioSchema.parse({ bio });
+      } catch (e) {
+        toast.error('入力値が不正です（表示名は1〜50文字、プロフィール文は最大1000文字）');
+        setSaving(false);
+        return;
+      }
       // 画像アップロード（選択されている場合のみ）
       if (headerFile) {
         await apiUpload<{ ok: boolean; headerUrl?: string }>(`/api/user/profile/upload?${new URLSearchParams({ type: 'header' })}`, headerFile);
@@ -71,10 +82,12 @@ export default function ProfileSettingsPage() {
       // テキスト一括保存
       await apiPatch<UserMe>(`/api/user/profile`, { displayName: name, bio });
       setMsg('保存しました。マイページへ移動します…');
+      toast.success('プロフィールを保存しました');
       try { localStorage.setItem('toybox_mypage_force_reload', '1'); } catch {}
       router.push('/mypage');
     } catch {
       setMsg('保存に失敗しました');
+      toast.error('プロフィールの保存に失敗しました');
     } finally {
       setSaving(false);
     }

@@ -8,6 +8,7 @@ import { startOfJstDay, endOfJstDay } from '../utils/time.js';
 import type { FeedResponseDto, SubmissionsResponseDto } from '../dto/FeedItemDto.js';
 import type { UserProfileDto } from '../dto/UserDto.js';
 import { UserModel } from '../../models/User.js';
+import * as cheerio from 'cheerio';
 
 export const mypageRouter = Router();
 // お問い合わせメール送信（SMTP経由）
@@ -92,6 +93,23 @@ mypageRouter.get('/topic/play', async (_req: Request, res: Response) => {
 });
 
 // /topics アーカイブ機能は削除
+// 外部サイトから当日のお題を取得（h2#project-title-J-03 のテキスト）
+mypageRouter.get('/topic/fetch', async (req: Request, res: Response) => {
+  const type = String(req.query.type || '').toLowerCase();
+  const url = type === 'work' ? 'https://ayatori-inc.co.jp/toybox-std/'
+    : type === 'play' ? 'https://ayatori-inc.co.jp/toybox-game/' : null;
+  if (!url) return res.status(400).json({ error: 'Invalid type' });
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': 'ToyBoxBot/1.0 (+https://example.com)' } });
+    if (!r.ok) return res.status(502).json({ error: 'Upstream error' });
+    const html = await r.text();
+    const $ = cheerio.load(html);
+    const t = $('h2#project-title-J-03').first().text().trim();
+    return res.json({ topic: t || '' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch' });
+  }
+});
 
 // 自分の提出（最新 N 件）
 mypageRouter.get('/submissions/me', requireAnonAuth, async (req: Request, res: Response) => {

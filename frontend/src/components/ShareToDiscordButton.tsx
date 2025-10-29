@@ -57,7 +57,7 @@ export function ShareToDiscordButton({ asset }: { asset: Asset }) {
 			<button
 				onClick={onClick}
 				disabled={loading}
-				className="inline-flex items-center gap-2 rounded-xl px-4 py-2 shadow-sm border bg-white hover:bg-gray-50 disabled:opacity-60"
+				className="inline-flex items-center gap-2 rounded-xl px-4 py-2 shadow-sm border bg-white text-black hover:bg-gray-50 disabled:opacity-60"
 				aria-label="Discordにシェア"
 			>
 				{loading ? (

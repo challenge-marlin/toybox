@@ -25,8 +25,10 @@ type SubmitResult = {
 export default function MyPage() {
   const toast = useToast();
   const [anonId, setAnonId] = useState<string | null>(null);
-  const [topicWork, setTopicWork] = useState<string>('読み込み中…');
-  const [topicPlay, setTopicPlay] = useState<string>('読み込み中…');
+  const [topicWork, setTopicWork] = useState<string>('');
+  const [topicPlay, setTopicPlay] = useState<string>('');
+  const [topicWorkVisible, setTopicWorkVisible] = useState<boolean>(false);
+  const [topicPlayVisible, setTopicPlayVisible] = useState<boolean>(false);
   const [titleBadge, setTitleBadge] = useState<string | null>(null);
   const [titleUntil, setTitleUntil] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -271,8 +273,7 @@ export default function MyPage() {
       }
       // API 取得（並列）
       const results = await Promise.allSettled([
-        apiGet<{ topic: string }>(`/api/topic/work`),
-        apiGet<{ topic: string }>(`/api/topic/play`),
+        // topic は初期非表示のため取得しない
         apiGet<{ items: Submission[] }>(`/api/submissions/me?limit=12`),
         apiGet<{ activeTitle?: string | null; activeTitleUntil?: string | null }>(`/api/user/me`),
         apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(userId!)}`),
@@ -280,9 +281,7 @@ export default function MyPage() {
         apiGet<{ submitters: { anonId: string; displayName?: string | null }[] }>(`/api/submitters/today`),
         apiGet<{ ranking: { anonId: string; displayName?: string | null; count: number }[] }>(`/api/ranking/daily`),
       ]);
-      const [twR, tpR, subsR, userR, profR, feedR, subsTodayR, rankR] = results;
-      setTopicWork(twR.status === 'fulfilled' ? twR.value.topic : '—');
-      setTopicPlay(tpR.status === 'fulfilled' ? tpR.value.topic : '—');
+      const [subsR, userR, profR, feedR, subsTodayR, rankR] = results as any;
       setSubmissions(subsR.status === 'fulfilled' ? subsR.value.items : []);
       if (userR.status === 'fulfilled') {
         setTitleBadge(userR.value.activeTitle ?? null);
@@ -320,6 +319,17 @@ export default function MyPage() {
       } catch {}
     })();
   }, []);
+
+  async function fetchTopic(kind: 'work' | 'play') {
+    try {
+      if (kind === 'work') { setTopicWorkVisible(true); setTopicWork('読み込み中…'); }
+      else { setTopicPlayVisible(true); setTopicPlay('読み込み中…'); }
+      const r = await apiGet<{ topic: string }>(`/api/topic/fetch?type=${encodeURIComponent(kind)}`);
+      if (kind === 'work') setTopicWork(r.topic || '—'); else setTopicPlay(r.topic || '—');
+    } catch {
+      if (kind === 'work') setTopicWork('取得に失敗しました'); else setTopicPlay('取得に失敗しました');
+    }
+  }
 
   useEffect(() => {
     if (!uploading && pendingFlow) {
@@ -450,14 +460,18 @@ export default function MyPage() {
 
         <section className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3">
           <h2 className="mb-2 text-steam-gold-300 font-semibold">お仕事系のお題</h2>
-          <div className="text-steam-iron-100 text-sm">{topicWork}</div>
-          <a href="https://ayatori-inc.co.jp/toybox-std/" target="_blank" rel="noreferrer" className="inline-block mt-3 rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600 text-base">お題を見る</a>
+          {topicWorkVisible ? (
+            <div className="text-steam-iron-100 text-sm">{topicWork}</div>
+          ) : null}
+          <a href="https://ayatori-inc.co.jp/toybox-std/" target="_blank" rel="noreferrer" onClick={() => { fetchTopic('work'); }} className="inline-block mt-3 rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600 text-base">お題を見る</a>
         </section>
 
         <section className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3">
           <h2 className="mb-2 text-steam-gold-300 font-semibold">ゲームのお題</h2>
-          <div className="text-steam-iron-100 text-sm">{topicPlay}</div>
-          <a href="https://ayatori-inc.co.jp/toybox-game/" target="_blank" rel="noreferrer" className="inline-block mt-3 rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600 text-base">お題を見る</a>
+          {topicPlayVisible ? (
+            <div className="text-steam-iron-100 text-sm">{topicPlay}</div>
+          ) : null}
+          <a href="https://ayatori-inc.co.jp/toybox-game/" target="_blank" rel="noreferrer" onClick={() => { fetchTopic('play'); }} className="inline-block mt-3 rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600 text-base">お題を見る</a>
         </section>
 
         <section className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3">

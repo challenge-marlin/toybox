@@ -1,8 +1,8 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
-import { getAnonId } from '../../lib/auth';
+import { apiGet, apiPost, apiDelete } from '../../lib/api';
+import { resolveUploadUrl } from '../../lib/assets';
 import ImageLightbox from '../../components/ImageLightbox';
 
 type Submission = { id: string; imageUrl?: string | null; videoUrl?: string | null; gameUrl?: string | null; displayImageUrl?: string | null; createdAt: string; likesCount?: number; liked?: boolean };
@@ -42,11 +42,7 @@ export default function UserProfilePage() {
     })();
   }, [anonId]);
 
-  function resolveUploadUrl(u?: string | null): string | undefined {
-    if (!u) return undefined;
-    if (u.startsWith('/uploads/')) return `${API_BASE}${u}`;
-    return u;
-  }
+  // use resolveUploadUrl from lib/assets
 
   async function loadMore() {
     if (!nextCursor || !anonId) return;

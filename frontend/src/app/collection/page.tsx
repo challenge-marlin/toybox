@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
-import { API_BASE, apiGet } from '../../lib/api';
+import { apiGet } from '../../lib/api';
+import { resolveUploadUrl } from '../../lib/assets';
 const FRAME_URL = '/uploads/cards/frame.png';
 
 type Entry = {
@@ -28,14 +29,9 @@ export default function CollectionPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [tab, setTab] = useState<'character' | 'effect'>('character');
 
-  function resolveUploadUrl(u?: string | null): string | undefined {
-    if (!u) return undefined;
-    return u.startsWith('/uploads/') ? `${API_BASE}${u}` : u;
-  }
-
   function candidatesFor(meta?: Entry['meta']): string[] {
     if (!meta) return [];
-    const primary = resolveUploadUrl(meta.image_url) || `${API_BASE}/uploads/cards/${meta.card_id}.png`;
+    const primary = resolveUploadUrl(meta.image_url) || (resolveUploadUrl(`/uploads/cards/${meta.card_id}.png`) as string);
     return [primary];
   }
 

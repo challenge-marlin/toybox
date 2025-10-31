@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { API_BASE, apiGet, apiPost, apiPatch, apiUpload } from '../../lib/api';
+import { apiGet, apiPost, apiPatch, apiUpload } from '../../lib/api';
+import { resolveUploadUrl } from '../../lib/assets';
 import { useToast } from '../../components/ToastProvider';
 import { UpdateBioSchema, UpdateDisplayNameSchema } from '../../validation/user';
 import { useRouter } from 'next/navigation';
@@ -54,11 +55,7 @@ export default function ProfileSettingsPage() {
     })();
   }, []);
 
-  function resolveUploadUrl(u?: string | null): string | undefined {
-    if (!u) return undefined;
-    if (u.startsWith('/uploads/')) return `${API_BASE}${u}`;
-    return u;
-  }
+  // use shared resolver from lib/assets
 
   async function onSaveAll() {
     setSaving(true);

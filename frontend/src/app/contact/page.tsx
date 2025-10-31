@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { API_BASE } from '../../lib/api';
+// APIは同一オリジンの相対パスで呼び出します
 
 export default function ContactPage() {
   const [name, setName] = useState('');
@@ -16,7 +16,7 @@ export default function ContactPage() {
     setError(null);
     setSending(true);
     try {
-      const res = await fetch(`${API_BASE}/api/contact`, {
+      const res = await fetch(`/api/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         credentials: 'include',

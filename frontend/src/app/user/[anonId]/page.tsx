@@ -1,7 +1,8 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useParams, redirect } from 'next/navigation';
-import { API_BASE, apiGet, apiPost, apiUpload } from '../../../lib/api';
+import { apiGet, apiPost, apiUpload } from '../../../lib/api';
+import { resolveUploadUrl } from '../../../lib/assets';
 import { getAnonId } from '../../../lib/auth';
 
 type Submission = { id: string; imageUrl: string; createdAt: string };
@@ -70,11 +71,7 @@ export default function UserProfilePage() {
     } catch {}
   }
 
-  function resolveUploadUrl(u?: string | null): string | undefined {
-    if (!u) return undefined;
-    if (u.startsWith('/uploads/')) return `${API_BASE}${u}`;
-    return u;
-  }
+  // use shared resolver from lib/assets
 
   async function saveBio() {
     if (!isOwner) return;

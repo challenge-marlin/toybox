@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { API_BASE, apiGet, apiPost, apiDelete } from '../../../lib/api';
+import { apiGet, apiPost, apiDelete } from '../../../lib/api';
 import { resolveUploadUrl } from '../../../lib/assets';
 import TitleDisplay from '../../../components/TitleDisplay';
 import ImageLightbox from '../../../components/ImageLightbox';

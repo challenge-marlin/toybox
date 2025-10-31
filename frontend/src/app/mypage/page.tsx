@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 // 匿名IDは廃止。必要時は /api/auth/me から取得
-import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
+import { apiGet, apiPost, apiDelete } from '../../lib/api';
 import { resolveUploadUrl } from '../../lib/assets';
 import CardReveal from '../../components/CardReveal';
 import ImageLightbox from '../../components/ImageLightbox';
@@ -101,7 +101,7 @@ export default function MyPage() {
       // 1) 先にサーバへアップロードし、相対URLを取得
       const form = new FormData();
       form.append('file', file);
-      const uploadRes = await fetch(`${API_BASE}/api/submit/upload`, {
+      const uploadRes = await fetch(`/api/submit/upload`, {
         method: 'POST',
         body: form,
         headers: { 'Accept': 'application/json' },
@@ -127,10 +127,9 @@ export default function MyPage() {
       const displayFromServer: string | undefined = data?.displayImageUrl;
       const newItem: Submission = {
         id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        imageUrl: imageUrl ? (imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl) : undefined,
-        videoUrl: videoUrl ? (videoUrl.startsWith('/uploads/') ? `${API_BASE}${videoUrl}` : videoUrl) : undefined,
-        displayImageUrl: displayFromServer ? (displayFromServer.startsWith('/uploads/') ? `${API_BASE}${displayFromServer}` : displayFromServer)
-          : (imageUrl ? (imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl) : (videoUrl ? (videoUrl.startsWith('/uploads/') ? `${API_BASE}${videoUrl}` : videoUrl) : undefined)),
+        imageUrl: imageUrl || undefined,
+        videoUrl: videoUrl || undefined,
+        displayImageUrl: displayFromServer || imageUrl || videoUrl || undefined,
         createdAt: new Date().toISOString()
       };
 
@@ -338,7 +337,7 @@ export default function MyPage() {
         setFlowResult(res);
         if (res?.rewardCard) {
           const rc = res.rewardCard;
-          const img = rc.image_url ? resolveUploadUrl(rc.image_url) : `${API_BASE}/uploads/cards/${rc.card_id}.png`;
+          const img = rc.image_url ? resolveUploadUrl(rc.image_url) : resolveUploadUrl(`/uploads/cards/${rc.card_id}.png`);
           setCardReveal({ imageUrl: img, cardName: rc.card_name, rarity: rc.rarity });
         } else {
           setCardReveal(null);
@@ -480,7 +479,7 @@ export default function MyPage() {
             onClick={async () => {
               if (!confirm('アカウントを削除します。提出物・プロフィールを含む全データが消えます。よろしいですか？')) return;
               try {
-                const res = await fetch(`${API_BASE}/api/auth/deleteAccount`, { method: 'POST', credentials: 'include' });
+                const res = await fetch(`/api/auth/deleteAccount`, { method: 'POST', credentials: 'include' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 alert('アカウントを削除しました');
                 try { window.location.href = '/'; } catch {}
@@ -665,7 +664,7 @@ export default function MyPage() {
               try {
                 const form = new FormData();
                 form.append('file', f);
-                const res = await fetch(`${API_BASE}/api/submit/uploadGame`, { method: 'POST', body: form, headers: { 'Accept': 'application/json' }, credentials: 'include' });
+                const res = await fetch(`/api/submit/uploadGame`, { method: 'POST', body: form, headers: { 'Accept': 'application/json' }, credentials: 'include' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const { gameUrl }: { gameUrl: string } = await res.json();
                 const payload: any = { aim: 'ゲーム提出', steps: ['準備','実行','完了'], frameType: 'default', gameUrl };

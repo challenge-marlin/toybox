@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { API_BASE, apiGet, apiPost, apiDelete } from '../../lib/api';
+import { apiGet, apiPost, apiDelete } from '../../lib/api';
 import { resolveUploadUrl } from '../../lib/assets';
 import ImageLightbox from '../../components/ImageLightbox';
 

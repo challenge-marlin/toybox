@@ -11,10 +11,14 @@ services:
 
   backend:
     build: ./backend
-    env_file:
-      - ./backend/.env
     environment:
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 4000
+      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_DB: ${MONGODB_DB}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS}
     depends_on:
       - mongo
       - redis
@@ -30,18 +34,27 @@ services:
   worker:
     build: ./backend
     command: node dist/src/workers/notificationWorker.js
-    env_file:
-      - ./backend/.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_DB: ${MONGODB_DB}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       - mongo
       - redis
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
+        BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
     environment:
-      NODE_ENV: production
-      BACKEND_INTERNAL_URL: "http://backend:4000"
+      NODE_ENV: ${NODE_ENV:-production}
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
     depends_on:
       backend:
         condition: service_healthy

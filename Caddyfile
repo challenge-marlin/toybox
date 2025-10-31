@@ -1,9 +1,9 @@
-toybox.example.com {
+:80 {
   encode gzip
   reverse_proxy frontend:3000
 }
 
-api.toybox.example.com {
+:4000 {
   encode gzip
   reverse_proxy backend:4000
 }

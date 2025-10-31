@@ -16,7 +16,7 @@ function getBaseUrl(): string {
 	if (isServer) {
 		return process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://backend:4000';
 	}
-	return process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+	return process.env.NEXT_PUBLIC_API_BASE || '';
 }
 
 export function resolveUploadUrl(u?: string | null): string | undefined {

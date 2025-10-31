@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 function getApiBase() {
-  return process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+  return process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://backend:4000';
 }
 
 async function fetchDetail(id: string) {

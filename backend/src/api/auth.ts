@@ -13,6 +13,26 @@ export const authRouter = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'change_me_strong_secret';
 const BCRYPT_ROUNDS = 12;
 
+// Cookie オプションを環境に応じて一元管理
+// - COOKIE_SAMESITE: 'lax' | 'strict' | 'none'（既定 'lax'）
+// - COOKIE_SECURE: 'true' | 'false'（既定 NODE_ENV==='production'）
+const COOKIE_SAMESITE = (process.env.COOKIE_SAMESITE || 'lax').toLowerCase() as
+  | 'lax'
+  | 'strict'
+  | 'none';
+const COOKIE_SECURE = process.env.COOKIE_SECURE
+  ? String(process.env.COOKIE_SECURE).toLowerCase() === 'true'
+  : process.env.NODE_ENV === 'production';
+
+function sessionCookieOptions() {
+  return {
+    httpOnly: true as const,
+    secure: COOKIE_SECURE,
+    sameSite: COOKIE_SAMESITE as 'lax' | 'strict' | 'none',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+}
+
 // バリデーションスキーマ
 const RegisterSchema = z.object({
   // email は当面不要
@@ -82,12 +102,7 @@ authRouter.post('/auth/register', async (req, res, next) => {
     );
 
     // HttpOnly Cookie設定
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7日
-    });
+    res.cookie('token', token, sessionCookieOptions());
 
     logger.info('auth.register.success', { email: user.email, userId: String(user._id) });
 
@@ -150,12 +165,7 @@ authRouter.post('/auth/login', async (req, res, next) => {
     );
 
     // HttpOnly Cookie設定
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie('token', token, sessionCookieOptions());
 
     logger.info('auth.login.success', { email: user.email, userId: String(user._id) });
 
@@ -179,8 +189,8 @@ authRouter.post('/auth/logout', async (req, res, next) => {
   try {
     res.clearCookie('token', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      secure: COOKIE_SECURE,
+      sameSite: COOKIE_SAMESITE,
     });
 
     logger.info('auth.logout');
@@ -305,12 +315,7 @@ authRouter.get('/auth/discord/callback', async (req, res, next) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie('token', token, sessionCookieOptions());
     res.redirect('/mypage');
   } catch (err) {
     next(err);

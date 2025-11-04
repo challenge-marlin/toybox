@@ -1,0 +1,32 @@
+name: Deploy (Self-hosted Runner)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docker-compose.prod.yml'
+      - 'Caddyfile'
+      - '.github/workflows/deploy-selfhosted.yml'
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Deploy on VPS (pull & compose up)
+        env:
+          PROJECT_DIR: ${{ vars.PROJECT_DIR }}
+        run: |
+          set -e
+          if [ -z "$PROJECT_DIR" ]; then echo "Set repository variable PROJECT_DIR to deployment path (e.g. /opt/toybox)"; exit 1; fi
+          cd "$PROJECT_DIR"
+          echo "[deploy] Using PROJECT_DIR=$PROJECT_DIR"
+          # Pull latest source
+          git fetch --all --prune
+          git reset --hard origin/main
+          # Rebuild & restart with production compose (reads .env in this dir)
+          docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+          docker compose -f docker-compose.prod.yml ps
+
+

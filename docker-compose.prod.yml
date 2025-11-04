@@ -19,6 +19,8 @@ services:
       REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE}
+      COOKIE_SECURE: ${COOKIE_SECURE}
     depends_on:
       - mongo
       - redis

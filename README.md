@@ -487,3 +487,71 @@ cd ../frontend
 export NEXT_PUBLIC_API_BASE=http://localhost:4000
 npm run dev
 ```
+
+---
+
+## VPS デプロイ（ConoHa VPS + Docker + WinSCP）
+
+手動で安全に反映するための最短手順です。機密値は `.env` にのみ記載し、リポジトリには含めません。
+
+### 前提
+- VPS に Docker がインストール済み（`docker compose` が使える）
+- VPS 側のデプロイユーザーで `/opt/toybox` に書き込める
+- ファイアウォールで 80/443（必要なら）を許可
+
+### 1) VPS に受け皿と `.env` を用意
+```bash
+sudo mkdir -p /opt/toybox
+sudo chown $USER:$USER /opt/toybox
+# .env を作成（/opt/toybox/.env）
+```
+
+`.env` の例（HTTPS かつ API が別ドメインの場合）
+```
+NODE_ENV=production
+MONGODB_URI=mongodb://mongo:27017/toybox
+MONGODB_DB=toybox
+REDIS_URL=redis://redis:6379
+JWT_SECRET=<64bytes以上のランダム文字列>
+CORS_ORIGINS=https://<フロントのドメイン>
+COOKIE_SAMESITE=none   # 別ドメイン+HTTPS は none
+COOKIE_SECURE=true     # HTTPS は true
+NEXT_PUBLIC_API_BASE=https://<APIの公開URL>
+BACKEND_INTERNAL_URL=http://backend:4000
+```
+
+ランダム文字列の生成（どれか）
+```bash
+openssl rand -base64 64
+# もしくは Node: node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+```
+
+### 2) WinSCP で同期（ローカル → VPS）
+- 左: ローカル `C:\github\toybox`
+- 右: リモート `/opt/toybox`
+- 同期 → 方向: ローカル→リモート、モード: ミラー
+- ファイルマスク（除外）:
+```
+|*/.git/*; */node_modules/*; */.next/*; backend/dist/*; *.log
+```
+（`rsync`/`tar` を使う場合はリポジトリ同梱の `.deployignore` を使用）
+
+### 3) 起動・反映
+```bash
+cd /opt/toybox
+docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps
+curl http://localhost:4000/health   # {"status":"ok"}
+```
+
+### 4) よくあるポイント
+- CORS_ORIGINS はフロントのオリジンを正確に（`https://example.com` など、カンマ区切り可）
+- HTTPS を IP 直で試すことは不可（証明書が取れないため）。HTTPS はドメイン+Caddy で
+- Cookie 設定:
+  - 同一サイト: `COOKIE_SAMESITE=lax`, `COOKIE_SECURE=true`
+  - 別ドメイン: `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`
+
+### 5) 更新フロー
+1. WinSCP で再同期
+2. `docker compose --env-file .env -f docker-compose.prod.yml up -d --build`
+

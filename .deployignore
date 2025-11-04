@@ -1,0 +1,26 @@
+# Files/dirs NOT to upload to VPS when syncing manually
+# Use this with rsync/tar, and convert to WinSCP "ファイルマスク(除外)" as needed
+
+# VCS / CI
+.git/
+.github/
+.gitignore
+
+# Node build artifacts and dependencies
+node_modules/
+frontend/node_modules/
+frontend/.next/
+backend/node_modules/
+backend/dist/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+*.log
+
+# Temp/cache
+**/.cache/
+**/tmp/
+
+# NOTE: keep backend/public/uploads/cards in repo (game assets)
+

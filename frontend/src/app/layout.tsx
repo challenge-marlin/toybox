@@ -10,6 +10,7 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const enableWebVitals = String(process.env.NEXT_PUBLIC_ENABLE_WEBVITALS || '').toLowerCase() === 'true';
   return (
     <html lang="ja">
       <body>
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <HeaderNav />
           <div id="main-content" tabIndex={-1}></div>
           {children}
-          <WebVitalsReporter />
+          {enableWebVitals && <WebVitalsReporter />}
         </ToastProvider>
       </body>
     </html>

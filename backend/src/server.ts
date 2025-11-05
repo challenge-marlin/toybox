@@ -21,16 +21,29 @@ dotenv.config();
 
 const app = express();
 
-const allowlist = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+// Safe defaults: include production domain and localhost to reduce CORS misconfig risk
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://toybox.ayatori-inc.co.jp',
+  'https://toybox.ayatori-inc.co.jp'
+];
+const envOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+const allowlist = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 app.use(
   cors({
     origin(origin, callback) {
       if (!origin) return callback(null, true);
       if (allowlist.includes(origin)) return callback(null, true);
+      // Normalize to protocol + host when comparing (ignore trailing slash)
+      try {
+        const u = new URL(origin);
+        const normalized = `${u.protocol}//${u.host}`;
+        if (allowlist.includes(normalized)) return callback(null, true);
+      } catch {}
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true

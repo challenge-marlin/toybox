@@ -18,9 +18,11 @@ services:
       MONGODB_DB: ${MONGODB_DB}
       REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
-      CORS_ORIGINS: ${CORS_ORIGINS}
-      COOKIE_SAMESITE: ${COOKIE_SAMESITE}
-      COOKIE_SECURE: ${COOKIE_SECURE}
+      # Default to production domain allowlist to avoid CORS misconfig
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://toybox.ayatori-inc.co.jp,https://toybox.ayatori-inc.co.jp}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      # Running over HTTP for now; set true when HTTPS is enabled
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     depends_on:
       - mongo
       - redis
@@ -51,12 +53,13 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
-        BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
+        # Keep client-side base empty (same-origin fetch). Next will proxy via BACKEND_INTERNAL_URL.
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-}
+        BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:4000}
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
-      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-}
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:4000}
     depends_on:
       backend:
         condition: service_healthy

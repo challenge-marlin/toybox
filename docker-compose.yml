@@ -15,7 +15,7 @@ services:
       - MONGODB_DB=toybox
       - PORT=4000
       - REDIS_URL=redis://redis:6379
-      - CORS_ORIGINS=http://localhost:3000
+      - CORS_ORIGINS=http://localhost:3000,http://toybox.ayatori-inc.co.jp,https://toybox.ayatori-inc.co.jp
     ports:
       - "4000:4000"
     depends_on:

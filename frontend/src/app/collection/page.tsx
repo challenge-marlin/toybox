@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../../lib/api';
 import { resolveUploadUrl } from '../../lib/assets';
-const FRAME_URL = '/uploads/cards/frame.png';
 
 type Entry = {
   id: string;
@@ -85,7 +84,6 @@ export default function CollectionPage() {
       <div className="rounded border border-steam-iron-700 bg-steam-iron-900 p-2">
         <div className="relative aspect-[2/3] bg-steam-iron-800 rounded mb-2 overflow-hidden">
           <CardImage meta={e.meta || undefined} />
-          <img src={FRAME_URL} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-contain pointer-events-none" style={{ transform: 'scale(1.02)', transformOrigin: 'center' }} />
         </div>
         <div className="text-xs text-steam-iron-200">{e.meta?.rarity ?? '-'}</div>
         <div className="text-sm text-steam-gold-200">{e.meta?.card_name ?? e.id}</div>

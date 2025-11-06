@@ -86,10 +86,14 @@ export const uploadGameZip = createUploadMiddleware('gamezip');
 
 
 export function buildVariantPath(relUrl: string, width: number, format: 'webp' | 'avif'): { rel: string; abs: string } {
+  // relUrl は '/uploads/xxxx.png' のような先頭スラッシュ付きの相対URL。
+  // path.join は引数に絶対パスが混ざるとそれ以降を無視するため、
+  // 物理パスを作るときは先頭スラッシュを取り除いて結合する。
   const baseRel = relUrl.replace(/\\/g, '/');
   const withoutExt = baseRel.replace(/\.[a-zA-Z0-9]+$/i, '');
-  const variantRel = `${withoutExt}.w${width}.${format}`;
-  const abs = path.join(process.cwd(), 'public', variantRel);
+  const variantRel = `${withoutExt}.w${width}.${format}`; // クライアントに返す相対URL（/uploads/...）
+  const variantRelNoLeadingSlash = variantRel.replace(/^\/+/, '');
+  const abs = path.join(process.cwd(), 'public', variantRelNoLeadingSlash);
   return { rel: variantRel, abs };
 }
 
@@ -101,16 +105,28 @@ export async function generateOptimizedImages(absPath: string, relUrl: string): 
       const webp = buildVariantPath(relUrl, w, 'webp');
       const avif = buildVariantPath(relUrl, w, 'avif');
       try {
-        await sharp(absPath).resize({ width: w, withoutEnlargement: true }).webp({ quality: 82 }).toFile(webp.abs);
+        await sharp(absPath)
+          .resize({ width: w, withoutEnlargement: true })
+          .webp({ quality: 82 })
+          .toFile(webp.abs);
       } catch {}
       try {
-        await sharp(absPath).resize({ width: w, withoutEnlargement: true }).avif({ quality: 60 }).toFile(avif.abs);
+        await sharp(absPath)
+          .resize({ width: w, withoutEnlargement: true })
+          .avif({ quality: 60 })
+          .toFile(avif.abs);
       } catch {}
-      if (!displayRel && w === 640) displayRel = webp.rel; // 既定の表示用
+      // 実際に生成できたときのみ既定表示に採用する
+      if (!displayRel && w === 640) {
+        try {
+          if (fs.existsSync(webp.abs)) displayRel = webp.rel;
+        } catch {}
+      }
     }
     return { displayRel };
   } catch {
     return {};
   }
 }
+
 

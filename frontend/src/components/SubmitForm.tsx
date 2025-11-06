@@ -24,7 +24,8 @@ export default function SubmitForm() {
   const [anonId, setAnonId] = useState('demo-anon');
   const [aim, setAim] = useState('');
   const [steps, setSteps] = useState(['', '', '']);
-  const [frameType, setFrameType] = useState('default');
+  // フレーム機能は廃止。バックエンド互換のため 'none' を常に送る
+  const [frameType] = useState('none');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,15 +101,7 @@ export default function SubmitForm() {
           </div>
         ))}
       </div>
-      <div>
-        <label className="block text-sm text-steam-gold-300">フレーム種別</label>
-        <select className="w-full rounded border border-steam-iron-700 bg-steam-iron-900 p-2" value={frameType} onChange={(e) => setFrameType(e.target.value)}>
-          <option value="default">default</option>
-          <option value="bronze">bronze</option>
-          <option value="iron">iron</option>
-          <option value="gold">gold</option>
-        </select>
-      </div>
+      {/* フレーム選択UIは非表示（互換のため値は'none'固定） */}
       {error && <div className="text-red-400 text-sm">{error}</div>}
       <button disabled={loading} className="rounded bg-steam-gold-500 px-4 py-2 text-black hover:bg-steam-gold-400 disabled:opacity-50">{loading ? '送信中…' : '提出する'}</button>
       {result && (
@@ -122,7 +115,8 @@ export default function SubmitForm() {
             <div className="rounded border border-steam-iron-700 bg-steam-iron-900 p-3 text-center">
               <div className="text-steam-gold-300 font-semibold">称号を取得しました！</div>
               <div className="mt-2 flex justify-center">
-                <img src="/uploads/sample_2.svg" alt="dummy title" className="h-20 w-auto" />
+                {/* フロントのpublic配下から配信（/uploads 経由ではなく同一オリジン直下） */}
+                <img src="/sample_2.svg" alt="dummy title" className="h-20 w-auto" />
               </div>
               <div className="mt-1 text-sm text-steam-iron-100">{result.rewardTitle ?? '新しい称号'}</div>
             </div>

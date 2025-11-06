@@ -161,7 +161,7 @@ export default function MyPage() {
       const payload: any = {
         aim: (isVideo ? '動画提出' : '画像提出'),
         steps: ['準備', '実行', '完了'],
-        frameType: 'default',
+        frameType: 'none',
         ...(imageUrl ? { imageUrl } : {}),
         ...(videoUrl ? { videoUrl } : {})
       };
@@ -397,7 +397,7 @@ export default function MyPage() {
                 <div className="text-center space-y-4">
                   <div className="text-steam-gold-300 font-semibold text-lg md:text-xl">称号を取得しました！</div>
                   <div className="mt-2 flex justify-center">
-                    <img src="/uploads/sample_2.svg" alt="dummy title" className="h-24 md:h-32 w-auto" />
+                    <img src="/sample_2.svg" alt="dummy title" className="h-24 md:h-32 w-auto" />
                   </div>
                   <div className="mt-1 text-xl md:text-2xl font-bold text-steam-gold-300">{flowResult.rewardTitle || '—'}</div>
                   <div className="mt-4">
@@ -667,7 +667,7 @@ export default function MyPage() {
                 const res = await fetch(`/api/submit/uploadGame`, { method: 'POST', body: form, headers: { 'Accept': 'application/json' }, credentials: 'include' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const { gameUrl }: { gameUrl: string } = await res.json();
-                const payload: any = { aim: 'ゲーム提出', steps: ['準備','実行','完了'], frameType: 'default', gameUrl };
+                const payload: any = { aim: 'ゲーム提出', steps: ['準備','実行','完了'], frameType: 'none', gameUrl };
                 let submitRes: SubmitResult | null = null;
                 try { submitRes = await apiPost<SubmitResult, typeof payload>(`/api/submit`, payload); } catch { submitRes = { jpResult: 'none', probability: 0, bonusCount: 0, rewardTitle: undefined, rewardCardId: undefined, jackpotRecordedAt: null }; }
                 const now = new Date().toISOString();

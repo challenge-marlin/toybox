@@ -1,8 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 
-const FRAME_URL = '/uploads/cards/frame.png';
-
 type Props = {
   imageUrl?: string | null;
   cardName: string;
@@ -24,7 +22,6 @@ export default function CardReveal({ imageUrl, cardName, rarity = 'N', onClose }
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-steam-iron-200">{cardName}</div>
           )}
-          <img src={FRAME_URL} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-contain pointer-events-none" style={{ transform: 'scale(1.02)', transformOrigin: 'center' }} />
         </div>
         <div className="mt-2 text-center text-steam-iron-100">{cardName}</div>
         <div className="text-center mt-3">

@@ -21,9 +21,18 @@ function getBaseUrl(): string {
 
 export function resolveUploadUrl(u?: string | null): string | undefined {
 	if (!u) return undefined;
+	const isServer = typeof window === 'undefined';
+	if (u.startsWith('/uploads/')) {
+		// サーバー実行時(Next API/SSR)はバックエンドの絶対URLに解決
+		if (isServer) {
+			const base = getBaseUrl();
+			return `${base}${u}`;
+		}
+		// ブラウザは同一オリジン相対で取得
+		return u;
+	}
 	const base = getBaseUrl();
-	if (u.startsWith('/uploads/')) return `${base}${u}`;
-	return u;
+	return base ? `${base}${u}` : u;
 }
 
 // Best-effort implementation: page through /api/feed to find the item

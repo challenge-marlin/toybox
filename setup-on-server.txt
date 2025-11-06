@@ -1,0 +1,48 @@
+=== サーバー側で実行するコマンド（全部コピーして貼り付け） ===
+
+# appユーザーの確認と作成
+if ! id "app" &>/dev/null; then
+    adduser app
+    echo "app_password_123" | passwd app --stdin
+fi
+
+# sudoパッケージの確認とインストール
+if ! command -v sudo &>/dev/null; then
+    yum install -y sudo || dnf install -y sudo
+fi
+
+# wheelグループの確認と作成
+if ! getent group wheel &>/dev/null; then
+    groupadd wheel
+fi
+
+# appユーザーをwheelグループに追加
+usermod -aG wheel app
+
+# sudo設定
+if ! grep -q "^%wheel" /etc/sudoers 2>/dev/null; then
+    echo "%wheel  ALL=(ALL)       ALL" >> /etc/sudoers
+fi
+
+# SSHディレクトリ作成
+mkdir -p /home/app/.ssh
+chmod 700 /home/app/.ssh
+chown app:app /home/app/.ssh
+touch /home/app/.ssh/authorized_keys
+chmod 600 /home/app/.ssh/authorized_keys
+chown app:app /home/app/.ssh/authorized_keys
+
+# パスワード認証を有効化
+cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
+sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+systemctl restart sshd
+
+# プロジェクトディレクトリ作成
+mkdir -p /home/app/toybox
+chown app:app /home/app/toybox
+
+echo "=== 完了 ==="
+echo "パスワード: app_password_123"
+

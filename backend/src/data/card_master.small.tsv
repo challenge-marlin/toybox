@@ -1,9 +1,9 @@
 card_id	card_type	card_name	rarity	rarity_rate	attribute	base_atk	base_def	effect_category	effect_target	effect_value	duration_turn	special_effect_code	initial_deck_count	image_url
-C001	Character	見習いプランナー	N	0.75	木	100	100	-	-	-	-	-	1	-
-C002	Character	駆け出しインフルエンサー	N	0.75	火	100	100	-	-	-	-	-	1	-
+C001	Character	見習いプランナー	N	0.75	火	100	100	-	-	-	-	-	1	-
+C002	Character	駆け出しインフルエンサー	N	0.75	水	100	100	-	-	-	-	-	1	-
 C003	Character	データの土台師	N	0.75	土	100	100	-	-	-	-	-	1	-
 C004	Character	プロンプト見習い工	N	0.75	金	100	100	-	-	-	-	-	1	-
-C005	Character	AIの水の導き手	N	0.75	水	100	100	-	-	-	-	-	1	-
+C005	Character	AIの木の導き手	N	0.75	木	100	100	-	-	-	-	-	1	-
 C006	Character	タスク・レンジャー	R	0.20	木	150	150	-	-	-	-	-	1	-
 C007	Character	炎舞のソーシャルナイト	R	0.20	火	150	150	-	-	-	-	-	1	-
 C008	Character	リテラシーの要塞	R	0.20	土	150	150	-	-	-	-	-	1	-

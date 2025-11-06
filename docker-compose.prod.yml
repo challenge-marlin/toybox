@@ -53,7 +53,7 @@ services:
     build:
       context: ./frontend
       args:
-        # Keep client-side base empty (same-origin fetch). Next will proxy via BACKEND_INTERNAL_URL.
+        # Same-origin fetch: Caddy proxies /api/* to backend, so no base URL needed
         NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-}
         BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:4000}
     environment:

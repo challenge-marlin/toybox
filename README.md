@@ -1,12 +1,31 @@
 ## ToyBox Monorepo
 
+### 🚀 自動デプロイ
+
+GitHubにプッシュするだけで、自動的に本番環境にデプロイされます。
+
+**セットアップ方法**: [SETUP_DEPLOYMENT.md](./SETUP_DEPLOYMENT.md) を参照
+
+**使用方法**:
+1. ローカルでコードを編集
+2. `git commit` して `git push origin main`
+3. GitHub Actionsが自動的に本番環境にデプロイ
+
+詳細は [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) を参照してください。
+
 ### 起動方法（クイック）
+
+#### ローカル開発環境
 - Windows のバッチで一括起動
   - `start-all-docker.bat`（Docker Desktop 必須）
   - 停止: `stop-all-docker.bat`
 - 直接コマンド（推奨）
   - `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build`
   - 画面: Frontend `http://localhost:3000/` / Backend `http://localhost:4000/health`
+
+#### 本番環境
+- **自動デプロイ**: GitHubにプッシュするだけで自動デプロイ（推奨）
+- **手動デプロイ**: `./scripts/deploy.sh` を実行
 
 ### 環境変数ファイル（.env）
 

@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../../lib/api';
 import { resolveUploadUrl } from '../../lib/assets';
+import ImageLightbox from '../../components/ImageLightbox';
 
 type Entry = {
   id: string;
@@ -27,6 +28,8 @@ export default function CollectionPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [tab, setTab] = useState<'character' | 'effect'>('character');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string>('');
 
   function candidatesFor(meta?: Entry['meta']): string[] {
     if (!meta) return [];
@@ -80,8 +83,15 @@ export default function CollectionPage() {
   }, [filtered]);
 
   function CardTile({ e }: { e: Entry }) {
+    const src = candidatesFor(e.meta || undefined)[0];
     return (
-      <div className="rounded border border-steam-iron-700 bg-steam-iron-900 p-2">
+      <div
+        className="rounded border border-steam-iron-700 bg-steam-iron-900 p-2 cursor-zoom-in"
+        onClick={() => { if (src) { setLightboxSrc(src); setLightboxOpen(true); } }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { if (src) { setLightboxSrc(src); setLightboxOpen(true); } } }}
+      >
         <div className="relative aspect-[2/3] bg-steam-iron-800 rounded mb-2 overflow-hidden">
           <CardImage meta={e.meta || undefined} />
         </div>
@@ -129,6 +139,8 @@ export default function CollectionPage() {
       ) : (
         <CardGrid items={ordered} />
       )}
+      {/* カード拡大表示（Discord共有なし：assetを渡さない） */}
+      <ImageLightbox src={lightboxSrc} alt="card" open={lightboxOpen} onClose={() => setLightboxOpen(false)} type="image" />
     </main>
   );
 }

@@ -45,3 +45,15 @@ html, body {
 .mio-float {
   animation: mioFloatFade 1800ms ease-out both;
 }
+
+/* カード獲得演出: Y軸スピンイン */
+@keyframes cardSpinYIn {
+  0% { transform: rotateY(-90deg) scale(0.94); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+}
+.card-spin-y-in {
+  animation: cardSpinYIn 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}

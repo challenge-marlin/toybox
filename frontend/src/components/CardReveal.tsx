@@ -10,6 +10,7 @@ type Props = {
 
 export default function CardReveal({ imageUrl, cardName, rarity = 'N', onClose }: Props) {
   const [show, setShow] = useState(true);
+  const [imgError, setImgError] = useState(false);
   const isEpic = rarity === 'SSR' || rarity === 'SR';
 
   return !show ? null : (
@@ -17,12 +18,13 @@ export default function CardReveal({ imageUrl, cardName, rarity = 'N', onClose }
       <div className={`rounded-md border p-3 shadow-xl ${isEpic ? 'border-yellow-500' : 'border-steam-iron-700'} bg-steam-iron-900`}>
         <div className="text-center text-steam-gold-200 mb-2">{rarity} 獲得！</div>
         <div className="relative w-[280px] h-[400px] bg-steam-iron-800 overflow-hidden rounded" style={{ perspective: '1000px' }}>
-          {imageUrl ? (
+          {imageUrl && !imgError ? (
             <img
               src={imageUrl}
               alt={cardName}
               className="absolute inset-0 w-full h-full object-contain card-spin-y-in"
               style={{ transformOrigin: 'center' }}
+              onError={() => setImgError(true)}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-steam-iron-200">{cardName}</div>

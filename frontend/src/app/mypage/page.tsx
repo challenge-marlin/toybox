@@ -53,6 +53,7 @@ export default function MyPage() {
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
   const [lightboxAsset, setLightboxAsset] = useState<{ id: string; type: 'image' | 'video' | 'game' | 'other'; title?: string; authorName?: string; mimeType: string; sizeBytes?: number; fileUrl: string } | null>(null);
   const [pendingFlow, setPendingFlow] = useState<SubmitResult | null>(null);
+  const [okLoading, setOkLoading] = useState(false);
 
   function localKey(a: string) {
     return `toybox_local_submissions_${a}`;
@@ -402,7 +403,20 @@ export default function MyPage() {
                   <div className="mt-1 text-xl md:text-2xl font-bold text-steam-gold-300">{flowResult.rewardTitle || '—'}</div>
                   <div className="mt-4">
                     <button
-                      onClick={() => { setFlowOpen(false); setFlowPhase('done'); try { window.location.reload(); } catch {} }}
+                      onClick={async () => {
+                        if (okLoading) return;
+                        setOkLoading(true);
+                        try {
+                          const r = await apiPost<{ ok: boolean; title?: string; until?: string | null }, {}>('/api/user/nextTitle', {} as any);
+                          if (r?.title) {
+                            setTitleBadge(r.title || null);
+                            setFlowResult((prev) => prev ? { ...prev, rewardTitle: r.title || prev.rewardTitle } : prev);
+                          }
+                        } catch {}
+                        setFlowOpen(false);
+                        setFlowPhase('done');
+                        try { window.location.reload(); } catch {}
+                      }}
                       className="rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600"
                     >OK</button>
                   </div>

@@ -5,6 +5,7 @@ import { uploadAvatar, uploadHeader } from '../lib/upload.js';
 import { UpdateBioSchema, UpdateDisplayNameSchema } from '../validation/user.js';
 import { UnauthorizedError, BadRequestError } from '../middleware/errorHandler.js';
 import type { UserMeDto, UpdateProfileResponse } from '../dto/UserDto.js';
+import { grantImmediateRewards } from '../services/lotteryService.js';
 
 export const userRouter = Router();
 
@@ -51,6 +52,26 @@ userRouter.get('/user/me', async (req, res, next) => {
 
     logger.info('user.me', { anonId });
     return res.json(payload);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 次の称号を即時付与（カードも同時にアルバム追加されます）
+userRouter.post('/user/nextTitle', async (req, res, next) => {
+  try {
+    const anonId = (req as any).anonId as string;
+    if (!anonId) throw new UnauthorizedError();
+    const user = await UserMetaModel.findOne({ anonId });
+    if (!user) throw new UnauthorizedError();
+
+    const reward = await grantImmediateRewards(user);
+    logger.info('user.nextTitle.granted', { anonId, title: reward.title });
+    return res.json({
+      ok: true,
+      title: reward.title,
+      until: user.activeTitleUntil ?? null
+    });
   } catch (err) {
     next(err);
   }

@@ -24,7 +24,6 @@ const app = express();
 // Safe defaults: include production domain and localhost to reduce CORS misconfig risk
 const defaultOrigins = [
   'http://localhost:3000',
-  'http://toybox.ayatori-inc.co.jp',
   'https://toybox.ayatori-inc.co.jp'
 ];
 const envOrigins = (process.env.CORS_ORIGINS || '')

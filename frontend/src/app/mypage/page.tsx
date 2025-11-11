@@ -336,17 +336,25 @@ export default function MyPage() {
       (async () => {
         const res = pendingFlow; setPendingFlow(null);
         setFlowResult(res);
-        if (res?.rewardCard) {
-          const rc = res.rewardCard;
+        // カード演出は必ず表示（rewardCard が無くてもプレースホルダー）
+        const rc = res?.rewardCard;
+        if (rc) {
           const img = rc.image_url ? resolveUploadUrl(rc.image_url) : resolveUploadUrl(`/uploads/cards/${rc.card_id}.png`);
           setCardReveal({ imageUrl: img, cardName: rc.card_name, rarity: rc.rarity });
         } else {
-          setCardReveal(null);
+          // サーバからカード生成APIで確実に1枚付与して表示
+          try {
+            const gen = await apiPost<{ ok: boolean; card: { card_id: string; card_name: string; rarity?: 'SSR'|'SR'|'R'|'N'; image_url?: string | null } }, { type?: 'Character' | 'Effect' }>(`/api/cards/generate`, { type: 'Character' });
+            const gc = gen.card;
+            const img = gc.image_url ? resolveUploadUrl(gc.image_url) : resolveUploadUrl(`/uploads/cards/${gc.card_id}.png`);
+            setCardReveal({ imageUrl: img, cardName: gc.card_name, rarity: gc.rarity });
+          } catch {
+            setCardReveal({ imageUrl: undefined, cardName: '新しいカード', rarity: 'N' });
+          }
         }
         setFlowOpen(true);
         setFadeOut(false);
         setFlowPhase('card');
-        // カード表示はタイマーで遷移しない。カードを閉じたら称号画面へ進む
       })();
     }
   }, [uploading, pendingFlow]);
@@ -392,7 +400,18 @@ export default function MyPage() {
                     rarity={cardReveal.rarity}
                     onClose={() => { setCardReveal(null); setFlowPhase('title'); }}
                   />
-                ) : null
+                ) : (
+                  <div className="text-center space-y-4">
+                    <div className="text-steam-gold-300 font-semibold text-lg md:text-xl">カードを表示できませんでした</div>
+                    <div className="text-sm text-steam-iron-200">次へ進んで称号を確認してください。</div>
+                    <div className="mt-2">
+                      <button
+                        onClick={() => setFlowPhase('title')}
+                        className="rounded bg-steam-brown-500 px-4 py-2 text-white hover:bg-steam-brown-600"
+                      >次へ</button>
+                    </div>
+                  </div>
+                )
               )}
               {flowPhase === 'title' && (
                 <div className="text-center space-y-4">

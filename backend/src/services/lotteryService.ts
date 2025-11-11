@@ -31,7 +31,7 @@ function drawWithProbability(prob: number): boolean {
 }
 
 // 即時報酬: ランダム称号（7日）とカード1枚付与
-export async function grantImmediateRewards(user: UserMeta, opts?: { boostRarity?: boolean }): Promise<{ user: UserMeta; title: string; cardId: string; cardMeta?: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } }> {
+export async function grantImmediateRewards(user: UserMeta, opts?: { boostRarity?: boolean }): Promise<{ user: UserMeta; title: string; cardId?: string; cardMeta?: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } }> {
   const titles = [
     '蒸気の旅人',
     '真鍮の探究者',
@@ -43,8 +43,9 @@ export async function grantImmediateRewards(user: UserMeta, opts?: { boostRarity
   const now = new Date();
   const until = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // マスターからカードを抽選（キャラクター/エフェクトを50%で選択。なければフォールバックID）
-  let chosenCardId = `card_${now.getTime()}`;
+  // マスターからカードを抽選（キャラクター/エフェクトを50%で選択）
+  // マスターに存在しないIDは決して発行しない（fallbackで新規IDは作らない）
+  let chosenCardId: string | null = null;
   let cardMeta: { card_id: string; card_name: string; rarity?: string; image_url?: string | null } | undefined;
   try {
     const master = await loadCardMaster();
@@ -103,11 +104,14 @@ export async function grantImmediateRewards(user: UserMeta, opts?: { boostRarity
 
   user.activeTitle = chosen;
   user.activeTitleUntil = until;
-  user.cardsAlbum = [...(user.cardsAlbum || []), { id: chosenCardId, obtainedAt: now }];
+  // カードIDが取得できた場合のみアルバムへ追加（未知のIDは決して保存しない）
+  if (chosenCardId) {
+    user.cardsAlbum = [...(user.cardsAlbum || []), { id: chosenCardId, obtainedAt: now }];
+  }
 
   await user.save();
   logger.info('reward.granted', { anonId: user.anonId, title: chosen, cardId: chosenCardId });
-  return { user, title: chosen, cardId: chosenCardId, cardMeta };
+  return { user, title: chosen, cardId: chosenCardId ?? undefined, cardMeta };
 }
 
 // 提出後の全処理

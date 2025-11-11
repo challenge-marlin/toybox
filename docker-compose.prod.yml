@@ -18,11 +18,11 @@ services:
       MONGODB_DB: ${MONGODB_DB}
       REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
-      # Default to production domain allowlist to avoid CORS misconfig
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://toybox.ayatori-inc.co.jp,https://toybox.ayatori-inc.co.jp}
-      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
-      # Running over HTTP for now; set true when HTTPS is enabled
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # CORS は本番ドメインに固定（混在コンテンツを防止）
+      CORS_ORIGINS: https://toybox.ayatori-inc.co.jp
+      COOKIE_SAMESITE: lax
+      # HTTPS 運用のため Cookie は Secure に固定
+      COOKIE_SECURE: "true"
     depends_on:
       - mongo
       - redis
@@ -54,11 +54,11 @@ services:
       context: ./frontend
       args:
         # Same-origin fetch: Caddy proxies /api/* to backend, so no base URL needed
-        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-}
+        NEXT_PUBLIC_API_BASE: ""
         BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:4000}
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-}
+      NEXT_PUBLIC_API_BASE: ""
       BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:4000}
     depends_on:
       backend:

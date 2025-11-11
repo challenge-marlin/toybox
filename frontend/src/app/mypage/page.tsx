@@ -346,12 +346,7 @@ export default function MyPage() {
         setFlowOpen(true);
         setFadeOut(false);
         setFlowPhase('card');
-        await new Promise((r) => setTimeout(r, 3000));
-        setFadeOut(true);
-        await new Promise((r) => setTimeout(r, 300));
-        setFlowPhase('title');
-        setFadeOut(false);
-        // この後はユーザーのOK操作で閉じる
+        // カード表示はタイマーで遷移しない。カードを閉じたら称号画面へ進む
       })();
     }
   }, [uploading, pendingFlow]);
@@ -391,7 +386,12 @@ export default function MyPage() {
             <div className={["transition-opacity duration-300", fadeOut ? 'opacity-0' : 'opacity-100'].join(' ')}>
               {flowPhase === 'card' && (
                 cardReveal ? (
-                  <CardReveal imageUrl={cardReveal.imageUrl || undefined} cardName={cardReveal.cardName} rarity={cardReveal.rarity} onClose={() => setCardReveal(null)} />
+                  <CardReveal
+                    imageUrl={cardReveal.imageUrl || undefined}
+                    cardName={cardReveal.cardName}
+                    rarity={cardReveal.rarity}
+                    onClose={() => { setCardReveal(null); setFlowPhase('title'); }}
+                  />
                 ) : null
               )}
               {flowPhase === 'title' && (

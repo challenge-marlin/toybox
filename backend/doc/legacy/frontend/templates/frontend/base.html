@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ToyBox{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'frontend/css/base.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="header-nav" style="border-bottom: 1px solid var(--steam-iron-800); background: rgba(31, 35, 42, 0.7);">
+        <div class="container" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; font-size: 0.875rem; max-width: 1200px; margin: 0 auto;">
+            <nav style="display: flex; align-items: center; gap: 1rem;">
+                <a href="{% if user.is_authenticated %}{% url 'me' %}{% else %}{% url 'index' %}{% endif %}" style="display: flex; align-items: center;">
+                    <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="ToyBox" style="height: 2rem; width: auto;">
+                </a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'me' %}" style="color: var(--steam-gold-400); text-decoration: none;">マイページ</a>
+                    <a href="{% url 'feed' %}" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
+                {% else %}
+                    <a href="{% url 'feed' %}" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
+                    <a href="{% url 'login' %}" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
+                {% endif %}
+            </nav>
+            {% if user.is_authenticated %}
+                <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--steam-iron-200);">
+                    <span style="display: none;" class="md:inline">{{ user.display_id }}</span>
+                    <a href="{% url 'login' %}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token');">ログアウト</a>
+                </div>
+            {% endif %}
+        </div>
+    </header>
+    
+    <main id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

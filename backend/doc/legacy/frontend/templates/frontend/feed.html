@@ -1,0 +1,495 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}ToyBox - みんなの投稿{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feed-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .feed-title {
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--steam-gold-300);
+    }
+    
+    .feed-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    @media (min-width: 768px) {
+        .feed-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+    
+    @media (min-width: 1024px) {
+        .feed-grid {
+            grid-template-columns: repeat(6, 1fr);
+        }
+    }
+    
+    .feed-item {
+        position: relative;
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        overflow: hidden;
+        aspect-ratio: 1;
+    }
+    
+    .feed-item.game {
+        border-color: #a855f7;
+    }
+    
+    .feed-item.video {
+        border-color: #0ea5e9;
+    }
+    
+    .feed-item-header {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        z-index: 10;
+        font-size: 0.625rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+    }
+    
+    .feed-item-header a {
+        color: white;
+        text-decoration: none;
+    }
+    
+    .feed-item-header a:hover {
+        text-decoration: underline;
+    }
+    
+    .feed-item-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 0.75rem;
+        cursor: zoom-in;
+    }
+    
+    .feed-item-video-container {
+        width: 100%;
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .feed-item-video {
+        max-height: 100%;
+        max-width: 100%;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+    
+    .feed-item-play-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .feed-item-play-button {
+        height: 3rem;
+        width: 3rem;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    .feed-item-game-container {
+        width: 100%;
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem;
+        user-select: none;
+    }
+    
+    .feed-item-game-icon {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--steam-iron-200);
+    }
+    
+    .feed-item-game-icon svg {
+        width: 40px;
+        height: 40px;
+        color: var(--steam-gold-300);
+        margin-bottom: 0.25rem;
+    }
+    
+    .feed-item-game-label {
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        font-weight: 600;
+    }
+    
+    .feed-item-ring {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border-radius: 8px;
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    .feed-item.game .feed-item-ring {
+        box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.7);
+    }
+    
+    .feed-item.video .feed-item-ring {
+        box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.7);
+    }
+    
+    .feed-item:not(.game):not(.video) .feed-item-ring {
+        box-shadow: 0 0 0 2px rgba(224, 168, 0, 0.6);
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+    
+    .feed-like-btn {
+        position: absolute;
+        bottom: 0.5rem;
+        right: 0.5rem;
+        z-index: 10;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .feed-like-btn:hover {
+        background: rgba(0, 0, 0, 0.8);
+    }
+    
+    .feed-like-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .feed-like-btn.liked svg {
+        fill: #fb7185;
+        color: #fb7185;
+    }
+    
+    .feed-game-link {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        z-index: 10;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .feed-game-link:hover {
+        background: rgba(0, 0, 0, 0.8);
+    }
+    
+    .feed-game-link svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: var(--steam-iron-300);
+        font-size: 0.875rem;
+    }
+    
+    .feed-sentinel {
+        height: 4px;
+    }
+    
+    .feed-end-message {
+        margin-top: 1rem;
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--steam-iron-400);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feed-container">
+    <h1 class="feed-title">みんなの投稿</h1>
+    <div id="feed" class="feed-grid">
+        <div class="loading">読み込み中...</div>
+    </div>
+    <div id="sentinel" class="feed-sentinel"></div>
+    <div id="loading-indicator" class="loading" style="display: none;">読み込み中…</div>
+    <div id="end-message" class="feed-end-message" style="display: none;">すべて表示しました</div>
+</div>
+
+<!-- ライトボックス -->
+<div id="lightbox" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer;" onclick="closeLightbox()">
+    <img id="lightbox-image" src="" alt="" style="max-width: 90%; max-height: 90%; object-fit: contain; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+    <video id="lightbox-video" controls style="max-width: 90%; max-height: 90%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;"></video>
+</div>
+
+<script>
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    let items = [];
+    let nextCursor = null;
+    let loading = false;
+    let initialized = false;
+    
+    function loadFeed(cursor = null) {
+        if (loading) return;
+        loading = true;
+        document.getElementById('loading-indicator').style.display = 'block';
+        
+        const url = cursor 
+            ? `/api/submissions/?day=today&cursor=${encodeURIComponent(cursor)}`
+            : '/api/submissions/?day=today';
+        
+        fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(res => {
+            if (res.status === 401) {
+                localStorage.removeItem('access_token');
+                window.location.href = '{% url "login" %}';
+                return null;
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (!data) return;
+            
+            if (cursor) {
+                const existingIds = new Set(items.map(x => x.id));
+                const incoming = (data.results || []).filter(x => !existingIds.has(x.id));
+                items = [...items, ...incoming];
+            } else {
+                items = data.results || [];
+            }
+            
+            nextCursor = data.next || null;
+            renderFeed();
+            initialized = true;
+        })
+        .catch(err => {
+            console.error(err);
+        })
+        .finally(() => {
+            loading = false;
+            document.getElementById('loading-indicator').style.display = 'none';
+        });
+    }
+    
+    function renderFeed() {
+        const feed = document.getElementById('feed');
+        if (items.length === 0 && initialized) {
+            feed.innerHTML = '<div class="loading" style="grid-column: 1 / -1;">投稿はまだありません</div>';
+            return;
+        }
+        
+        feed.innerHTML = items.map(item => {
+            const isGame = item.game_url;
+            const isVideo = item.video_url;
+            const itemClass = isGame ? 'game' : (isVideo ? 'video' : '');
+            
+            let content = '';
+            if (isGame) {
+                content = `
+                    <div class="feed-item-game-container">
+                        <div class="feed-item-game-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                            </svg>
+                            <div class="feed-item-game-label">GAME</div>
+                        </div>
+                    </div>
+                `;
+            } else if (isVideo) {
+                content = `
+                    <div class="feed-item-video-container" onclick="openLightbox('${item.video_url}', 'video')">
+                        <video src="${item.video_url}" class="feed-item-video" muted preload="metadata"></video>
+                        <div class="feed-item-play-overlay">
+                            <div class="feed-item-play-button">
+                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 22px; height: 22px;">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                content = `<img src="${item.image || ''}" alt="submission" class="feed-item-image" onclick="openLightbox('${item.image || ''}', 'image')">`;
+            }
+            
+            return `
+                <div class="feed-item ${itemClass}">
+                    <div class="feed-item-ring"></div>
+                    <div class="feed-item-header">
+                        <a href="/users/${item.author_display_id}/">${item.author_display_id || 'Unknown'}</a>
+                    </div>
+                    ${content}
+                    <button class="feed-like-btn ${item.user_reacted ? 'liked' : ''}" onclick="toggleLike(${item.id}, ${item.user_reacted || false})">
+                        <svg viewBox="0 0 24 24" fill="${item.user_reacted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                        <span>${item.reactions_count || 0}</span>
+                    </button>
+                    ${isGame ? `
+                        <a href="${item.game_url}" target="_blank" rel="noreferrer" class="feed-game-link" title="ゲームを開く" onclick="event.stopPropagation()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                            </svg>
+                            開く
+                        </a>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function toggleLike(submissionId, currentLiked) {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            alert('ログインが必要です');
+            return;
+        }
+        
+        const item = items.find(x => x.id === submissionId);
+        if (!item) return;
+        
+        // 楽観的更新
+        item.user_reacted = !currentLiked;
+        item.reactions_count = Math.max(0, (item.reactions_count || 0) + (currentLiked ? -1 : 1));
+        renderFeed();
+        
+        const method = currentLiked ? 'DELETE' : 'POST';
+        fetch(`/api/submissions/${submissionId}/react/submit_medal/`, {
+            method: method,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok !== undefined) {
+                // サーバーからの結果で更新
+                item.user_reacted = data.liked || false;
+                item.reactions_count = data.reactions_count || 0;
+                renderFeed();
+            }
+        })
+        .catch(err => {
+            // ロールバック
+            item.user_reacted = currentLiked;
+            item.reactions_count = Math.max(0, (item.reactions_count || 0) + (currentLiked ? 1 : -1));
+            renderFeed();
+            console.error(err);
+        });
+    }
+    
+    function openLightbox(src, type) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxVideo = document.getElementById('lightbox-video');
+        
+        if (type === 'video') {
+            lightboxImage.style.display = 'none';
+            lightboxVideo.style.display = 'block';
+            lightboxVideo.src = src;
+        } else {
+            lightboxImage.style.display = 'block';
+            lightboxVideo.style.display = 'none';
+            lightboxImage.src = src;
+        }
+        
+        lightbox.style.display = 'flex';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxVideo = document.getElementById('lightbox-video');
+        lightbox.style.display = 'none';
+        lightboxVideo.pause();
+        lightboxVideo.src = '';
+    }
+    
+    // 無限スクロール
+    const observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            if (entry.isIntersecting && nextCursor && !loading) {
+                loadFeed(nextCursor);
+            }
+        }
+    }, { root: null, rootMargin: '200px', threshold: 0 });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            document.getElementById('feed').innerHTML = '<div class="loading" style="grid-column: 1 / -1;">ログインが必要です</div>';
+            return;
+        }
+        
+        loadFeed();
+        observer.observe(document.getElementById('sentinel'));
+        
+        // すべて表示済みのチェック
+        const checkEnd = setInterval(() => {
+            if (initialized && !loading && !nextCursor && items.length > 0) {
+                document.getElementById('end-message').style.display = 'block';
+                clearInterval(checkEnd);
+            }
+        }, 100);
+    });
+</script>
+{% endblock %}
+

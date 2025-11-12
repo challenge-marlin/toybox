@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理画面 - 監査ログ</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .header {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 1.5rem; color: #dc2626; }
+        .nav { display: flex; gap: 1rem; }
+        .nav a {
+            text-decoration: none;
+            color: #666;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .nav a:hover { background: #f0f0f0; }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .table-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #f9fafb;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        tr:hover { background: #f9fafb; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        .badge-warn { background: #fef3c7; color: #92400e; }
+        .badge-suspend { background: #fbbf24; color: white; }
+        .badge-ban { background: #fee2e2; color: #991b1b; }
+        .badge-delete { background: #dc2626; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>管理画面</h1>
+        <nav class="nav">
+            <a href="/admin/console/">ダッシュボード</a>
+            <a href="/admin/console/users/">ユーザー</a>
+            <a href="/admin/console/submissions/">投稿</a>
+            <a href="/admin/console/discord-shares/">Discordシェア</a>
+            <a href="/admin/console/audit-logs/">監査ログ</a>
+        </nav>
+    </div>
+    
+    <div class="container">
+        <h2 style="margin-bottom: 1.5rem;">監査ログ</h2>
+        
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>日時</th>
+                        <th>アクション</th>
+                        <th>実行者</th>
+                        <th>対象ユーザー</th>
+                        <th>対象投稿</th>
+                        <th>詳細</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <span class="badge badge-{{ log.action|lower }}">
+                                {{ log.get_action_display }}
+                            </span>
+                        </td>
+                        <td>{{ log.actor.display_id|default:"システム" }}</td>
+                        <td>{{ log.target_user.display_id|default:"-" }}</td>
+                        <td>{{ log.target_submission.id|default:"-" }}</td>
+                        <td>{{ log.payload|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; color: #666;">
+                            監査ログが見つかりませんでした
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
+

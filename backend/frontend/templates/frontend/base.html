@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ToyBox{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'frontend/css/base.css' %}">
+    <script src="{% static 'frontend/js/auth.js' %}"></script>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="header-nav" style="border-bottom: 1px solid var(--steam-iron-800); background: rgba(31, 35, 42, 0.7);">
+        <div class="container" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; font-size: 0.875rem; max-width: 1200px; margin: 0 auto;">
+            <nav style="display: flex; align-items: center; gap: 1rem;">
+                <a href="/" id="logo-link" style="display: flex; align-items: center;">
+                    <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="ToyBox" style="height: 2rem; width: auto;">
+                </a>
+                <a href="/me/" id="nav-mypage" style="color: var(--steam-gold-400); text-decoration: none; display: none;">マイページ</a>
+                <a href="/collection/" id="nav-collection" style="color: var(--steam-gold-400); text-decoration: none; display: none;">コレクション</a>
+                <a href="/profile/view/" id="nav-profile" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール</a>
+                <a href="/feed/" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
+                <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
+            </nav>
+            <div id="user-info" style="display: flex; align-items: center; gap: 0.75rem; color: var(--steam-iron-200); display: none;">
+                <span id="user-display-id" style="display: inline;"></span>
+                <a href="/login/" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="clearAuth(); window.location.href='/'; return false;">ログアウト</a>
+            </div>
+        </div>
+    </header>
+    
+    <main id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    {% block extra_js %}{% endblock %}
+    <script>
+        // ナビゲーションの認証状態に応じた表示切り替え
+        document.addEventListener('DOMContentLoaded', function() {
+            const isAuthenticated = hasValidToken();
+            const logoLink = document.getElementById('logo-link');
+            const navMypage = document.getElementById('nav-mypage');
+            const navCollection = document.getElementById('nav-collection');
+            const navProfile = document.getElementById('nav-profile');
+            const navLogin = document.getElementById('nav-login');
+            const userInfo = document.getElementById('user-info');
+            const userDisplayId = document.getElementById('user-display-id');
+            
+            if (isAuthenticated) {
+                // ログイン済みの場合
+                if (logoLink) logoLink.href = '/me/';
+                if (navMypage) navMypage.style.display = 'inline';
+                if (navCollection) navCollection.style.display = 'inline';
+                if (navProfile) navProfile.style.display = 'inline';
+                if (navLogin) navLogin.style.display = 'none';
+                if (userInfo) userInfo.style.display = 'flex';
+                
+                // ユーザー情報を取得して表示
+                fetch('/api/users/me/meta/', {
+                    headers: {
+                        'Authorization': `Bearer ${getAccessToken()}`,
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (userDisplayId) {
+                        // display_nameがあれば表示、なければdisplay_idを表示
+                        if (data.display_name) {
+                            userDisplayId.textContent = data.display_name;
+                        } else if (data.display_id) {
+                            userDisplayId.textContent = data.display_id;
+                        }
+                        userDisplayId.style.display = 'inline';
+                    }
+                })
+                .catch(err => console.error('Failed to load user info:', err));
+            } else {
+                // 未ログインの場合
+                if (logoLink) logoLink.href = '/';
+                if (navMypage) navMypage.style.display = 'none';
+                if (navCollection) navCollection.style.display = 'none';
+                if (navProfile) navProfile.style.display = 'none';
+                if (navLogin) navLogin.style.display = 'inline';
+                if (userInfo) userInfo.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
+

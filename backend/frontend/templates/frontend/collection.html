@@ -1,0 +1,326 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}コレクション - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .collection-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .collection-title {
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--steam-gold-300);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    @media (min-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+    
+    .stat-card {
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        padding: 0.75rem;
+        text-align: center;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--steam-iron-300);
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem;
+        color: var(--steam-gold-200);
+    }
+    
+    .tab-container {
+        display: inline-flex;
+        border-radius: 4px;
+        border: 1px solid var(--steam-iron-700);
+        margin-bottom: 1rem;
+    }
+    
+    .tab-button {
+        padding: 0.5rem 0.75rem;
+        background: transparent;
+        color: var(--steam-iron-200);
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    
+    .tab-button.active {
+        background: var(--steam-iron-700);
+        color: var(--steam-gold-200);
+    }
+    
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    @media (min-width: 768px) {
+        .cards-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+    
+    @media (min-width: 1024px) {
+        .cards-grid {
+            grid-template-columns: repeat(6, 1fr);
+        }
+    }
+    
+    .card-tile {
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        padding: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .card-tile:hover {
+        border-color: var(--steam-gold-400);
+    }
+    
+    .card-image-container {
+        position: relative;
+        aspect-ratio: 2/3;
+        background: var(--steam-iron-800);
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .card-image {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform: scale(0.97);
+        transform-origin: center;
+    }
+    
+    .card-rarity {
+        font-size: 0.75rem;
+        color: var(--steam-iron-200);
+    }
+    
+    .card-name {
+        font-size: 0.875rem;
+        color: var(--steam-gold-200);
+    }
+    
+    .card-attribute {
+        font-size: 0.75rem;
+        color: var(--steam-iron-300);
+    }
+    
+    .lightbox-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 5000;
+        background: rgba(0, 0, 0, 0.9);
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .lightbox-overlay.show {
+        display: flex;
+    }
+    
+    .lightbox-content {
+        max-width: 90%;
+        max-height: 90%;
+    }
+    
+    .lightbox-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="collection-container">
+    <h1 class="collection-title">コレクション</h1>
+    
+    <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">総数</div>
+            <div class="stat-value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">SSR</div>
+            <div class="stat-value" id="stat-ssr">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">SR</div>
+            <div class="stat-value" id="stat-sr">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">R</div>
+            <div class="stat-value" id="stat-r">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">N</div>
+            <div class="stat-value" id="stat-n">0</div>
+        </div>
+    </div>
+    
+    <div class="tab-container">
+        <button class="tab-button active" id="tab-character" onclick="switchTab('character')">キャラクター</button>
+        <button class="tab-button" id="tab-effect" onclick="switchTab('effect')">効果</button>
+    </div>
+    
+    <div class="cards-grid" id="cards-grid">
+        <div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">読み込み中...</div>
+    </div>
+</div>
+
+<!-- ライトボックス -->
+<div class="lightbox-overlay" id="lightbox-overlay" onclick="closeLightbox()">
+    <div class="lightbox-content">
+        <img id="lightbox-image" class="lightbox-image" src="" alt="card">
+    </div>
+</div>
+
+<script>
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    const token = getAccessToken();
+    
+    // 認証チェック
+    if (!requireAuth()) {
+        // requireAuth()がfalseを返した場合、既にリダイレクトされている
+    }
+    
+    let currentTab = 'character';
+    let allEntries = [];
+    
+    // 初期データ読み込み
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCollection();
+    });
+    
+    function loadCollection() {
+        Promise.all([
+            fetch('/api/cards/summary/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            }).then(res => res.json()),
+            fetch('/api/cards/me/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            }).then(res => res.json())
+        ])
+        .then(([summary, cards]) => {
+            if (summary.ok) {
+                document.getElementById('stat-total').textContent = summary.total || 0;
+                document.getElementById('stat-ssr').textContent = summary.rarity.SSR || 0;
+                document.getElementById('stat-sr').textContent = summary.rarity.SR || 0;
+                document.getElementById('stat-r').textContent = summary.rarity.R || 0;
+                document.getElementById('stat-n').textContent = summary.rarity.N || 0;
+            }
+            
+            if (cards.ok && cards.entries) {
+                allEntries = cards.entries;
+                renderCards();
+            }
+        })
+        .catch(err => {
+            console.error('Failed to load collection:', err);
+            document.getElementById('cards-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">データの読み込みに失敗しました</div>';
+        });
+    }
+    
+    function switchTab(tab) {
+        currentTab = tab;
+        document.getElementById('tab-character').classList.toggle('active', tab === 'character');
+        document.getElementById('tab-effect').classList.toggle('active', tab === 'effect');
+        renderCards();
+    }
+    
+    function renderCards() {
+        const grid = document.getElementById('cards-grid');
+        const filtered = allEntries.filter(e => {
+            const type = e.meta?.card_type;
+            if (currentTab === 'character') {
+                return type === 'Character' && /^C/i.test(e.id);
+            }
+            return type === 'Effect' && /^E/i.test(e.id);
+        });
+        
+        // Sort by obtainedAt (newest first)
+        filtered.sort((a, b) => {
+            const ta = a.obtainedAt ? new Date(a.obtainedAt).getTime() : 0;
+            const tb = b.obtainedAt ? new Date(b.obtainedAt).getTime() : 0;
+            return tb - ta;
+        });
+        
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">カードがありません。</div>';
+            return;
+        }
+        
+        grid.innerHTML = filtered.map(e => {
+            const meta = e.meta || {};
+            const imageUrl = meta.image_url || `/uploads/cards/${meta.card_id || e.id}.png`;
+            
+            return `
+                <div class="card-tile" onclick="openLightbox('${imageUrl}')">
+                    <div class="card-image-container">
+                        <img src="${imageUrl}" alt="${meta.card_name || e.id}" class="card-image" onerror="this.style.display='none'">
+                    </div>
+                    <div class="card-rarity">${meta.rarity || '-'}</div>
+                    <div class="card-name">${meta.card_name || e.id}</div>
+                    ${meta.card_type === 'Character' && meta.attribute ? `<div class="card-attribute">${meta.attribute}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function openLightbox(imageUrl) {
+        const overlay = document.getElementById('lightbox-overlay');
+        const image = document.getElementById('lightbox-image');
+        image.src = imageUrl;
+        overlay.classList.add('show');
+    }
+    
+    function closeLightbox() {
+        const overlay = document.getElementById('lightbox-overlay');
+        overlay.classList.remove('show');
+    }
+    
+    // ESCキーで閉じる
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+</script>
+{% endblock %}
+

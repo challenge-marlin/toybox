@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理画面 - 投稿一覧</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .header {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 1.5rem; color: #dc2626; }
+        .nav { display: flex; gap: 1rem; }
+        .nav a {
+            text-decoration: none;
+            color: #666;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .nav a:hover { background: #f0f0f0; }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .filter-form {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .filter-form label {
+            margin-right: 1rem;
+        }
+        .table-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #f9fafb;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        tr:hover { background: #f9fafb; }
+        .btn {
+            padding: 0.25rem 0.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-right: 0.5rem;
+        }
+        .btn-delete { background: #dc2626; color: white; }
+        .btn-restore { background: #10b981; color: white; }
+        .btn:hover { opacity: 0.9; }
+        .badge-deleted { color: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>管理画面</h1>
+        <nav class="nav">
+            <a href="/admin/console/">ダッシュボード</a>
+            <a href="/admin/console/users/">ユーザー</a>
+            <a href="/admin/console/submissions/">投稿</a>
+            <a href="/admin/console/discord-shares/">Discordシェア</a>
+            <a href="/admin/console/audit-logs/">監査ログ</a>
+        </nav>
+    </div>
+    
+    <div class="container">
+        <h2 style="margin-bottom: 1.5rem;">投稿一覧</h2>
+        
+        <div class="filter-form">
+            <form method="get">
+                <label>
+                    <input type="checkbox" name="include_deleted" value="true" {% if include_deleted %}checked{% endif %}>
+                    削除済みを含む
+                </label>
+                <button type="submit" style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">適用</button>
+            </form>
+        </div>
+        
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>作成者</th>
+                        <th>キャプション</th>
+                        <th>状態</th>
+                        <th>作成日</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for submission in submissions %}
+                    <tr>
+                        <td>{{ submission.id }}</td>
+                        <td>{{ submission.author.display_id }}</td>
+                        <td>{{ submission.caption|truncatewords:10 }}</td>
+                        <td>
+                            {% if submission.deleted_at %}
+                                <span class="badge-deleted">削除済み</span>
+                            {% else %}
+                                {{ submission.get_status_display }}
+                            {% endif %}
+                        </td>
+                        <td>{{ submission.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            {% if submission.deleted_at %}
+                                <button class="btn btn-restore" onclick="restoreSubmission({{ submission.id }})">復元</button>
+                            {% else %}
+                                <button class="btn btn-delete" onclick="deleteSubmission({{ submission.id }})">削除</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; color: #666;">
+                            投稿が見つかりませんでした
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        function deleteSubmission(id) {
+            if (!confirm('本当に削除しますか？')) return;
+            const reason = prompt('削除理由を入力してください:') || '';
+            
+            fetch(`/api/admin/submissions/${id}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    alert('削除しました');
+                    location.reload();
+                } else {
+                    alert('エラー: ' + JSON.stringify(data));
+                }
+            });
+        }
+        
+        function restoreSubmission(id) {
+            if (!confirm('本当に復元しますか？')) return;
+            
+            fetch(`/api/admin/submissions/${id}/restore/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    alert('復元しました');
+                    location.reload();
+                } else {
+                    alert('エラー: ' + JSON.stringify(data));
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+

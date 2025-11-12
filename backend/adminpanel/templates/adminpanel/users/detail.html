@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理画面 - ユーザー詳細</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .header {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 1.5rem; color: #dc2626; }
+        .nav { display: flex; gap: 1rem; }
+        .nav a {
+            text-decoration: none;
+            color: #666;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .nav a:hover { background: #f0f0f0; }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .card h3 {
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .info-item {
+            padding: 0.5rem 0;
+        }
+        .info-label {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+        .info-value {
+            font-weight: 500;
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background 0.2s;
+        }
+        .btn-warn { background: #fbbf24; color: white; }
+        .btn-suspend { background: #f59e0b; color: white; }
+        .btn-ban { background: #dc2626; color: white; }
+        .btn-reset { background: #6366f1; color: white; }
+        .btn:hover { opacity: 0.9; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal.show { display: flex; align-items: center; justify-content: center; }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .modal-content input,
+        .modal-content textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>管理画面</h1>
+        <nav class="nav">
+            <a href="/admin/console/">ダッシュボード</a>
+            <a href="/admin/console/users/">ユーザー</a>
+            <a href="/admin/console/submissions/">投稿</a>
+            <a href="/admin/console/discord-shares/">Discordシェア</a>
+            <a href="/admin/console/audit-logs/">監査ログ</a>
+        </nav>
+    </div>
+    
+    <div class="container">
+        <h2 style="margin-bottom: 1.5rem;">ユーザー詳細: {{ user.display_id }}</h2>
+        
+        <div class="card">
+            <h3>基本情報</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">ID</div>
+                    <div class="info-value">{{ user.id }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">メール</div>
+                    <div class="info-value">{{ user.email }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">表示ID</div>
+                    <div class="info-value">{{ user.display_id }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">役割</div>
+                    <div class="info-value">{{ user.get_role_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">警告数</div>
+                    <div class="info-value">{{ user.warning_count }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">状態</div>
+                    <div class="info-value">
+                        {% if user.banned_at %}BAN{% elif user.is_suspended %}停止中{% else %}正常{% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-warn" onclick="showWarnModal()">警告発行</button>
+                {% if user.is_suspended %}
+                    <button class="btn btn-suspend" onclick="adminAction('unsuspend')">停止解除</button>
+                {% else %}
+                    <button class="btn btn-suspend" onclick="adminAction('suspend')">停止</button>
+                {% endif %}
+                {% if user.banned_at %}
+                    <button class="btn btn-ban" onclick="adminAction('unban')">BAN解除</button>
+                {% else %}
+                    <button class="btn btn-ban" onclick="adminAction('ban')">BAN</button>
+                {% endif %}
+                <button class="btn btn-reset" onclick="adminAction('reset_password')">パスワード再発行</button>
+            </div>
+        </div>
+        
+        {% if meta %}
+        <div class="card">
+            <h3>メタデータ</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">アクティブな称号</div>
+                    <div class="info-value">{{ meta.active_title|default:"なし" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">称号の色</div>
+                    <div class="info-value">{{ meta.title_color|default:"なし" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">有効期限</div>
+                    <div class="info-value">{{ meta.expires_at|date:"Y-m-d H:i"|default:"なし" }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if registration %}
+        <div class="card">
+            <h3>登録情報</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">住所</div>
+                    <div class="info-value">{{ registration.address|default:"なし" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">年齢区分</div>
+                    <div class="info-value">{{ registration.age_group|default:"なし" }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <h3>カード一覧 ({{ cards.count }})</h3>
+            {% if cards %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>カードコード</th>
+                        <th>レアリティ</th>
+                        <th>獲得日</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for card in cards %}
+                    <tr>
+                        <td>{{ card.card.code }}</td>
+                        <td>{{ card.card.get_rarity_display }}</td>
+                        <td>{{ card.obtained_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #666; padding: 1rem 0;">カードがありません</p>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h3>投稿履歴 ({{ submissions.count }})</h3>
+            {% if submissions %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>キャプション</th>
+                        <th>状態</th>
+                        <th>作成日</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for submission in submissions %}
+                    <tr>
+                        <td>{{ submission.id }}</td>
+                        <td>{{ submission.caption|truncatewords:10 }}</td>
+                        <td>
+                            {% if submission.deleted_at %}
+                                <span style="color: #dc2626;">削除済み</span>
+                            {% else %}
+                                <span>{{ submission.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ submission.created_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #666; padding: 1rem 0;">投稿がありません</p>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h3>Discordシェア履歴</h3>
+            {% if discord_shares %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>チャンネル</th>
+                        <th>メッセージID</th>
+                        <th>シェア日時</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for share in discord_shares %}
+                    <tr>
+                        <td>{{ share.share_channel }}</td>
+                        <td>{{ share.message_id|default:"なし" }}</td>
+                        <td>{{ share.shared_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #666; padding: 1rem 0;">シェア履歴がありません</p>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h3>警告履歴</h3>
+            {% if warnings %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>日時</th>
+                        <th>メッセージ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for warning in warnings %}
+                    <tr>
+                        <td>{{ warning.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ warning.payload.message|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #666; padding: 1rem 0;">警告履歴がありません</p>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h3>監査ログ</h3>
+            {% if audit_logs %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>日時</th>
+                        <th>アクション</th>
+                        <th>実行者</th>
+                        <th>詳細</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ log.get_action_display }}</td>
+                        <td>{{ log.actor.display_id|default:"システム" }}</td>
+                        <td>{{ log.payload|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #666; padding: 1rem 0;">監査ログがありません</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div id="warnModal" class="modal">
+        <div class="modal-content">
+            <h3>警告を発行</h3>
+            <form id="warnForm" onsubmit="submitWarn(event)">
+                {% csrf_token %}
+                <label>
+                    メッセージ
+                    <textarea name="message" required></textarea>
+                </label>
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-warn">発行</button>
+                    <button type="button" class="btn" onclick="closeModal()" style="background: #666; color: white;">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const userId = {{ user.id }};
+        
+        function showWarnModal() {
+            document.getElementById('warnModal').classList.add('show');
+        }
+        
+        function closeModal() {
+            document.getElementById('warnModal').classList.remove('show');
+        }
+        
+        function submitWarn(e) {
+            e.preventDefault();
+            const message = e.target.message.value;
+            
+            fetch(`/api/admin/users/${userId}/warn/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    alert('警告を発行しました');
+                    location.reload();
+                } else {
+                    alert('エラー: ' + JSON.stringify(data));
+                }
+            });
+        }
+        
+        function adminAction(action) {
+            if (!confirm(`本当に${action}を実行しますか？`)) return;
+            
+            fetch(`/api/admin/users/${userId}/${action}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    alert('操作が完了しました');
+                    location.reload();
+                } else {
+                    alert('エラー: ' + JSON.stringify(data));
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+

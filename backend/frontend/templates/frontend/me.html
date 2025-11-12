@@ -1,0 +1,804 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}ToyBox - マイページ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mypage-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    @media (min-width: 768px) {
+        .mypage-container {
+            grid-template-columns: 3fr 6fr 3fr;
+        }
+    }
+    
+    .mypage-section {
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .mypage-section h2 {
+        margin-bottom: 0.5rem;
+        color: var(--steam-gold-300);
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    
+    .profile-avatar {
+        height: 200px;
+        width: 200px;
+        overflow: hidden;
+        border-radius: 50%;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-800);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        color: var(--steam-iron-400);
+        margin: 0.5rem auto;
+    }
+    
+    .profile-avatar img {
+        height: 100%;
+        width: 100%;
+        object-fit: cover;
+    }
+    
+    .submissions-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    @media (min-width: 768px) {
+        .submissions-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+    
+    .submission-item {
+        position: relative;
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        aspect-ratio: 1;
+        overflow: hidden;
+    }
+    
+    .submission-item.game {
+        border-color: #a855f7;
+    }
+    
+    .submission-item.video {
+        border-color: #0ea5e9;
+    }
+    
+    .upload-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 2px dashed var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .upload-area.dragging {
+        border-color: var(--steam-gold-500);
+        background: rgba(31, 35, 42, 0.5);
+    }
+    
+    .timeline-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--steam-iron-100);
+        margin-bottom: 0.5rem;
+    }
+    
+    .timeline-avatar {
+        height: 2.5rem;
+        width: 2.5rem;
+        overflow: hidden;
+        border-radius: 50%;
+        border: 4px solid var(--steam-iron-900);
+        box-shadow: 0 0 0 2px var(--steam-iron-700);
+        background: var(--steam-iron-800);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--steam-iron-300);
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+    
+    .timeline-avatar img {
+        height: 100%;
+        width: 100%;
+        object-fit: cover;
+    }
+    
+    .upload-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .upload-overlay.show {
+        display: flex;
+    }
+    
+    .upload-overlay-content {
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        color: var(--steam-gold-200);
+        padding: 1.5rem 2rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mypage-container">
+    <!-- 左カラム -->
+    <aside>
+        <!-- プロフィール -->
+        <section class="mypage-section">
+            <h2>プロフィール</h2>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem; margin-top: 0.5rem;">
+                <div class="profile-avatar" id="profile-avatar">
+                    <span>未設定</span>
+                </div>
+                <div style="color: var(--steam-iron-100); font-weight: 600; font-size: 0.875rem;" id="profile-name">—</div>
+                <div style="font-size: 0.75rem; line-height: 1.6; color: var(--steam-iron-200); text-align: center; padding: 0 0.25rem;" id="profile-bio">—</div>
+                <div style="font-size: 0.875rem; color: var(--steam-gold-300);" id="profile-title">称号: —</div>
+                <div style="font-size: 0.75rem; color: var(--steam-iron-300);" id="profile-title-until"></div>
+            </div>
+        </section>
+        
+        <!-- リンク -->
+        <section class="mypage-section">
+            <h2>リンク</h2>
+            <ul style="list-style: disc; padding-left: 1.25rem; color: var(--steam-iron-100); font-size: 0.875rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <li><a href="https://discord.com/" target="_blank" rel="noreferrer" style="color: var(--steam-gold-400); text-decoration: underline;">Discord</a></li>
+                <li><a href="https://chat.openai.com/" target="_blank" rel="noreferrer" style="color: var(--steam-gold-400); text-decoration: underline;">AI サイト</a></li>
+                <li><a href="{% url 'index' %}" style="color: var(--steam-gold-400); text-decoration: underline;">当社LP</a></li>
+            </ul>
+        </section>
+        
+        <!-- お仕事系のお題 -->
+        <section class="mypage-section">
+            <h2>お仕事系のお題</h2>
+            <div id="topic-work" style="color: var(--steam-iron-100); font-size: 0.875rem; display: none;"></div>
+            <a href="https://ayatori-inc.co.jp/toybox-std/" target="_blank" rel="noreferrer" onclick="fetchTopic('work')" style="display: inline-block; margin-top: 0.75rem; border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; text-decoration: none; font-size: 1rem;">お題を見る</a>
+        </section>
+        
+        <!-- ゲームのお題 -->
+        <section class="mypage-section">
+            <h2>ゲームのお題</h2>
+            <div id="topic-play" style="color: var(--steam-iron-100); font-size: 0.875rem; display: none;"></div>
+            <a href="https://ayatori-inc.co.jp/toybox-game/" target="_blank" rel="noreferrer" onclick="fetchTopic('play')" style="display: inline-block; margin-top: 0.75rem; border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; text-decoration: none; font-size: 1rem;">お題を見る</a>
+        </section>
+    </aside>
+    
+    <!-- 中央カラム -->
+    <section>
+        <div style="margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+            <h2 style="color: var(--steam-gold-300); font-weight: 600;">自分の提出物</h2>
+            <a href="/profile/" style="font-size: 0.75rem; color: var(--steam-gold-400); text-decoration: underline;">プロフィール設定</a>
+        </div>
+        <div class="submissions-grid" id="submissions-grid">
+            <!-- 提出物がここに表示されます -->
+        </div>
+    </section>
+    
+    <!-- 右カラム -->
+    <aside>
+        <!-- 本日の課題提出 -->
+        <section class="mypage-section">
+            <h2>本日の課題提出</h2>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <input id="upload-input" type="file" accept="image/png,image/jpeg,video/mp4,video/webm,video/ogg" style="display: none;">
+                <div id="upload-area" class="upload-area" onclick="document.getElementById('upload-input').click()">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--steam-gold-400); margin-bottom: 0.5rem;">
+                        <path d="M12 16V4" />
+                        <path d="M8 8l4-4 4 4" />
+                        <rect x="3" y="16" width="18" height="4" rx="1" ry="1" />
+                    </svg>
+                    <div style="font-size: 0.875rem; color: var(--steam-gold-200);">課題をアップロード（PNG/JPEG/MP4）</div>
+                    <div style="font-size: 0.75rem; color: var(--steam-iron-300);">ここにドラッグ＆ドロップ、またはクリックして選択</div>
+                    <div id="upload-status" style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--steam-iron-200); display: none;">アップロード中…</div>
+                </div>
+                <div id="upload-error" style="font-size: 0.75rem; color: #dc2626; display: none;"></div>
+                <p style="font-size: 0.75rem; color: var(--steam-iron-300);">選んだ画像は「自分の提出物」に即時反映・ローカル保存されます。</p>
+            </div>
+        </section>
+        
+        <!-- タイムライン -->
+        <section class="mypage-section">
+            <h2>タイムライン</h2>
+            <ul id="timeline-list" style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--steam-iron-100);">
+                <li>データなし</li>
+            </ul>
+        </section>
+        
+        <!-- 提出者（当日） -->
+        <section class="mypage-section">
+            <h2>提出者（当日）</h2>
+            <div style="font-size: 0.875rem; color: var(--steam-iron-100); margin-bottom: 0.5rem;" id="submitters-count">0名</div>
+            <ul id="submitters-list" style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--steam-iron-200); max-height: 10rem; overflow: auto;">
+                <li>データなし</li>
+            </ul>
+        </section>
+        
+        <!-- デイリーランキング -->
+        <section class="mypage-section">
+            <h2>デイリーランキング</h2>
+            <ol id="ranking-list" style="list-style: decimal; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: var(--steam-iron-100);">
+                <li>データなし</li>
+            </ol>
+        </section>
+    </aside>
+</div>
+
+<!-- アップロード中オーバーレイ -->
+<div id="upload-overlay" class="upload-overlay">
+    <div class="upload-overlay-content">
+        アップロード中…完了までお待ちください
+    </div>
+</div>
+
+<!-- 報酬演出オーバーレイ -->
+<div id="reward-overlay" class="upload-overlay" style="background: rgba(0, 0, 0, 0.6); z-index: 3000;">
+    <div id="reward-content" style="border-radius: 8px; border: 1px solid var(--steam-iron-700); background: var(--steam-iron-800); color: var(--steam-gold-200); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3); padding: 1.5rem; max-width: 600px; width: 90%;">
+        <!-- カード演出 -->
+        <div id="card-reveal" style="display: none; text-align: center;">
+            <div style="color: var(--steam-gold-300); font-weight: 600; font-size: 1.25rem; margin-bottom: 0.5rem;" id="card-rarity">N 獲得！</div>
+            <div style="position: relative; width: 280px; height: 400px; background: var(--steam-iron-800); overflow: hidden; border-radius: 8px; margin: 0 auto; perspective: 1000px;">
+                <img id="card-image" src="" alt="card" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; animation: cardSpinIn 0.6s ease-out;">
+            </div>
+            <div style="margin-top: 0.5rem; text-align: center; color: var(--steam-iron-100);" id="card-name">Card</div>
+            <div style="text-align: center; margin-top: 0.75rem;">
+                <button onclick="nextToTitle()" style="border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; cursor: pointer; font-size: 1rem;">閉じる</button>
+            </div>
+        </div>
+        
+        <!-- 称号演出 -->
+        <div id="title-reveal" style="display: none; text-align: center;">
+            <div style="color: var(--steam-gold-300); font-weight: 600; font-size: 1.25rem; margin-bottom: 0.5rem;">称号を取得しました！</div>
+            <div style="margin-top: 0.5rem; display: flex; justify-content: center;">
+                <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="title" style="height: 6rem; width: auto; opacity: 0.8;">
+            </div>
+            <div style="margin-top: 0.25rem; font-size: 1.5rem; font-weight: bold; color: var(--steam-gold-300);" id="title-name">—</div>
+            <div style="margin-top: 1rem;">
+                <button onclick="closeRewardFlow()" style="border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; cursor: pointer; font-size: 1rem;">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes cardSpinIn {
+    from {
+        transform: rotateY(90deg);
+        opacity: 0;
+    }
+    to {
+        transform: rotateY(0deg);
+        opacity: 1;
+    }
+}
+</style>
+
+<script>
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    const token = getAccessToken();
+    
+    // 認証チェック
+    if (!requireAuth()) {
+        // requireAuth()がfalseを返した場合、既にリダイレクトされている
+        // ここで処理を停止
+    }
+    
+    // 初期データ読み込み
+    document.addEventListener('DOMContentLoaded', function() {
+        // 強制リロードフラグをチェック
+        try {
+            const shouldReload = localStorage.getItem('toybox_mypage_force_reload') === '1';
+            if (shouldReload) {
+                localStorage.removeItem('toybox_mypage_force_reload');
+                // ページをリロードして最新のプロフィール情報を取得
+                window.location.reload();
+                return;
+            }
+        } catch (e) {}
+        
+        loadProfile();
+        loadSubmissions();
+        loadTimeline();
+        loadSubmitters();
+        loadRanking();
+        
+        // アップロード機能
+        setupUpload();
+    });
+    
+    function loadProfile() {
+        fetch('/api/users/me/meta/', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            // ユーザー名を表示
+            if (data.display_name) {
+                document.getElementById('profile-name').textContent = data.display_name;
+            } else if (data.display_id) {
+                document.getElementById('profile-name').textContent = data.display_id;
+            }
+            
+            // プロフィール文を表示
+            if (data.bio) {
+                document.getElementById('profile-bio').textContent = data.bio;
+            }
+            
+            // アバター画像を表示
+            const avatarDiv = document.getElementById('profile-avatar');
+            if (data.avatar_url) {
+                avatarDiv.innerHTML = `<img src="${data.avatar_url}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;">`;
+            } else {
+                avatarDiv.innerHTML = '<span>未設定</span>';
+            }
+            
+            // 称号を表示（期限切れチェック）
+            const titleElement = document.getElementById('profile-title');
+            const titleUntilElement = document.getElementById('profile-title-until');
+            
+            if (data.active_title && data.expires_at) {
+                const expiresAt = new Date(data.expires_at);
+                const now = new Date();
+                
+                if (expiresAt > now) {
+                    // 有効期限内
+                    if (titleElement) {
+                        titleElement.textContent = `称号: ${data.active_title}`;
+                        titleElement.style.display = 'block';
+                    }
+                    if (titleUntilElement) {
+                        titleUntilElement.textContent = `有効期限: ${expiresAt.toLocaleDateString()}`;
+                        titleUntilElement.style.display = 'block';
+                    }
+                } else {
+                    // 期限切れ
+                    if (titleElement) {
+                        titleElement.textContent = '';
+                        titleElement.style.display = 'none';
+                    }
+                    if (titleUntilElement) {
+                        titleUntilElement.textContent = '';
+                        titleUntilElement.style.display = 'none';
+                    }
+                }
+            } else if (data.active_title) {
+                // expires_atがない場合は表示
+                if (titleElement) {
+                    titleElement.textContent = `称号: ${data.active_title}`;
+                    titleElement.style.display = 'block';
+                }
+                if (titleUntilElement) {
+                    titleUntilElement.textContent = '';
+                    titleUntilElement.style.display = 'none';
+                }
+            } else {
+                // 称号がない場合
+                if (titleElement) {
+                    titleElement.textContent = '';
+                    titleElement.style.display = 'none';
+                }
+                if (titleUntilElement) {
+                    titleUntilElement.textContent = '';
+                    titleUntilElement.style.display = 'none';
+                }
+            }
+        })
+        .catch(err => console.error(err));
+    }
+    
+    function loadSubmissions() {
+        // 自分のユーザーIDを取得
+        fetch('/api/users/me/meta/', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }
+        })
+        .then(res => res.json())
+        .then(metaData => {
+            if (!metaData.display_id) {
+                document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物がありません</div>';
+                return;
+            }
+            
+            // 自分の提出物を取得
+            return fetch(`/api/user/submissions/${encodeURIComponent(metaData.display_id)}/?limit=12`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+        })
+        .then(res => {
+            if (!res) return;
+            return res.json();
+        })
+        .then(data => {
+            if (!data) return;
+            const grid = document.getElementById('submissions-grid');
+            if (data.items && data.items.length > 0) {
+                grid.innerHTML = data.items.map(item => {
+                    const isGame = item.gameUrl;
+                    const isVideo = item.videoUrl;
+                    const itemClass = isGame ? 'game' : (isVideo ? 'video' : '');
+                    const imageUrl = item.displayImageUrl || item.imageUrl;
+                    
+                    let content = '';
+                    if (isGame) {
+                        content = '<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; user-select: none;"><div style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--steam-iron-200);"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 0.25rem;"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/></svg><div style="font-size: 0.75rem; letter-spacing: 0.1em; font-weight: 600;">GAME</div></div></div>';
+                    } else if (isVideo) {
+                        content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; position: relative;"><video src="${item.videoUrl}" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px;" muted preload="metadata"></video><div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><div style="height: 3rem; width: 3rem; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></div></div></div>`;
+                    } else {
+                        content = `<img src="${imageUrl || ''}" alt="submission" style="width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; cursor: zoom-in;">`;
+                    }
+                    
+                    return `
+                        <div class="submission-item ${itemClass}" style="position: relative;">
+                            ${content}
+                            <button onclick="deleteSubmission('${item.id}')" style="display: none; position: absolute; top: 0.5rem; right: 0.5rem; border-radius: 4px; background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border: none; cursor: pointer;" class="submission-delete-btn">削除</button>
+                        </div>
+                    `;
+                }).join('');
+                
+                // ホバーで削除ボタン表示
+                document.querySelectorAll('.submission-item').forEach(item => {
+                    item.addEventListener('mouseenter', function() {
+                        const btn = this.querySelector('.submission-delete-btn');
+                        if (btn) btn.style.display = 'block';
+                    });
+                    item.addEventListener('mouseleave', function() {
+                        const btn = this.querySelector('.submission-delete-btn');
+                        if (btn) btn.style.display = 'none';
+                    });
+                });
+            } else {
+                grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物がありません</div>';
+            }
+        })
+        .catch(err => {
+            console.error('Failed to load submissions:', err);
+            document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物の読み込みに失敗しました</div>';
+        });
+    }
+    
+    function loadTimeline() {
+        // タイムラインの読み込み（簡易実装）
+        document.getElementById('timeline-list').innerHTML = '<li>データなし</li>';
+    }
+    
+    function loadSubmitters() {
+        fetch('/api/submitters/today/', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            const list = document.getElementById('submitters-list');
+            if (data.submitters && data.submitters.length > 0) {
+                list.innerHTML = data.submitters.map(s => {
+                    const displayName = s.displayName || s.anonId;
+                    return `<li style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: var(--steam-gold-200);">${displayName}</span>
+                    </li>`;
+                }).join('');
+            } else {
+                list.innerHTML = '<li>データなし</li>';
+            }
+        })
+        .catch(err => {
+            console.error('Failed to load submitters:', err);
+            document.getElementById('submitters-list').innerHTML = '<li>データなし</li>';
+        });
+    }
+    
+    function loadRanking() {
+        fetch('/api/ranking/daily/', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            const list = document.getElementById('ranking-list');
+            if (data.ranking && data.ranking.length > 0) {
+                list.innerHTML = data.ranking.map((r, index) => {
+                    const displayName = r.displayName || r.anonId;
+                    return `<li style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: var(--steam-gold-200);">${displayName}</span>
+                        <span style="color: var(--steam-iron-300); font-size: 0.75rem;">(${r.count}件)</span>
+                    </li>`;
+                }).join('');
+            } else {
+                list.innerHTML = '<li>データなし</li>';
+            }
+        })
+        .catch(err => {
+            console.error('Failed to load ranking:', err);
+            document.getElementById('ranking-list').innerHTML = '<li>データなし</li>';
+        });
+    }
+    
+    function setupUpload() {
+        const uploadInput = document.getElementById('upload-input');
+        const uploadArea = document.getElementById('upload-area');
+        let isDragging = false;
+        
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            isDragging = true;
+            uploadArea.classList.add('dragging');
+        });
+        
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            isDragging = false;
+            uploadArea.classList.remove('dragging');
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            isDragging = false;
+            uploadArea.classList.remove('dragging');
+            const file = e.dataTransfer.files?.[0];
+            if (file) handleUpload(file);
+        });
+        
+        uploadInput.addEventListener('change', function(e) {
+            const file = e.target.files?.[0];
+            if (file) handleUpload(file);
+            e.target.value = '';
+        });
+    }
+    
+    async function handleUpload(file) {
+        // ファイルタイプの検証
+        const isJpeg = file.type === 'image/jpeg' || /\.(jpe?g)$/i.test(file.name);
+        const isPng = file.type === 'image/png' || /\.(png)$/i.test(file.name);
+        const isMp4 = file.type === 'video/mp4' || /\.(mp4)$/i.test(file.name);
+        const isWebm = file.type === 'video/webm' || /\.(webm)$/i.test(file.name);
+        const isOgg = file.type === 'video/ogg' || /\.(ogg)$/i.test(file.name);
+        const isVideo = isMp4 || isWebm || isOgg;
+        
+        if (!(isJpeg || isPng || isVideo)) {
+            document.getElementById('upload-error').textContent = 'PNG / JPEG / MP4 / WEBM / OGG のみ対応しています';
+            document.getElementById('upload-error').style.display = 'block';
+            return;
+        }
+        
+        // ファイルサイズの検証（1GB制限）
+        if (file.size > 1024 * 1024 * 1024) {
+            document.getElementById('upload-error').textContent = 'ファイルサイズが大きすぎます（最大1GB）';
+            document.getElementById('upload-error').style.display = 'block';
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        document.getElementById('upload-overlay').classList.add('show');
+        document.getElementById('upload-status').style.display = 'block';
+        document.getElementById('upload-error').style.display = 'none';
+        
+        try {
+            // 1. Upload file to /api/submit/upload
+            const uploadRes = await fetch('/api/submit/upload', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData
+            });
+            
+            if (!uploadRes.ok) {
+                let msg = 'アップロードに失敗しました';
+                try {
+                    const ct = uploadRes.headers.get('Content-Type') || '';
+                    if (ct.includes('application/json')) {
+                        const j = await uploadRes.json();
+                        msg = j?.message || j?.error || msg;
+                    } else {
+                        msg = await uploadRes.text();
+                    }
+                } catch {}
+                throw new Error(msg || `HTTP ${uploadRes.status}`);
+            }
+            
+            const uploadData = await uploadRes.json();
+            const imageUrl = uploadData.imageUrl;
+            const videoUrl = uploadData.videoUrl;
+            const displayImageUrl = uploadData.displayImageUrl || imageUrl || videoUrl;
+            
+            // 2. Submit with imageUrl/videoUrl to get rewards
+            const submitRes = await fetch('/api/submit/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    aim: isVideo ? '動画提出' : '画像提出',
+                    steps: ['準備', '実行', '完了'],
+                    frameType: 'none',
+                    ...(imageUrl ? { imageUrl } : {}),
+                    ...(videoUrl ? { videoUrl } : {})
+                })
+            });
+            
+            if (!submitRes.ok) {
+                throw new Error('提出に失敗しました');
+            }
+            
+            const submitData = await submitRes.json();
+            
+            // 3. Hide upload overlay
+            document.getElementById('upload-overlay').classList.remove('show');
+            document.getElementById('upload-status').style.display = 'none';
+            
+            // 4. Show reward flow (card → title)
+            if (submitData.rewardCard || submitData.rewardTitle) {
+                showRewardFlow(submitData);
+            } else {
+                // 報酬がない場合も提出物をリロード
+                loadSubmissions();
+                loadProfile();
+                loadSubmitters();
+                loadRanking();
+            }
+        } catch (err) {
+            document.getElementById('upload-overlay').classList.remove('show');
+            document.getElementById('upload-status').style.display = 'none';
+            document.getElementById('upload-error').textContent = err.message || 'アップロードに失敗しました';
+            document.getElementById('upload-error').style.display = 'block';
+            console.error('Upload error:', err);
+        }
+    }
+    
+    function deleteSubmission(id) {
+        if (!confirm('この提出を削除します。よろしいですか？')) return;
+        
+        fetch(`/api/submissions/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(res => {
+            if (res.ok) {
+                loadSubmissions();
+            } else {
+                alert('削除に失敗しました');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('エラーが発生しました');
+        });
+    }
+    
+    function fetchTopic(type) {
+        const element = document.getElementById(`topic-${type}`);
+        element.style.display = 'block';
+        element.textContent = '読み込み中…';
+        // 実際のAPI呼び出しは実装が必要
+    }
+    
+    // 報酬演出フロー
+    function showRewardFlow(submitData) {
+        const overlay = document.getElementById('reward-overlay');
+        const cardReveal = document.getElementById('card-reveal');
+        const titleReveal = document.getElementById('title-reveal');
+        
+        // カード演出を表示
+        if (submitData.rewardCard) {
+            const card = submitData.rewardCard;
+            const rarityText = card.rarity || 'N';
+            const isEpic = rarityText === 'SSR' || rarityText === 'SR';
+            
+            document.getElementById('card-rarity').textContent = `${rarityText} 獲得！`;
+            document.getElementById('card-rarity').style.color = isEpic ? 'var(--steam-gold-500)' : 'var(--steam-gold-300)';
+            document.getElementById('card-name').textContent = card.card_name || 'Card';
+            
+            // カード画像URLを解決
+            let imageUrl = null;
+            if (card.image_url && card.image_url !== '-' && card.image_url !== '') {
+                // image_urlが設定されている場合
+                imageUrl = card.image_url.startsWith('http') ? card.image_url : card.image_url;
+            } else {
+                // image_urlがない場合はデフォルトパスを使用
+                imageUrl = `/uploads/cards/${card.card_id || 'C001'}.png`;
+            }
+            
+            // Effectカードの画像が存在しない場合はCharacterカードのデフォルト画像を使用
+            if (card.card_id && card.card_id.startsWith('E')) {
+                // Effectカードの場合は、Characterカードのデフォルト画像を試す
+                imageUrl = `/uploads/cards/C001.png`; // プレースホルダー
+            }
+            
+            document.getElementById('card-image').src = imageUrl;
+            document.getElementById('card-image').style.display = 'block';
+            document.getElementById('card-image').onerror = function() {
+                // 画像読み込みエラー時は非表示にする
+                console.warn('Failed to load card image:', imageUrl);
+                this.style.display = 'none';
+            };
+            
+            cardReveal.style.display = 'block';
+            titleReveal.style.display = 'none';
+        } else {
+            // カードがない場合は直接称号へ
+            cardReveal.style.display = 'none';
+            if (submitData.rewardTitle) {
+                document.getElementById('title-name').textContent = submitData.rewardTitle;
+                titleReveal.style.display = 'block';
+            }
+        }
+        
+        overlay.style.display = 'flex';
+    }
+    
+    function nextToTitle() {
+        const cardReveal = document.getElementById('card-reveal');
+        const titleReveal = document.getElementById('title-reveal');
+        
+        cardReveal.style.display = 'none';
+        titleReveal.style.display = 'block';
+    }
+    
+    function closeRewardFlow() {
+        const overlay = document.getElementById('reward-overlay');
+        overlay.style.display = 'none';
+        
+        // 最新のデータを再読み込み（ページリロードではなく）
+        loadProfile();
+        loadSubmissions();
+        loadSubmitters();
+        loadRanking();
+    }
+</script>
+{% endblock %}
+

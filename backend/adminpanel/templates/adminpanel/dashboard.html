@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理画面 - ダッシュボード</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .header {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 1.5rem; color: #dc2626; }
+        .nav { display: flex; gap: 1rem; }
+        .nav a {
+            text-decoration: none;
+            color: #666;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .nav a:hover { background: #f0f0f0; }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>管理画面</h1>
+        <nav class="nav">
+            <a href="/admin/console/">ダッシュボード</a>
+            <a href="/admin/console/users/">ユーザー</a>
+            <a href="/admin/console/submissions/">投稿</a>
+            <a href="/admin/console/discord-shares/">Discordシェア</a>
+            <a href="/admin/console/audit-logs/">監査ログ</a>
+        </nav>
+    </div>
+    
+    <div class="container">
+        <h2 style="margin-bottom: 1.5rem;">ダッシュボード</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">今日の投稿数</div>
+                <div class="stat-value">{{ stats.today_submissions }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">今日の警告数</div>
+                <div class="stat-value">{{ stats.warnings_today }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">停止中ユーザー</div>
+                <div class="stat-value">{{ stats.suspended_users }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">BAN中ユーザー</div>
+                <div class="stat-value">{{ stats.banned_users }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">総ユーザー数</div>
+                <div class="stat-value">{{ stats.total_users }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">総投稿数</div>
+                <div class="stat-value">{{ stats.total_submissions }}</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

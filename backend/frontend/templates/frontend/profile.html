@@ -1,0 +1,403 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}プロフィール設定 - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-container {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .profile-title {
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--steam-gold-300);
+    }
+    
+    .profile-section {
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        padding: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .profile-section h2 {
+        margin-bottom: 0.5rem;
+        color: var(--steam-gold-300);
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    
+    .header-preview {
+        position: relative;
+        height: 10rem;
+        width: 100%;
+        background: var(--steam-iron-800);
+        margin-bottom: 0.5rem;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .header-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .header-preview .no-image {
+        display: flex;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+        color: var(--steam-iron-400);
+        font-size: 0.875rem;
+    }
+    
+    .avatar-preview {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .avatar-image {
+        height: 5rem;
+        width: 5rem;
+        overflow: hidden;
+        border-radius: 50%;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-800);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        color: var(--steam-iron-400);
+    }
+    
+    .avatar-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .file-input-label {
+        cursor: pointer;
+        border-radius: 4px;
+        background: var(--steam-iron-800);
+        padding: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--steam-gold-300);
+        display: inline-block;
+    }
+    
+    .file-input-label:hover {
+        background: var(--steam-iron-700);
+    }
+    
+    .file-input {
+        display: none;
+    }
+    
+    .form-input {
+        width: 100%;
+        border-radius: 4px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--steam-iron-100);
+    }
+    
+    .form-textarea {
+        width: 100%;
+        border-radius: 4px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--steam-iron-100);
+        resize: vertical;
+    }
+    
+    .char-count {
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--steam-iron-300);
+    }
+    
+    .save-button {
+        position: sticky;
+        bottom: 1rem;
+        display: flex;
+        justify-content: center;
+        margin-top: 2.5rem;
+    }
+    
+    .save-button button {
+        border-radius: 4px;
+        background: var(--steam-gold-500);
+        color: #000;
+        font-weight: 600;
+        padding: 0.75rem 2rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+    
+    .save-button button:hover:not(:disabled) {
+        background: var(--steam-gold-400);
+    }
+    
+    .save-button button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .message {
+        margin-bottom: 0.75rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        font-size: 0.875rem;
+        color: var(--steam-gold-300);
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <h1 class="profile-title">プロフィール設定</h1>
+    <div id="message" class="message"></div>
+    
+    <section class="profile-section">
+        <h2>ヘッダー</h2>
+        <div class="header-preview" id="header-preview">
+            <div class="no-image">NO Image</div>
+        </div>
+        <label class="file-input-label">
+            変更
+            <input type="file" id="header-input" class="file-input" accept="image/png,image/jpeg" onchange="handleHeaderChange(event)">
+        </label>
+    </section>
+    
+    <section class="profile-section">
+        <h2>アイコン</h2>
+        <div class="avatar-preview">
+            <div class="avatar-image" id="avatar-preview">
+                <span>未設定</span>
+            </div>
+            <label class="file-input-label">
+                画像を選択
+                <input type="file" id="avatar-input" class="file-input" accept="image/png,image/jpeg" onchange="handleAvatarChange(event)">
+            </label>
+        </div>
+    </section>
+    
+    <section class="profile-section">
+        <h2>表示名</h2>
+        <input type="text" id="display-name-input" class="form-input" placeholder="名前（50文字まで）" maxlength="50">
+    </section>
+    
+    <section class="profile-section">
+        <h2>プロフィール文</h2>
+        <textarea id="bio-input" class="form-textarea" rows="5" placeholder="プロフィール文（1000文字まで）" maxlength="1000"></textarea>
+        <div class="char-count">
+            <span id="bio-count">0</span>/1000
+        </div>
+    </section>
+    
+    <div class="save-button">
+        <button id="save-button" onclick="saveProfile()">変更を保存してマイページへ</button>
+    </div>
+</div>
+
+<script>
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    const token = getAccessToken();
+    
+    // 認証チェック
+    if (!requireAuth()) {
+        // requireAuth()がfalseを返した場合、既にリダイレクトされている
+    }
+    
+    let headerFile = null;
+    let avatarFile = null;
+    let headerPreviewUrl = null;
+    let avatarPreviewUrl = null;
+    
+    // 初期データ読み込み
+    document.addEventListener('DOMContentLoaded', function() {
+        loadProfile();
+        
+        // プロフィール文の文字数カウント
+        const bioInput = document.getElementById('bio-input');
+        bioInput.addEventListener('input', function() {
+            document.getElementById('bio-count').textContent = this.value.length;
+        });
+    });
+    
+    function loadProfile() {
+        fetch('/api/users/me/meta/', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            // 表示名
+            if (data.display_name) {
+                document.getElementById('display-name-input').value = data.display_name;
+            } else if (data.display_id) {
+                document.getElementById('display-name-input').value = data.display_id;
+            }
+            
+            // プロフィール文
+            if (data.bio) {
+                document.getElementById('bio-input').value = data.bio;
+                document.getElementById('bio-count').textContent = data.bio.length;
+            }
+            
+            // ヘッダー画像
+            const headerPreview = document.getElementById('header-preview');
+            if (data.header_url) {
+                headerPreview.innerHTML = `<img src="${data.header_url}" alt="header">`;
+            }
+            
+            // アバター画像
+            const avatarPreview = document.getElementById('avatar-preview');
+            if (data.avatar_url) {
+                avatarPreview.innerHTML = `<img src="${data.avatar_url}" alt="avatar">`;
+            }
+        })
+        .catch(err => console.error('Failed to load profile:', err));
+    }
+    
+    function handleHeaderChange(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        headerFile = file;
+        if (headerPreviewUrl) {
+            URL.revokeObjectURL(headerPreviewUrl);
+        }
+        headerPreviewUrl = URL.createObjectURL(file);
+        
+        const preview = document.getElementById('header-preview');
+        preview.innerHTML = `<img src="${headerPreviewUrl}" alt="header preview">`;
+    }
+    
+    function handleAvatarChange(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        avatarFile = file;
+        if (avatarPreviewUrl) {
+            URL.revokeObjectURL(avatarPreviewUrl);
+        }
+        avatarPreviewUrl = URL.createObjectURL(file);
+        
+        const preview = document.getElementById('avatar-preview');
+        preview.innerHTML = `<img src="${avatarPreviewUrl}" alt="avatar preview">`;
+    }
+    
+    async function saveProfile() {
+        const button = document.getElementById('save-button');
+        const messageDiv = document.getElementById('message');
+        const displayName = document.getElementById('display-name-input').value.trim();
+        const bio = document.getElementById('bio-input').value.trim();
+        
+        // バリデーション
+        if (displayName.length < 1 || displayName.length > 50) {
+            messageDiv.textContent = '表示名は1〜50文字で入力してください';
+            messageDiv.style.display = 'block';
+            messageDiv.style.color = '#dc2626';
+            return;
+        }
+        
+        if (bio.length > 1000) {
+            messageDiv.textContent = 'プロフィール文は1000文字までです';
+            messageDiv.style.display = 'block';
+            messageDiv.style.color = '#dc2626';
+            return;
+        }
+        
+        button.disabled = true;
+        button.textContent = '保存中…';
+        messageDiv.style.display = 'none';
+        
+        try {
+            // 画像アップロード
+            if (headerFile) {
+                const formData = new FormData();
+                formData.append('file', headerFile);
+                await fetch('/api/user/profile/upload?type=header', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: formData
+                });
+            }
+            
+            if (avatarFile) {
+                const formData = new FormData();
+                formData.append('file', avatarFile);
+                await fetch('/api/user/profile/upload?type=avatar', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: formData
+                });
+            }
+            
+            // プロフィール更新
+            const response = await fetch('/api/user/profile/', {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    displayName: displayName,
+                    bio: bio
+                })
+            });
+            
+            if (response.ok) {
+                messageDiv.textContent = '保存しました。マイページへ移動します…';
+                messageDiv.style.display = 'block';
+                messageDiv.style.color = 'var(--steam-gold-300)';
+                
+                setTimeout(() => {
+                    // 強制リロードフラグを設定してマイページをリロード
+                    localStorage.setItem('toybox_mypage_force_reload', '1');
+                    window.location.href = '/me/';
+                }, 1000);
+            } else {
+                const data = await response.json();
+                messageDiv.textContent = data.message || '保存に失敗しました';
+                messageDiv.style.display = 'block';
+                messageDiv.style.color = '#dc2626';
+                button.disabled = false;
+                button.textContent = '変更を保存してマイページへ';
+            }
+        } catch (err) {
+            console.error('Failed to save profile:', err);
+            messageDiv.textContent = '保存に失敗しました';
+            messageDiv.style.display = 'block';
+            messageDiv.style.color = '#dc2626';
+            button.disabled = false;
+            button.textContent = '変更を保存してマイページへ';
+        }
+    }
+</script>
+{% endblock %}
+

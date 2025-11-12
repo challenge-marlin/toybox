@@ -1,0 +1,170 @@
+"""
+Users app serializers for DRF.
+"""
+from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from .models import UserMeta, UserCard, UserRegistration
+
+User = get_user_model()
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Custom token serializer that uses email instead of username."""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Remove username field if it exists
+        if 'username' in self.fields:
+            del self.fields['username']
+        # Add email field
+        self.fields['email'] = serializers.EmailField()
+    
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+        
+        if not email or not password:
+            raise serializers.ValidationError({
+                'non_field_errors': ['Must include "email" and "password".']
+            })
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({
+                'non_field_errors': ['Invalid email or password.']
+            })
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError({
+                'non_field_errors': ['Invalid email or password.']
+            })
+        
+        if not user.is_active:
+            raise serializers.ValidationError({
+                'non_field_errors': ['User account is disabled.']
+            })
+        
+        # Generate tokens directly
+        refresh = RefreshToken.for_user(user)
+        
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """User serializer."""
+    
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'display_id', 'role', 'avatar_url', 'is_suspended', 'banned_at', 'warning_count']
+        read_only_fields = ['id', 'role', 'is_suspended', 'banned_at', 'warning_count']
+
+
+class UserMetaSerializer(serializers.ModelSerializer):
+    """UserMeta serializer."""
+    display_id = serializers.CharField(source='user.display_id', read_only=True)
+    display_name = serializers.SerializerMethodField()
+    avatar_url = serializers.URLField(source='user.avatar_url', read_only=True)
+    
+    def get_display_name(self, obj):
+        """Get display name from bio or display_id."""
+        return obj.bio or obj.user.display_id
+    
+    def to_representation(self, instance):
+        """Override to check title expiry."""
+        data = super().to_representation(instance)
+        
+        # Check if title is expired
+        if instance.active_title and instance.expires_at:
+            from django.utils import timezone
+            if instance.expires_at <= timezone.now():
+                # Title expired, clear it
+                data['active_title'] = None
+                data['expires_at'] = None
+        
+        return data
+    
+    class Meta:
+        model = UserMeta
+        fields = ['display_id', 'display_name', 'avatar_url', 'active_title', 'title_color', 'expires_at', 'bio', 'header_url', 'lottery_bonus_count']
+        read_only_fields = ['display_id', 'display_name', 'avatar_url', 'lottery_bonus_count']
+
+
+class UserCardSerializer(serializers.ModelSerializer):
+    """UserCard serializer."""
+    card_code = serializers.CharField(source='card.code', read_only=True)
+    card_name = serializers.CharField(source='card.name', read_only=True)
+    card_rarity = serializers.CharField(source='card.rarity', read_only=True)
+    
+    class Meta:
+        model = UserCard
+        fields = ['id', 'card', 'card_code', 'card_name', 'card_rarity', 'obtained_at']
+        read_only_fields = ['id', 'obtained_at']
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    """UserRegistration serializer."""
+    
+    class Meta:
+        model = UserRegistration
+        fields = ['address', 'age_group', 'phone']
+        read_only_fields = []
+
+
+class RegisterSerializer(serializers.Serializer):
+    """Registration serializer."""
+    username = serializers.CharField(min_length=3, max_length=30, help_text="User ID (alphanumeric and underscore)")
+    display_name = serializers.CharField(min_length=1, max_length=50, required=False, allow_blank=True)
+    password = serializers.CharField(min_length=8, max_length=128, write_only=True)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    
+    def validate_username(self, value):
+        """Validate username format."""
+        import re
+        if not re.match(r'^[a-z0-9_]+$', value.lower()):
+            raise serializers.ValidationError("Username must contain only lowercase letters, numbers, and underscores.")
+        return value.lower()
+    
+    def validate(self, attrs):
+        """Validate registration data."""
+        username = attrs.get('username')
+        display_name = attrs.get('display_name', '').strip()
+        
+        # Check if username already exists
+        if User.objects.filter(display_id=username).exists():
+            raise serializers.ValidationError({'username': 'This username is already taken.'})
+        
+        # Use username as display_name if not provided
+        if not display_name:
+            attrs['display_name'] = username
+        
+        return attrs
+    
+    def create(self, validated_data):
+        """Create user and UserMeta."""
+        username = validated_data['username']
+        password = validated_data['password']
+        display_name = validated_data.get('display_name', username)
+        email = validated_data.get('email', '').strip() or None
+        
+        # Create user
+        user = User.objects.create_user(
+            email=email,
+            display_id=username,
+            password=password
+        )
+        
+        # Create UserMeta with display_name in bio field (for now, until we add a proper display_name field)
+        # Note: bio field is used to store display_name temporarily
+        UserMeta.objects.get_or_create(
+            user=user,
+            defaults={'bio': display_name}
+        )
+        
+        return user

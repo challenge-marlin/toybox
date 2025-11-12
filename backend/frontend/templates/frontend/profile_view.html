@@ -1,0 +1,569 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}プロフィール - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-view-header {
+        width: 100%;
+        background: var(--steam-iron-800);
+    }
+    
+    .profile-view-header-image {
+        height: 12rem;
+        width: 100%;
+    }
+    
+    @media (min-width: 768px) {
+        .profile-view-header-image {
+            height: 14rem;
+        }
+    }
+    
+    @media (min-width: 1024px) {
+        .profile-view-header-image {
+            height: 16rem;
+        }
+    }
+    
+    .profile-view-header-image img {
+        height: 100%;
+        width: 100%;
+        object-fit: cover;
+    }
+    
+    .profile-view-header-image .no-image {
+        display: flex;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+        color: var(--steam-iron-400);
+        font-size: 0.875rem;
+    }
+    
+    .profile-view-container {
+        max-width: 56rem;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .profile-view-avatar {
+        margin-top: -4rem;
+        display: flex;
+        justify-content: flex-start;
+    }
+    
+    @media (min-width: 768px) {
+        .profile-view-avatar {
+            margin-top: -5rem;
+        }
+    }
+    
+    .profile-view-avatar-image {
+        height: 200px;
+        width: 200px;
+        overflow: hidden;
+        border-radius: 50%;
+        border: 4px solid var(--steam-iron-900);
+        box-shadow: 0 0 0 2px var(--steam-iron-700);
+        background: var(--steam-iron-800);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        color: var(--steam-iron-400);
+    }
+    
+    .profile-view-avatar-image img {
+        height: 100%;
+        width: 100%;
+        object-fit: cover;
+    }
+    
+    .profile-view-info {
+        margin-top: 0.75rem;
+        text-align: left;
+    }
+    
+    .profile-view-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--steam-iron-100);
+    }
+    
+    .profile-view-id {
+        font-size: 0.75rem;
+        color: var(--steam-iron-300);
+        margin-top: 0.25rem;
+    }
+    
+    .profile-view-title {
+        margin-top: 0.75rem;
+    }
+    
+    .profile-view-bio {
+        margin-top: 1rem;
+        font-size: 0.875rem;
+        line-height: 1.75;
+        color: var(--steam-iron-200);
+        white-space: pre-wrap;
+    }
+    
+    .profile-view-submissions-title {
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        color: var(--steam-gold-300);
+        font-weight: 600;
+    }
+    
+    .profile-view-submissions-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    @media (min-width: 768px) {
+        .profile-view-submissions-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+    
+    .profile-view-submission-item {
+        position: relative;
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        aspect-ratio: 1;
+        overflow: hidden;
+    }
+    
+    .profile-view-submission-item.game {
+        border-color: #a855f7;
+    }
+    
+    .profile-view-submission-item.video {
+        border-color: #0ea5e9;
+    }
+    
+    .profile-view-submission-item img,
+    .profile-view-submission-item video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 0.5rem;
+        cursor: pointer;
+    }
+    
+    .profile-view-submission-item .game-icon {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--steam-iron-200);
+        padding: 0.75rem;
+    }
+    
+    .profile-view-submission-item .game-icon svg {
+        color: var(--steam-gold-300);
+        margin-bottom: 0.25rem;
+    }
+    
+    .profile-view-submission-item .game-icon-text {
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        font-weight: 600;
+    }
+    
+    .profile-view-submission-item .like-button {
+        position: absolute;
+        bottom: 0.5rem;
+        right: 0.5rem;
+        z-index: 10;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .profile-view-submission-item .like-button:hover {
+        background: rgba(0, 0, 0, 0.8);
+    }
+    
+    .profile-view-submission-item .like-button.liked {
+        color: #fb7185;
+    }
+    
+    .profile-view-submission-item .like-button svg {
+        width: 1rem;
+        height: 1rem;
+    }
+    
+    .profile-view-submission-item .game-link {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        z-index: 10;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .profile-view-submission-item .game-link:hover {
+        background: rgba(0, 0, 0, 0.8);
+    }
+    
+    .profile-view-load-more {
+        margin-top: 1rem;
+        border-radius: 4px;
+        background: var(--steam-iron-800);
+        padding: 0.5rem 0.75rem;
+        color: var(--steam-gold-300);
+        border: none;
+        cursor: pointer;
+    }
+    
+    .profile-view-load-more:hover {
+        background: var(--steam-iron-700);
+    }
+    
+    .lightbox-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 5000;
+        background: rgba(0, 0, 0, 0.9);
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .lightbox-overlay.show {
+        display: flex;
+    }
+    
+    .lightbox-content {
+        max-width: 90%;
+        max-height: 90%;
+    }
+    
+    .lightbox-image,
+    .lightbox-video {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .lightbox-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 2rem;
+        height: 2rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .lightbox-close:hover {
+        background: rgba(0, 0, 0, 0.8);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ヘッダー画像 -->
+<section class="profile-view-header">
+    <div class="profile-view-header-image" id="header-image">
+        <div class="no-image">NO Image</div>
+    </div>
+</section>
+
+<main class="profile-view-container">
+    <!-- アバター -->
+    <div class="profile-view-avatar">
+        <div class="profile-view-avatar-image" id="avatar-image">
+            <span>未設定</span>
+        </div>
+    </div>
+    
+    <!-- 名前とID -->
+    <div class="profile-view-info">
+        <div class="profile-view-name" id="profile-name">—</div>
+        <div class="profile-view-id" id="profile-id">—</div>
+        <div class="profile-view-title" id="profile-title"></div>
+    </div>
+    
+    <!-- プロフィール文 -->
+    <div class="profile-view-bio" id="profile-bio" style="display: none;"></div>
+    
+    <!-- 提出一覧 -->
+    <h2 class="profile-view-submissions-title">提出一覧</h2>
+    <div class="profile-view-submissions-grid" id="submissions-grid">
+        <div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">読み込み中...</div>
+    </div>
+    <button class="profile-view-load-more" id="load-more-button" style="display: none;" onclick="loadMore()">さらに読み込む</button>
+</main>
+
+<!-- ライトボックス -->
+<div class="lightbox-overlay" id="lightbox-overlay" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <div class="lightbox-content">
+        <img id="lightbox-image" class="lightbox-image" src="" alt="submission" style="display: none;">
+        <video id="lightbox-video" class="lightbox-video" controls style="display: none;"></video>
+    </div>
+</div>
+
+<script>
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    const token = getAccessToken();
+    
+    // 認証チェック
+    if (!requireAuth()) {
+        // requireAuth()がfalseを返した場合、既にリダイレクトされている
+    }
+    
+    let currentUserId = null;
+    let nextCursor = null;
+    let submissions = [];
+    
+    // 初期データ読み込み
+    document.addEventListener('DOMContentLoaded', function() {
+        loadProfile();
+    });
+    
+    async function loadProfile() {
+        try {
+            // 自分のユーザー情報を取得
+            const metaRes = await fetch('/api/users/me/meta/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+            const metaData = await metaRes.json();
+            
+            if (metaData.display_id) {
+                currentUserId = metaData.display_id;
+                
+                // プロフィール情報を表示
+                if (metaData.header_url) {
+                    document.getElementById('header-image').innerHTML = `<img src="${metaData.header_url}" alt="header">`;
+                }
+                
+                if (metaData.avatar_url) {
+                    document.getElementById('avatar-image').innerHTML = `<img src="${metaData.avatar_url}" alt="avatar">`;
+                }
+                
+                if (metaData.display_name) {
+                    document.getElementById('profile-name').textContent = metaData.display_name;
+                } else if (metaData.display_id) {
+                    document.getElementById('profile-name').textContent = metaData.display_id;
+                }
+                
+                document.getElementById('profile-id').textContent = metaData.display_id;
+                
+                if (metaData.active_title) {
+                    document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${metaData.active_title}</span>`;
+                }
+                
+                if (metaData.bio) {
+                    document.getElementById('profile-bio').textContent = metaData.bio;
+                    document.getElementById('profile-bio').style.display = 'block';
+                }
+                
+                // 提出物を読み込み
+                loadSubmissions();
+            }
+        } catch (err) {
+            console.error('Failed to load profile:', err);
+        }
+    }
+    
+    async function loadSubmissions() {
+        if (!currentUserId) return;
+        
+        try {
+            const url = nextCursor 
+                ? `/api/user/submissions/${encodeURIComponent(currentUserId)}/?limit=12&cursor=${encodeURIComponent(nextCursor)}`
+                : `/api/user/submissions/${encodeURIComponent(currentUserId)}/?limit=12`;
+            
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+            const data = await res.json();
+            
+            if (data.items) {
+                submissions = submissions.concat(data.items);
+                nextCursor = data.nextCursor || null;
+                renderSubmissions();
+                
+                if (nextCursor) {
+                    document.getElementById('load-more-button').style.display = 'block';
+                } else {
+                    document.getElementById('load-more-button').style.display = 'none';
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load submissions:', err);
+            document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">提出物の読み込みに失敗しました</div>';
+        }
+    }
+    
+    function renderSubmissions() {
+        const grid = document.getElementById('submissions-grid');
+        
+        if (submissions.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">提出はまだありません</div>';
+            return;
+        }
+        
+        grid.innerHTML = submissions.map(s => {
+            const isGame = s.gameUrl;
+            const isVideo = s.videoUrl;
+            const imageUrl = s.displayImageUrl || s.imageUrl;
+            const videoUrl = s.videoUrl;
+            const gameUrl = s.gameUrl;
+            
+            let content = '';
+            if (isGame) {
+                content = `
+                    <div class="game-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                        </svg>
+                        <div class="game-icon-text">GAME</div>
+                    </div>
+                `;
+            } else if (isVideo) {
+                content = `
+                    <video src="${videoUrl}" muted preload="metadata" onclick="openLightbox('${videoUrl}', 'video')"></video>
+                    <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;">
+                        <div style="height: 3rem; width: 3rem; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                        </div>
+                    </div>
+                `;
+            } else {
+                content = `<img src="${imageUrl}" alt="submission" onclick="openLightbox('${imageUrl}', 'image')">`;
+            }
+            
+            return `
+                <div class="profile-view-submission-item ${isGame ? 'game' : (isVideo ? 'video' : '')}">
+                    ${content}
+                    <button class="like-button ${s.liked ? 'liked' : ''}" onclick="toggleLike('${s.id}', ${s.liked || false})" style="pointer-events: auto;">
+                        <svg viewBox="0 0 24 24" fill="${s.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                        <span>${s.likesCount || 0}</span>
+                    </button>
+                    ${isGame && gameUrl ? `
+                        <a href="${gameUrl}" target="_blank" rel="noreferrer" class="game-link" onclick="event.stopPropagation()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                            </svg>
+                            開く
+                        </a>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function loadMore() {
+        loadSubmissions();
+    }
+    
+    async function toggleLike(submissionId, currentLiked) {
+        const item = submissions.find(s => s.id === submissionId);
+        if (!item) return;
+        
+        // 楽観的更新
+        item.liked = !currentLiked;
+        item.likes_count = Math.max(0, (item.likes_count || 0) + (currentLiked ? -1 : 1));
+        renderSubmissions();
+        
+        try {
+            if (currentLiked) {
+                await fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                });
+            } else {
+                await fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+            }
+        } catch (err) {
+            // エラー時は元に戻す
+            item.liked = currentLiked;
+            item.likes_count = Math.max(0, (item.likes_count || 0) + (currentLiked ? 1 : -1));
+            renderSubmissions();
+        }
+    }
+    
+    function openLightbox(url, type) {
+        const overlay = document.getElementById('lightbox-overlay');
+        const image = document.getElementById('lightbox-image');
+        const video = document.getElementById('lightbox-video');
+        
+        if (type === 'video') {
+            image.style.display = 'none';
+            video.style.display = 'block';
+            video.src = url;
+        } else {
+            video.style.display = 'none';
+            image.style.display = 'block';
+            image.src = url;
+        }
+        
+        overlay.classList.add('show');
+    }
+    
+    function closeLightbox() {
+        const overlay = document.getElementById('lightbox-overlay');
+        const video = document.getElementById('lightbox-video');
+        overlay.classList.remove('show');
+        video.pause();
+        video.src = '';
+    }
+    
+    // ESCキーで閉じる
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+</script>
+{% endblock %}
+

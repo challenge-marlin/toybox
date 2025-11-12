@@ -1,0 +1,346 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ページ全体のスクロール無効化 */
+    body {
+        overflow: hidden;
+    }
+    
+    html {
+        overflow: hidden;
+    }
+    
+    .hero-container {
+        position: relative;
+        min-height: calc(100dvh - 64px);
+        overflow: hidden;
+    }
+    
+    @media (min-width: 768px) {
+        .hero-container {
+            min-height: calc(100dvh - 64px);
+        }
+    }
+    
+    /* スプラッシュスクリーン */
+    .splash-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #FFC626;
+        transition: opacity 0.3s ease-out;
+    }
+    
+    .splash-screen.fade {
+        opacity: 0;
+    }
+    
+    .splash-content {
+        text-align: center;
+    }
+    
+    .splash-loading {
+        margin: 0 auto;
+        height: 6rem;
+        width: auto;
+    }
+    
+    @media (min-width: 768px) {
+        .splash-loading {
+            height: 8rem;
+        }
+    }
+    
+    .splash-text {
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: #5c3a21;
+    }
+    
+    @media (min-width: 768px) {
+        .splash-text {
+            font-size: 0.875rem;
+        }
+    }
+    
+    /* 背景動画 */
+    .hero-video {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        height: 100%;
+        width: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
+    
+    /* メインコンテンツ */
+    .hero-main {
+        position: relative;
+        z-index: 10;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        overflow: hidden;
+    }
+    
+    @media (min-width: 768px) {
+        .hero-main {
+            padding: 2rem;
+        }
+    }
+    
+    .hero-section {
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        background: center/cover;
+        min-height: 100%;
+    }
+    
+    .hero-content {
+        position: relative;
+        padding: 1.5rem 2rem;
+        height: 100%;
+        display: flex;
+        align-items: flex-start;
+    }
+    
+    @media (min-width: 768px) {
+        .hero-content {
+            padding: 2rem;
+        }
+    }
+    
+    .hero-center {
+        position: relative;
+        z-index: 20;
+        width: 100%;
+        text-align: center;
+    }
+    
+    .hero-title {
+        margin: 0 auto;
+        height: 7rem;
+        width: auto;
+    }
+    
+    @media (min-width: 768px) {
+        .hero-title {
+            height: 9rem;
+        }
+    }
+    
+    @media (min-width: 1024px) {
+        .hero-title {
+            height: 10rem;
+        }
+    }
+    
+    .hero-description {
+        margin-top: 1rem;
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 42rem;
+        color: var(--steam-iron-100);
+        font-size: 1rem;
+    }
+    
+    @media (min-width: 768px) {
+        .hero-description {
+            font-size: 1.125rem;
+        }
+    }
+    
+    .hero-buttons {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        justify-content: center;
+    }
+    
+    .hero-button {
+        border-radius: 4px;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.2s;
+    }
+    
+    @media (min-width: 768px) {
+        .hero-button {
+            font-size: 1.125rem;
+        }
+    }
+    
+    .hero-button-primary {
+        background: var(--steam-gold-500);
+        color: #000;
+    }
+    
+    .hero-button-primary:hover {
+        background: var(--steam-gold-400);
+    }
+    
+    .hero-button-secondary {
+        border: 1px solid var(--steam-gold-500);
+        padding: 0.75rem 1.5rem;
+        color: var(--steam-gold-200);
+    }
+    
+    .hero-button-secondary:hover {
+        background: var(--steam-iron-800);
+        color: var(--steam-gold-300);
+    }
+    
+    /* みおちゃんの画像 */
+    .hero-mio-container {
+        margin-top: 1.5rem;
+        transform: translateY(0);
+    }
+    
+    .hero-mio {
+        pointer-events: none;
+        margin: 0 auto;
+        display: block;
+        height: 800px;
+        max-height: 60vh;
+        width: auto;
+        user-select: none;
+    }
+    
+    .hero-mio.mio-float {
+        animation: mioFloatFade 1800ms ease-out both;
+    }
+    
+    /* 機能カード（絶対配置） */
+    .hero-features-container {
+        position: absolute;
+        inset-x: 0;
+        bottom: 228px;
+        z-index: 30;
+        display: flex;
+        justify-content: center;
+    }
+    
+    .hero-features {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        width: 100%;
+        max-width: 1200px;
+        padding: 0 1.5rem;
+    }
+    
+    @media (min-width: 768px) {
+        .hero-features {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+    
+    .hero-feature-card {
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-800);
+        background: rgba(31, 35, 42, 0.9);
+        padding: 1rem;
+    }
+    
+    .hero-feature-card-title {
+        margin-bottom: 0.5rem;
+        color: var(--steam-gold-300);
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    
+    .hero-feature-card-text {
+        color: var(--steam-iron-200);
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero-container">
+    <!-- スプラッシュスクリーン -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <img src="{% static 'frontend/hero/nowloading.gif' %}" alt="Now Loading" class="splash-loading">
+            <div class="splash-text">Nowloading...</div>
+        </div>
+    </div>
+    
+    <!-- 背景動画 -->
+    <video class="hero-video" src="{% static 'frontend/hero/background.mp4' %}" poster="{% static 'frontend/hero/background.png' %}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>
+    
+    <!-- メインコンテンツ -->
+    <main class="hero-main">
+        <section class="hero-section">
+            <div class="hero-content">
+                <!-- 未ログインユーザー向けキービジュアル -->
+                <div class="hero-center">
+                    <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="TOYBOX ロゴ" class="hero-title">
+                    <p class="hero-description">
+                        毎日の"お題"に挑戦して、コレクションを増やそう。
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="/login/" class="hero-button hero-button-primary">ログイン</a>
+                        <a href="/signup/" class="hero-button hero-button-secondary">アカウント作成</a>
+                    </div>
+                    <div class="hero-mio-container">
+                        <img src="{% static 'frontend/hero/mio.png' %}" alt="綾鳥みお" class="hero-mio mio-float">
+                    </div>
+                    <!-- 機能カード -->
+                    <div class="hero-features-container">
+                        <div class="hero-features">
+                            <div class="hero-feature-card">
+                                <div class="hero-feature-card-title">続けるほど当たりやすい</div>
+                                <p class="hero-feature-card-text">毎日の提出でボーナスが蓄積。未当選が続くほど確率が少しずつ上がります。</p>
+                            </div>
+                            <div class="hero-feature-card">
+                                <div class="hero-feature-card-title">称号とカードをコレクション</div>
+                                <p class="hero-feature-card-text">当選すると限定称号やカードを獲得。プロフィールで自慢できます。</p>
+                            </div>
+                            <div class="hero-feature-card">
+                                <div class="hero-feature-card-title">コミュニティで刺激を受ける</div>
+                                <p class="hero-feature-card-text">他の参加者の取り組みからヒントを得て、継続のモチベーションに。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    // スプラッシュスクリーンの処理
+    document.addEventListener('DOMContentLoaded', function() {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            setTimeout(() => {
+                splash.classList.add('fade');
+            }, 1200);
+            setTimeout(() => {
+                splash.style.display = 'none';
+            }, 1500);
+        }
+        
+        // JWTトークンが存在する場合はマイページにリダイレクト
+        // スプラッシュスクリーンが消えた後にリダイレクト
+        setTimeout(() => {
+            redirectIfAuthenticated();
+        }, 1600);
+    });
+</script>
+{% endblock %}

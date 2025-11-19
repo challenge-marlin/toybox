@@ -66,6 +66,90 @@
     .back-link a:hover {
         text-decoration: underline;
     }
+    
+    .penalty-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .penalty-modal.show {
+        display: flex;
+    }
+    
+    .penalty-modal-content {
+        background: var(--steam-iron-900);
+        border: 2px solid var(--steam-gold-300);
+        border-radius: 8px;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    .penalty-modal-header {
+        color: var(--steam-gold-300);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .penalty-modal-header.warning {
+        color: #fbbf24;
+    }
+    
+    .penalty-modal-header.suspend {
+        color: #f59e0b;
+    }
+    
+    .penalty-modal-header.ban {
+        color: #dc2626;
+    }
+    
+    .penalty-modal-body {
+        color: var(--steam-iron-100);
+        font-size: 1rem;
+        line-height: 1.8;
+        white-space: pre-wrap;
+        margin-bottom: 1.5rem;
+    }
+    
+    .penalty-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    
+    .penalty-modal-button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 500;
+        transition: opacity 0.2s;
+    }
+    
+    .penalty-modal-button:hover {
+        opacity: 0.9;
+    }
+    
+    .penalty-modal-button-primary {
+        background: var(--steam-gold-500);
+        color: #000;
+    }
 </style>
 {% endblock %}
 
@@ -87,6 +171,17 @@
     </form>
     <div class="back-link">
         <a href="/">トップページに戻る</a>
+    </div>
+</div>
+
+<!-- 警告メッセージモーダル -->
+<div id="penaltyModal" class="penalty-modal">
+    <div class="penalty-modal-content">
+        <div id="penaltyModalHeader" class="penalty-modal-header"></div>
+        <div id="penaltyModalBody" class="penalty-modal-body"></div>
+        <div class="penalty-modal-footer">
+            <button id="penaltyModalClose" class="penalty-modal-button penalty-modal-button-primary">了解しました</button>
+        </div>
     </div>
 </div>
 
@@ -129,12 +224,23 @@
                 if (data.refresh) {
                     setRefreshToken(data.refresh);
                 }
-                successDiv.textContent = 'ログイン成功！マイページへ移動します...';
-                successDiv.style.display = 'block';
-                setTimeout(() => {
-                    // ログイン後は直接マイページにリダイレクト
-                    window.location.href = '/me/';
-                }, 1000);
+                
+                // 警告メッセージがある場合は表示
+                if (data.penalty && data.penalty.message) {
+                    showPenaltyModal(data.penalty.type, data.penalty.message);
+                } else {
+                    // ロールに応じてリダイレクト先を決定
+                    const redirectUrl = (data.role === 'FREE_USER') ? '/upgrade/' : '/me/';
+                    const redirectMessage = (data.role === 'FREE_USER') 
+                        ? 'ログイン成功！課金についてのページへ移動します...' 
+                        : 'ログイン成功！マイページへ移動します...';
+                    
+                    successDiv.textContent = redirectMessage;
+                    successDiv.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = redirectUrl;
+                    }, 1000);
+                }
             } else {
                 errorDiv.textContent = data.detail || data.non_field_errors?.[0] || 'ログインに失敗しました';
                 errorDiv.style.display = 'block';
@@ -148,6 +254,67 @@
             submitBtn.textContent = 'ログイン';
         }
     });
+    
+    function showPenaltyModal(type, message) {
+        const modal = document.getElementById('penaltyModal');
+        const header = document.getElementById('penaltyModalHeader');
+        const body = document.getElementById('penaltyModalBody');
+        const closeBtn = document.getElementById('penaltyModalClose');
+        
+        // タイプに応じたヘッダーを設定
+        let headerText = '';
+        let headerClass = '';
+        if (type === 'WARNING') {
+            headerText = '⚠️ 警告';
+            headerClass = 'warning';
+        } else if (type === 'SUSPEND') {
+            headerText = '⛔ アカウント停止';
+            headerClass = 'suspend';
+        } else if (type === 'BAN') {
+            headerText = '🚫 BAN（アカウント削除）';
+            headerClass = 'ban';
+        } else {
+            headerText = '⚠️ お知らせ';
+            headerClass = 'warning';
+        }
+        
+        header.textContent = headerText;
+        header.className = 'penalty-modal-header ' + headerClass;
+        body.textContent = message;
+        
+        modal.classList.add('show');
+        
+        // 閉じるボタンのイベント
+        closeBtn.onclick = function() {
+            modal.classList.remove('show');
+            
+            // タイプに応じて異なる処理
+            if (type === 'WARNING') {
+                // 警告の場合はマイページにリダイレクト
+                const successDiv = document.getElementById('success');
+                successDiv.textContent = 'ログイン成功！マイページへ移動します...';
+                successDiv.style.display = 'block';
+                setTimeout(() => {
+                    window.location.href = '/me/';
+                }, 500);
+            } else if (type === 'SUSPEND' || type === 'BAN') {
+                // アカウント停止またはBANの場合はトークンを削除してログインページに戻る
+                clearAuth();
+                const errorDiv = document.getElementById('error');
+                if (type === 'SUSPEND') {
+                    errorDiv.textContent = 'アカウントが停止されています。ログインページに戻ります。';
+                } else {
+                    errorDiv.textContent = 'アカウントが削除されました。ログインページに戻ります。';
+                }
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    window.location.href = '/login/';
+                }, 2000);
+            }
+        };
+        
+        // モーダル外をクリックしても閉じない（重要メッセージのため）
+    }
 </script>
 {% endblock %}
 

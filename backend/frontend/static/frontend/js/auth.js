@@ -38,9 +38,11 @@ function requireAuth() {
 /**
  * Redirect to my page if valid token exists.
  * Used on login/signup/index pages.
+ * Note: This function redirects to /me/ which will handle role-based redirection server-side.
  */
 function redirectIfAuthenticated() {
     if (hasValidToken()) {
+        // サーバー側でロールに応じたリダイレクトが行われるため、/me/にリダイレクト
         window.location.href = '/me/';
         return true;
     }

@@ -35,7 +35,7 @@ class UserManager(BaseUserManager):
     
     def create_superuser(self, email, password=None, **extra_fields):
         """Create and save a superuser."""
-        extra_fields.setdefault('role', User.Role.ADMIN)
+        extra_fields.setdefault('role', User.Role.SUPERUSER)
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         
@@ -51,30 +51,32 @@ class User(AbstractBaseUser, PermissionsMixin):
     """Custom user model."""
     
     class Role(models.TextChoices):
-        USER = 'USER', 'User'
-        OFFICE = 'OFFICE', 'Office'
-        AYATORI = 'AYATORI', 'Ayatori'
-        ADMIN = 'ADMIN', 'Admin'
+        FREE_USER = 'FREE_USER', '一般ユーザー'
+        PAID_USER = 'PAID_USER', '課金ユーザー'
+        ADMIN = 'ADMIN', '管理者'
+        SUPERUSER = 'SUPERUSER', 'スーパーユーザー'
     
     # Authentication fields
-    email = models.EmailField(unique=True, null=True, blank=True, db_index=True)
-    password = models.CharField(max_length=128)  # AbstractBaseUser provides this
+    email = models.EmailField('メールアドレス', unique=True, null=True, blank=True, db_index=True)
+    password = models.CharField('パスワード', max_length=128)  # AbstractBaseUser provides this
     
     # Profile fields
-    display_id = models.CharField(max_length=100, db_index=True)
-    role = models.CharField(max_length=20, choices=Role.choices, default=Role.USER)
-    avatar_url = models.URLField(max_length=500, blank=True, null=True)
+    display_id = models.CharField('表示ID', max_length=100, db_index=True)
+    role = models.CharField('役割', max_length=20, choices=Role.choices, default=Role.FREE_USER)
+    avatar_url = models.URLField('アバターURL', max_length=500, blank=True, null=True)
     
     # Moderation fields
-    is_suspended = models.BooleanField(default=False)
-    banned_at = models.DateTimeField(null=True, blank=True)
-    warning_count = models.IntegerField(default=0)
-    warning_notes = models.TextField(blank=True, null=True)
+    is_suspended = models.BooleanField('アカウント停止', default=False)
+    banned_at = models.DateTimeField('BAN日時', null=True, blank=True)
+    warning_count = models.IntegerField('警告回数', default=0)
+    warning_notes = models.TextField('警告メモ', blank=True, null=True)
+    penalty_message = models.TextField('ペナルティメッセージ', blank=True, null=True, help_text='ユーザーに表示する警告・ペナルティメッセージ')
+    penalty_type = models.CharField('ペナルティタイプ', max_length=20, blank=True, null=True, help_text='WARNING: 警告, SUSPEND: アカウント停止, BAN: BAN（アカウント削除）')
     
     # Django admin fields
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    is_superuser = models.BooleanField(default=False)
+    is_active = models.BooleanField('アクティブ', default=True, help_text='このユーザーがアクティブかどうか。無効にするとログインできません。')
+    is_staff = models.BooleanField('管理サイトアクセス権限', default=False, help_text='このユーザーがDjango管理サイトにアクセスできるかどうか。')
+    is_superuser = models.BooleanField('スーパーユーザー', default=False, help_text='このユーザーがすべての権限を持つかどうか。')
     
     # ETL tracking
     old_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
@@ -89,6 +91,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     class Meta:
         db_table = 'users'
+        verbose_name = 'ユーザー'
+        verbose_name_plural = 'ユーザー'
         indexes = [
             models.Index(fields=['email']),
             models.Index(fields=['display_id']),
@@ -116,9 +120,11 @@ class UserRegistration(models.Model):
     
     class Meta:
         db_table = 'user_registrations'
+        verbose_name = 'ユーザー登録情報'
+        verbose_name_plural = 'ユーザー登録情報'
     
     def __str__(self):
-        return f'Registration for {self.user.display_id}'
+        return f'{self.user.display_id}の登録情報'
 
 
 class UserMeta(models.Model):
@@ -147,13 +153,15 @@ class UserMeta(models.Model):
     
     class Meta:
         db_table = 'user_meta'
+        verbose_name = 'ユーザーメタ情報'
+        verbose_name_plural = 'ユーザーメタ情報'
         indexes = [
             models.Index(fields=['expires_at']),
             models.Index(fields=['old_id']),
         ]
     
     def __str__(self):
-        return f'UserMeta for {self.user.display_id}'
+        return f'{self.user.display_id}のメタ情報'
 
 
 class UserCard(models.Model):
@@ -167,6 +175,8 @@ class UserCard(models.Model):
     
     class Meta:
         db_table = 'user_cards'
+        verbose_name = 'ユーザーカード'
+        verbose_name_plural = 'ユーザーカード'
         unique_together = [['user', 'card']]
         indexes = [
             models.Index(fields=['user', 'obtained_at']),

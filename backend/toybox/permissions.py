@@ -26,19 +26,24 @@ class IsAdmin(RoleGuard):
     allowed_roles = [User.Role.ADMIN]
 
 
+class IsAdminOrSuperuser(RoleGuard):
+    """ADMIN or SUPERUSER role allowed."""
+    allowed_roles = [User.Role.ADMIN, User.Role.SUPERUSER]
+
+
 class IsAdminOrAyatori(RoleGuard):
-    """ADMIN or AYATORI role allowed."""
-    allowed_roles = [User.Role.ADMIN, User.Role.AYATORI]
+    """ADMIN or SUPERUSER role allowed (legacy name for compatibility)."""
+    allowed_roles = [User.Role.ADMIN, User.Role.SUPERUSER]
 
 
 class IsAdminOrOffice(RoleGuard):
-    """ADMIN or OFFICE role allowed."""
-    allowed_roles = [User.Role.ADMIN, User.Role.OFFICE]
+    """ADMIN or SUPERUSER role allowed (legacy name for compatibility)."""
+    allowed_roles = [User.Role.ADMIN, User.Role.SUPERUSER]
 
 
 class IsAdminOrAyatoriOrOffice(RoleGuard):
-    """ADMIN, AYATORI, or OFFICE role allowed."""
-    allowed_roles = [User.Role.ADMIN, User.Role.AYATORI, User.Role.OFFICE]
+    """ADMIN or SUPERUSER role allowed (legacy name for compatibility)."""
+    allowed_roles = [User.Role.ADMIN, User.Role.SUPERUSER]
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):

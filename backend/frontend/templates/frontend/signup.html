@@ -204,13 +204,19 @@
                     setRefreshToken(data.refresh);
                 }
                 
+                // ロールに応じてリダイレクト先を決定
+                const redirectUrl = (data.role === 'FREE_USER') ? '/upgrade/' : '/me/';
+                const redirectMessage = (data.role === 'FREE_USER') 
+                    ? 'アカウントを作成しました。課金についてのページへ移動します…' 
+                    : 'アカウントを作成しました。マイページへ移動します…';
+                
                 // Show success message
-                messageDiv.textContent = 'アカウントを作成しました。マイページへ移動します…';
+                messageDiv.textContent = redirectMessage;
                 messageDiv.style.display = 'block';
                 
-                // Redirect to my page
+                // Redirect based on role
                 setTimeout(() => {
-                    window.location.href = '/me/';
+                    window.location.href = redirectUrl;
                 }, 1000);
             } else {
                 // Show error

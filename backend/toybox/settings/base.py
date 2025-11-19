@@ -296,6 +296,8 @@ DISCORD_CLIENT_SECRET = os.environ.get('DISCORD_CLIENT_SECRET', '')
 DISCORD_REDIRECT_URI = os.environ.get('DISCORD_REDIRECT_URI', '')
 DISCORD_BOT_TOKEN = os.environ.get('DISCORD_BOT_TOKEN', '')
 DISCORD_CHANNEL_ID = os.environ.get('DISCORD_CHANNEL_ID', '')
+DISCORD_SERVER_ID = os.environ.get('DISCORD_SERVER_ID', '')
+DISCORD_INVITE_CODE = os.environ.get('DISCORD_INVITE_CODE', 'xSP8p44H')
 
 # CORS (if needed for frontend)
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', '').split(',') if os.environ.get('CORS_ORIGINS') else []

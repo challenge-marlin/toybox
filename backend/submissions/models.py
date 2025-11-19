@@ -11,24 +11,24 @@ class Submission(models.Model):
     """User submission model with soft delete."""
     
     class Status(models.TextChoices):
-        PUBLIC = 'PUBLIC', 'Public'
-        PRIVATE = 'PRIVATE', 'Private'
-        FLAGGED = 'FLAGGED', 'Flagged'
+        PUBLIC = 'PUBLIC', '公開'
+        PRIVATE = 'PRIVATE', '非公開'
+        FLAGGED = 'FLAGGED', 'フラグ付き'
     
     # Author
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submissions')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submissions', verbose_name='投稿者')
     
     # Content
-    image = models.ImageField(upload_to='submissions/', blank=True, null=True)
-    caption = models.TextField(max_length=1000, blank=True)
-    comment_enabled = models.BooleanField(default=True)
+    image = models.ImageField('画像', upload_to='submissions/', blank=True, null=True)
+    caption = models.TextField('キャプション', max_length=1000, blank=True)
+    comment_enabled = models.BooleanField('コメント有効', default=True)
     
     # Status and moderation
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PUBLIC)
+    status = models.CharField('ステータス', max_length=20, choices=Status.choices, default=Status.PUBLIC)
     
     # Soft delete
-    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
-    delete_reason = models.TextField(blank=True, null=True)
+    deleted_at = models.DateTimeField('削除日時', null=True, blank=True, db_index=True)
+    delete_reason = models.TextField('削除理由', blank=True, null=True)
     
     # Legacy fields (for migration compatibility)
     aim = models.CharField(max_length=100, blank=True)
@@ -48,6 +48,8 @@ class Submission(models.Model):
     
     class Meta:
         db_table = 'submissions'
+        verbose_name = '投稿'
+        verbose_name_plural = '投稿'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
@@ -58,7 +60,7 @@ class Submission(models.Model):
         ]
     
     def __str__(self):
-        return f'Submission by {self.author.display_id} at {self.created_at}'
+        return f'{self.author.display_id}の投稿 ({self.created_at})'
     
     def soft_delete(self, reason=None):
         """Soft delete the submission."""
@@ -78,16 +80,18 @@ class Reaction(models.Model):
     """User reactions to submissions."""
     
     class Type(models.TextChoices):
-        SUBMIT_MEDAL = 'submit_medal', 'Submit Medal'
+        SUBMIT_MEDAL = 'submit_medal', '投稿メダル'
     
-    type = models.CharField(max_length=50, choices=Type.choices)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reactions')
-    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='reactions')
+    type = models.CharField('リアクションタイプ', max_length=50, choices=Type.choices)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reactions', verbose_name='ユーザー')
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='reactions', verbose_name='投稿')
     
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField('作成日時', auto_now_add=True)
     
     class Meta:
         db_table = 'reactions'
+        verbose_name = 'リアクション'
+        verbose_name_plural = 'リアクション'
         unique_together = [['user', 'submission', 'type']]
         indexes = [
             models.Index(fields=['submission', 'type']),

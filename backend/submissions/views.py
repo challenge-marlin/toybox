@@ -515,7 +515,8 @@ class SubmittersTodayView(APIView):
                 continue
         
         return Response({
-            'submitters': submitters
+            'submitters': submitters,
+            'count': len(submitters)
         })
 
 

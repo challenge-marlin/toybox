@@ -6,6 +6,13 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from users import views as user_views
+from frontend.views import AnnouncementsView
+import frontend.views as frontend_views
+
+# Django管理サイトの日本語化
+admin.site.site_header = 'ToyBox 管理サイト'
+admin.site.site_title = 'ToyBox 管理'
+admin.site.index_title = 'サイト管理'
 try:
     from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
     SPECTACULAR_AVAILABLE = True
@@ -39,6 +46,8 @@ urlpatterns += [
     path('api/', include('submissions.urls')),
     path('api/', include('lottery.urls')),
     path('api/share/', include('sharing.urls')),
+    path('api/announcements/', AnnouncementsView.as_view(), name='announcements'),
+    path('api/contact/', frontend_views.ContactView.as_view(), name='contact'),
     
     # Admin API endpoints
     path('api/', include('adminpanel.urls')),
@@ -59,5 +68,7 @@ if settings.DEBUG:
     from django.urls import re_path
     urlpatterns += [
         re_path(r'^uploads/cards/(?P<path>.*)$', serve, {'document_root': settings.BASE_DIR / 'frontend' / 'static' / 'frontend' / 'uploads' / 'cards'}),
+        # Serve game files from /media/ path (for compatibility with game URLs)
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
     ]
 

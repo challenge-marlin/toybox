@@ -1,0 +1,237 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}課金について - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upgrade-container {
+        max-width: 600px;
+        margin: 4rem auto;
+        padding: 2rem;
+        background: var(--steam-iron-900);
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+    }
+    
+    .upgrade-container h1 {
+        font-size: 1.5rem;
+        color: var(--steam-gold-300);
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    
+    .upgrade-message {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-gold-500);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .upgrade-message p {
+        color: var(--steam-iron-100);
+        font-size: 1rem;
+        line-height: 1.8;
+        margin-bottom: 1rem;
+    }
+    
+    .upgrade-message p:last-child {
+        margin-bottom: 0;
+    }
+    
+    .contact-form {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-600);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    
+    .contact-form h2 {
+        color: var(--steam-gold-300);
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--steam-gold-300);
+        font-size: 0.875rem;
+    }
+    
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--steam-iron-600);
+        border-radius: 4px;
+        background: var(--steam-iron-900);
+        color: var(--steam-iron-100);
+        font-size: 1rem;
+    }
+    
+    .form-group textarea {
+        min-height: 150px;
+        resize: vertical;
+    }
+    
+    .form-group input:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--steam-gold-500);
+    }
+    
+    .submit-btn {
+        width: 100%;
+        padding: 0.75rem;
+        background: var(--steam-gold-500);
+        color: #000;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .submit-btn:hover {
+        background: var(--steam-gold-400);
+    }
+    
+    .submit-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .back-link {
+        text-align: center;
+        margin-top: 1.5rem;
+    }
+    
+    .back-link a {
+        color: var(--steam-iron-400);
+        text-decoration: none;
+    }
+    
+    .back-link a:hover {
+        text-decoration: underline;
+    }
+    
+    .success-message {
+        background: rgba(22, 163, 74, 0.1);
+        border: 1px solid rgba(22, 163, 74, 0.3);
+        border-radius: 4px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        color: #16a34a;
+    }
+    
+    .error-message {
+        background: rgba(220, 38, 38, 0.1);
+        border: 1px solid rgba(220, 38, 38, 0.3);
+        border-radius: 4px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        color: #dc2626;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="upgrade-container">
+    <h1>課金について</h1>
+    
+    <div class="upgrade-message">
+        <p>現在、あなたのアカウントは一般ユーザーです。マイページにアクセスするには、課金ユーザーへのアップグレードが必要です。</p>
+        <p><strong>課金するためには、以下のフォームからAYATORIに問い合わせください。</strong></p>
+    </div>
+    
+    <div id="success" class="success-message" style="display: none;"></div>
+    <div id="error" class="error-message" style="display: none;"></div>
+    
+    <div class="contact-form">
+        <h2>問い合わせフォーム</h2>
+        <form id="contactForm">
+            <div class="form-group">
+                <label for="name">お名前</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="email">メールアドレス</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="message">問い合わせ内容</label>
+                <textarea id="message" name="message" required placeholder="課金についての問い合わせ内容をご記入ください。"></textarea>
+            </div>
+            <button type="submit" class="submit-btn" id="submitBtn">送信</button>
+        </form>
+    </div>
+    
+    <div class="back-link">
+        <a href="/">トップページに戻る</a>
+    </div>
+</div>
+
+<script>
+    document.getElementById('contactForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+        const message = document.getElementById('message').value;
+        const submitBtn = document.getElementById('submitBtn');
+        const successDiv = document.getElementById('success');
+        const errorDiv = document.getElementById('error');
+        
+        successDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = '送信中...';
+        
+        try {
+            // AYATORIへの問い合わせメール送信
+            const response = await fetch('/api/contact/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getAccessToken()}`
+                },
+                body: JSON.stringify({
+                    name: name,
+                    email: email,
+                    message: message
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.ok) {
+                // 成功メッセージを表示
+                successDiv.textContent = '問い合わせを送信しました。ご連絡ありがとうございます。';
+                successDiv.style.display = 'block';
+                
+                // フォームをリセット
+                document.getElementById('contactForm').reset();
+            } else {
+                throw new Error(data.error || '送信に失敗しました');
+            }
+            
+        } catch (err) {
+            errorDiv.textContent = 'エラーが発生しました。もう一度お試しください。';
+            errorDiv.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '送信';
+        }
+    });
+</script>
+<script src="{% static 'frontend/js/auth.js' %}"></script>
+{% endblock %}
+

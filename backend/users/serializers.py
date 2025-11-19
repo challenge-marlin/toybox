@@ -45,7 +45,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'non_field_errors': ['Invalid ID or password.']
             })
         
-        if not user.is_active:
+        # BANされたアカウントでも警告メッセージを表示するために一時的にログインを許可
+        # （警告メッセージ表示後に自動的にログアウトされる）
+        # ただし、is_activeがFalseでBANされていない場合は通常通り拒否
+        if not user.is_active and not (user.banned_at or user.penalty_type == 'BAN'):
             raise serializers.ValidationError({
                 'non_field_errors': ['User account is disabled.']
             })
@@ -53,10 +56,21 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Generate tokens directly
         refresh = RefreshToken.for_user(user)
         
-        return {
+        # 警告メッセージをレスポンスに含める
+        response_data = {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
+            'role': user.role,  # ロール情報を追加
         }
+        
+        # ペナルティメッセージがある場合は含める
+        if user.penalty_message and user.penalty_type:
+            response_data['penalty'] = {
+                'type': user.penalty_type,
+                'message': user.penalty_message,
+            }
+        
+        return response_data
 
 
 class UserSerializer(serializers.ModelSerializer):

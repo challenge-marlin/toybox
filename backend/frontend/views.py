@@ -2,7 +2,6 @@
 Frontend app views for general UI.
 """
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -41,40 +40,40 @@ def signup_page(request):
     return render(request, 'frontend/signup.html')
 
 
-@login_required
 @require_http_methods(["GET"])
 def me(request):
     """My profile page - metadata display."""
+    # JWT認証はJavaScriptでチェックするため、Djangoセッション認証は不要
     return render(request, 'frontend/me.html')
 
 
-@login_required
 @require_http_methods(["GET", "POST"])
 def lottery(request):
     """Lottery page - draw button with result modal."""
+    # JWT認証はJavaScriptでチェックするため、Djangoセッション認証は不要
     if request.method == 'POST':
         # Handle lottery draw
         return render(request, 'frontend/lottery.html', {'drawn': True})
     return render(request, 'frontend/lottery.html')
 
 
-@login_required
 @require_http_methods(["GET"])
 def collection(request):
     """Collection page - user's card collection."""
+    # JWT認証はJavaScriptでチェックするため、Djangoセッション認証は不要
     return render(request, 'frontend/collection.html')
 
 
-@login_required
 @require_http_methods(["GET"])
 def profile(request):
     """Profile settings page."""
+    # JWT認証はJavaScriptでチェックするため、Djangoセッション認証は不要
     return render(request, 'frontend/profile.html')
 
 
-@login_required
 @require_http_methods(["GET"])
 def profile_view(request):
     """Profile view page - display user's profile with submissions."""
+    # JWT認証はJavaScriptでチェックするため、Djangoセッション認証は不要
     return render(request, 'frontend/profile_view.html')
 

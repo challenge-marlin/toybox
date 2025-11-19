@@ -14,17 +14,41 @@ class SubmissionSerializer(serializers.ModelSerializer):
     title_color = serializers.SerializerMethodField()
     reactions_count = serializers.SerializerMethodField()
     user_reacted = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    display_image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Submission
         fields = [
             'id', 'author', 'author_display_id', 'author_avatar_url',
-            'image', 'caption', 'comment_enabled', 'status',
+            'image', 'display_image_url', 'image_url', 'video_url', 'game_url',
+            'caption', 'comment_enabled', 'status',
             'active_title', 'title_color',
             'reactions_count', 'user_reacted',
             'created_at', 'deleted_at'
         ]
         read_only_fields = ['id', 'author', 'created_at', 'deleted_at', 'status']
+    
+    def get_image(self, obj):
+        """Get absolute URL for image field."""
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        # Fallback to image_url if image field is empty
+        return obj.image_url or None
+    
+    def get_display_image_url(self, obj):
+        """Get display image URL (prefer image_url, then image field)."""
+        if obj.image_url:
+            return obj.image_url
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
     
     def get_active_title(self, obj):
         """Get author's active title."""

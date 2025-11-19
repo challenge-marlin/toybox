@@ -130,10 +130,14 @@ class UserMeta(models.Model):
     title_color = models.CharField(max_length=50, blank=True, null=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     
-    # Legacy fields (for migration compatibility)
+    # Profile fields
+    display_name = models.CharField(max_length=50, blank=True)
     bio = models.TextField(max_length=1000, blank=True)
     header_url = models.URLField(max_length=500, blank=True)
     lottery_bonus_count = models.IntegerField(default=0)
+    
+    # Notifications (JSON array of notification objects)
+    notifications = models.JSONField(default=list, blank=True)
     
     # ETL tracking
     old_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)

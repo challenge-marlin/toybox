@@ -16,13 +16,31 @@
                 <a href="/" id="logo-link" style="display: flex; align-items: center;">
                     <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="ToyBox" style="height: 2rem; width: auto;">
                 </a>
-                <a href="/me/" id="nav-mypage" style="color: var(--steam-gold-400); text-decoration: none; display: none;">マイページ</a>
+                <a href="/me/" id="nav-me" style="color: var(--steam-gold-400); text-decoration: none; display: none;">マイページ</a>
                 <a href="/collection/" id="nav-collection" style="color: var(--steam-gold-400); text-decoration: none; display: none;">コレクション</a>
                 <a href="/profile/view/" id="nav-profile" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール</a>
                 <a href="/feed/" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
                 <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
             </nav>
             <div id="user-info" style="display: flex; align-items: center; gap: 0.75rem; color: var(--steam-iron-200); display: none;">
+                <div id="notification-container" style="position: relative; display: none;">
+                    <button id="notification-button" onclick="toggleNotifications()" style="position: relative; background: transparent; border: none; padding: 0.25rem 0.5rem; cursor: pointer; color: var(--steam-gold-300); border-radius: 4px;" aria-label="通知">
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
+                            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 01-3.46 0" />
+                        </svg>
+                        <span id="notification-badge" style="position: absolute; top: -4px; right: -4px; background: #dc2626; color: white; border-radius: 50%; font-size: 10px; min-width: 18px; height: 18px; display: none; align-items: center; justify-content: center; padding: 0 4px; font-weight: bold;">0</span>
+                    </button>
+                    <div id="notification-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; width: 288px; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700); border-radius: 4px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); z-index: 50;">
+                        <div id="notification-list" style="max-height: 320px; overflow-y: auto; border-bottom: 1px solid var(--steam-iron-800);">
+                            <div style="padding: 0.75rem; text-align: center; color: var(--steam-iron-300); font-size: 0.75rem;">読み込み中...</div>
+                        </div>
+                        <div style="padding: 0.5rem; text-align: right; border-top: 1px solid var(--steam-iron-800);">
+                            <button id="load-more-notifications" onclick="loadMoreNotifications()" style="display: none; background: transparent; border: none; color: var(--steam-gold-300); font-size: 11px; cursor: pointer; text-decoration: underline;">もっと見る</button>
+                            <span id="notification-all-shown" style="display: none; color: var(--steam-iron-300); font-size: 11px;">すべて表示</span>
+                        </div>
+                    </div>
+                </div>
                 <span id="user-display-id" style="display: inline;"></span>
                 <a href="/login/" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="clearAuth(); window.location.href='/'; return false;">ログアウト</a>
             </div>
@@ -35,11 +53,142 @@
     
     {% block extra_js %}{% endblock %}
     <script>
+        // 通知機能の変数（グローバルスコープ）
+        let notificationItems = [];
+        let notificationNextOffset = null;
+        let notificationUnread = 0;
+        let notificationDropdownOpen = false;
+        
+        // 通知機能の関数（グローバルスコープ）
+        function loadNotifications() {
+            const token = getAccessToken();
+            if (!token) return;
+            
+            fetch('/api/users/notifications/?limit=10', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                notificationItems = data.items || [];
+                notificationUnread = data.unread || 0;
+                notificationNextOffset = data.nextOffset || null;
+                
+                updateNotificationBadge();
+                if (notificationDropdownOpen) {
+                    renderNotifications();
+                }
+            })
+            .catch(err => console.error('Failed to load notifications:', err));
+        }
+        
+        function updateNotificationBadge() {
+            const badge = document.getElementById('notification-badge');
+            if (badge) {
+                if (notificationUnread > 0) {
+                    badge.textContent = notificationUnread > 99 ? '99+' : String(notificationUnread);
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+        
+        function renderNotifications() {
+            const list = document.getElementById('notification-list');
+            const loadMoreBtn = document.getElementById('load-more-notifications');
+            const allShown = document.getElementById('notification-all-shown');
+            
+            if (!list) return;
+            
+            if (notificationItems.length === 0) {
+                list.innerHTML = '<div style="padding: 0.75rem; text-align: center; color: var(--steam-iron-300); font-size: 0.75rem;">通知はありません</div>';
+            } else {
+                list.innerHTML = notificationItems.map((n, i) => {
+                    const date = new Date(n.createdAt);
+                    return `<div style="padding: 0.75rem; border-bottom: 1px solid var(--steam-iron-800); ${i === notificationItems.length - 1 ? 'border-bottom: none;' : ''}">
+                        <div style="font-weight: 600; color: var(--steam-gold-300); font-size: 0.75rem; margin-bottom: 0.25rem;">${n.message || ''}</div>
+                        <div style="color: var(--steam-iron-300); font-size: 10px;">${date.toLocaleString('ja-JP')}</div>
+                    </div>`;
+                }).join('');
+            }
+            
+            if (loadMoreBtn && allShown) {
+                if (notificationNextOffset !== null) {
+                    loadMoreBtn.style.display = 'inline';
+                    allShown.style.display = 'none';
+                } else {
+                    loadMoreBtn.style.display = 'none';
+                    allShown.style.display = 'inline';
+                }
+            }
+        }
+        
+        function toggleNotifications() {
+            notificationDropdownOpen = !notificationDropdownOpen;
+            const dropdown = document.getElementById('notification-dropdown');
+            if (dropdown) {
+                dropdown.style.display = notificationDropdownOpen ? 'block' : 'none';
+                if (notificationDropdownOpen) {
+                    renderNotifications();
+                    // 開いた時に既読にする
+                    if (notificationUnread > 0) {
+                        markNotificationsAsRead();
+                    }
+                }
+            }
+        }
+        
+        function loadMoreNotifications() {
+            if (notificationNextOffset === null) return;
+            
+            const token = getAccessToken();
+            if (!token) return;
+            
+            fetch(`/api/users/notifications/?limit=10&offset=${notificationNextOffset}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                notificationItems = [...notificationItems, ...(data.items || [])];
+                notificationNextOffset = data.nextOffset || null;
+                renderNotifications();
+            })
+            .catch(err => console.error('Failed to load more notifications:', err));
+        }
+        
+        function markNotificationsAsRead() {
+            const token = getAccessToken();
+            if (!token) return;
+            
+            fetch('/api/users/notifications/read/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    notificationUnread = 0;
+                    updateNotificationBadge();
+                    // 通知アイテムも既読状態に更新
+                    notificationItems.forEach(n => n.read = true);
+                }
+            })
+            .catch(err => console.error('Failed to mark notifications as read:', err));
+        }
+        
         // ナビゲーションの認証状態に応じた表示切り替え
         document.addEventListener('DOMContentLoaded', function() {
             const isAuthenticated = hasValidToken();
             const logoLink = document.getElementById('logo-link');
-            const navMypage = document.getElementById('nav-mypage');
+            const navMe = document.getElementById('nav-me');
             const navCollection = document.getElementById('nav-collection');
             const navProfile = document.getElementById('nav-profile');
             const navLogin = document.getElementById('nav-login');
@@ -49,11 +198,14 @@
             if (isAuthenticated) {
                 // ログイン済みの場合
                 if (logoLink) logoLink.href = '/me/';
-                if (navMypage) navMypage.style.display = 'inline';
+                if (navMe) navMe.style.display = 'inline';
                 if (navCollection) navCollection.style.display = 'inline';
                 if (navProfile) navProfile.style.display = 'inline';
                 if (navLogin) navLogin.style.display = 'none';
                 if (userInfo) userInfo.style.display = 'flex';
+                
+                const notificationContainer = document.getElementById('notification-container');
+                if (notificationContainer) notificationContainer.style.display = 'block';
                 
                 // ユーザー情報を取得して表示
                 fetch('/api/users/me/meta/', {
@@ -74,14 +226,39 @@
                     }
                 })
                 .catch(err => console.error('Failed to load user info:', err));
+                
+                // 通知を読み込む
+                loadNotifications();
             } else {
                 // 未ログインの場合
                 if (logoLink) logoLink.href = '/';
-                if (navMypage) navMypage.style.display = 'none';
+                if (navMe) navMe.style.display = 'none';
                 if (navCollection) navCollection.style.display = 'none';
                 if (navProfile) navProfile.style.display = 'none';
                 if (navLogin) navLogin.style.display = 'inline';
                 if (userInfo) userInfo.style.display = 'none';
+                
+                const notificationContainer = document.getElementById('notification-container');
+                if (notificationContainer) notificationContainer.style.display = 'none';
+            }
+            
+            // 通知ドロップダウンの外側をクリックしたら閉じる
+            document.addEventListener('click', function(e) {
+                const container = document.getElementById('notification-container');
+                const dropdown = document.getElementById('notification-dropdown');
+                const button = document.getElementById('notification-button');
+                
+                if (container && dropdown && button && notificationDropdownOpen) {
+                    if (!container.contains(e.target)) {
+                        notificationDropdownOpen = false;
+                        dropdown.style.display = 'none';
+                    }
+                }
+            });
+            
+            // 定期的に通知を更新（30秒ごと）
+            if (isAuthenticated) {
+                setInterval(loadNotifications, 30000);
             }
         });
     </script>

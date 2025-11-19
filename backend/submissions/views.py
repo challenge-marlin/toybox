@@ -88,6 +88,37 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                 type=Reaction.Type.SUBMIT_MEDAL
             ).count()
             
+            # 通知を作成（自分で自分にいいねは通知しない）
+            if created and submission.author != request.user:
+                try:
+                    target_meta, _ = UserMeta.objects.get_or_create(user=submission.author)
+                    liker_meta, _ = UserMeta.objects.get_or_create(user=request.user)
+                    
+                    liker_name = liker_meta.display_name or liker_meta.bio or request.user.display_id
+                    message = f'{liker_name} さんからいいねがつきました'
+                    
+                    notification = {
+                        'type': 'like',
+                        'fromAnonId': request.user.display_id,
+                        'submissionId': str(submission.id),
+                        'message': message,
+                        'createdAt': timezone.now().isoformat(),
+                        'read': False
+                    }
+                    
+                    # 通知を先頭に追加
+                    notifications = target_meta.notifications or []
+                    notifications.insert(0, notification)
+                    # 最大100件まで保持
+                    if len(notifications) > 100:
+                        notifications = notifications[:100]
+                    target_meta.notifications = notifications
+                    target_meta.save()
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Failed to create notification: {str(e)}')
+            
             return Response({
                 'ok': True,
                 'likesCount': likes_count,
@@ -177,6 +208,89 @@ class SubmitUploadView(APIView):
         })
 
 
+class SubmitGameUploadView(APIView):
+    """Upload game ZIP file endpoint - extracts and returns gameUrl."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Upload ZIP file, extract it, and return gameUrl."""
+        file = request.FILES.get('file')
+        
+        if not file:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate ZIP file
+        if not file.name.lower().endswith('.zip'):
+            return Response({'error': 'ZIP file required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        import zipfile
+        import os
+        from django.core.files.storage import default_storage
+        from django.core.files.base import ContentFile
+        from django.conf import settings
+        
+        try:
+            # Get user's display_id for directory structure
+            user = request.user
+            display_id = user.display_id
+            
+            # Create directory structure: uploads/games/{display_id}/{timestamp}/
+            timestamp = int(timezone.now().timestamp())
+            game_dir = f'games/{display_id}/{timestamp}'
+            base_path = os.path.join(settings.MEDIA_ROOT, game_dir)
+            os.makedirs(base_path, exist_ok=True)
+            
+            # Save ZIP file temporarily
+            zip_path = os.path.join(base_path, file.name)
+            with open(zip_path, 'wb') as f:
+                for chunk in file.chunks():
+                    f.write(chunk)
+            
+            # Extract ZIP file
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(base_path)
+            
+            # Remove ZIP file after extraction
+            os.remove(zip_path)
+            
+            # Find index.html
+            def find_index_html(directory):
+                """Recursively find index.html."""
+                for root, dirs, files in os.walk(directory):
+                    if 'index.html' in files:
+                        return os.path.relpath(os.path.join(root, 'index.html'), settings.MEDIA_ROOT)
+                return None
+            
+            index_path = find_index_html(base_path)
+            if not index_path:
+                # Clean up on error
+                import shutil
+                shutil.rmtree(base_path, ignore_errors=True)
+                return Response({'error': 'index.html not found in ZIP'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Convert to URL path (use forward slashes)
+            game_url = f'/media/{index_path.replace(os.sep, "/")}'
+            
+            # Build absolute URL
+            absolute_game_url = request.build_absolute_uri(game_url)
+            
+            return Response({
+                'ok': True,
+                'gameUrl': absolute_game_url
+            })
+            
+        except zipfile.BadZipFile:
+            return Response({'error': 'Invalid ZIP file'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import shutil
+            try:
+                if 'base_path' in locals():
+                    shutil.rmtree(base_path, ignore_errors=True)
+            except:
+                pass
+            return Response({'error': f'Failed to process ZIP file: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class SubmitView(APIView):
     """Submit endpoint compatible with Next.js - returns rewards (title + card)."""
     permission_classes = [IsAuthenticated]
@@ -256,16 +370,19 @@ class FeedView(APIView):
         # Transform to Next.js format
         feed_items = []
         for item_data in serializer.data:
+            # Get image URL (prefer display_image_url, then image, then image_url)
+            image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
+            
             feed_items.append({
                 'id': str(item_data['id']),
                 'anonId': item_data.get('author_display_id') or 'unknown',
                 'displayName': item_data.get('author_display_id'),
                 'createdAt': item_data['created_at'],
-                'imageUrl': item_data.get('image'),
-                'videoUrl': None,  # TODO: Add video support
-                'displayImageUrl': item_data.get('image'),
+                'imageUrl': image_url,
+                'videoUrl': item_data.get('video_url'),
+                'displayImageUrl': image_url,
                 'title': item_data.get('caption'),
-                'gameUrl': None,  # TODO: Add game URL support
+                'gameUrl': item_data.get('game_url'),
                 'likesCount': item_data.get('reactions_count', 0),
                 'liked': item_data.get('user_reacted', False),
             })
@@ -327,8 +444,13 @@ class UserSubmissionsView(APIView):
                     type=Reaction.Type.SUBMIT_MEDAL
                 ).exists()
             
-            # Get image/video/game URL
-            image_url = sub.image.url if sub.image else (sub.image_url if sub.image_url else None)
+            # Get image/video/game URL (absolute URLs)
+            image_url = None
+            if sub.image_url:
+                image_url = sub.image_url
+            elif sub.image:
+                image_url = request.build_absolute_uri(sub.image.url)
+            
             video_url = sub.video_url if sub.video_url else None
             game_url = sub.game_url if sub.game_url else None
             
@@ -378,10 +500,10 @@ class SubmittersTodayView(APIView):
                 user = User.objects.select_related('meta').get(id=user_id)
                 meta = getattr(user, 'meta', None)
                 
-                # Get display name from bio field (which stores display_name) or fallback to display_id
+                # Get display name from display_name field, fallback to display_id
                 display_name = None
-                if meta and meta.bio:
-                    display_name = meta.bio
+                if meta and meta.display_name:
+                    display_name = meta.display_name
                 else:
                     display_name = user.display_id
                 
@@ -424,10 +546,10 @@ class RankingDailyView(APIView):
                 user = User.objects.select_related('meta').get(id=user_id)
                 meta = getattr(user, 'meta', None)
                 
-                # Get display name from bio field (which stores display_name) or fallback to display_id
+                # Get display name from display_name field, fallback to display_id
                 display_name = None
-                if meta and meta.bio:
-                    display_name = meta.bio
+                if meta and meta.display_name:
+                    display_name = meta.display_name
                 else:
                     display_name = user.display_id
                 
@@ -441,5 +563,56 @@ class RankingDailyView(APIView):
         
         return Response({
             'ranking': ranking
+        })
+
+
+class TimelineView(APIView):
+    """Get timeline of recent submissions."""
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Get recent submissions for timeline."""
+        # Get recent submissions (last 20)
+        submissions = Submission.objects.filter(
+            deleted_at__isnull=True
+        ).select_related('author', 'author__meta').order_by('-created_at')[:20]
+        
+        timeline_items = []
+        for sub in submissions:
+            try:
+                meta = getattr(sub.author, 'meta', None)
+                
+                # Get display name from display_name field, fallback to display_id
+                display_name = None
+                if meta and meta.display_name:
+                    display_name = meta.display_name
+                else:
+                    display_name = sub.author.display_id
+                
+                # Determine submission type
+                submission_type = '画像'
+                if sub.game_url:
+                    submission_type = 'ゲーム'
+                elif sub.video_url:
+                    submission_type = '動画'
+                elif sub.image_url or sub.image:
+                    submission_type = '画像'
+                
+                # Get avatar URL
+                avatar_url = sub.author.avatar_url if hasattr(sub.author, 'avatar_url') and sub.author.avatar_url else None
+                
+                timeline_items.append({
+                    'id': str(sub.id),
+                    'anonId': sub.author.display_id,
+                    'displayName': display_name,
+                    'avatarUrl': avatar_url,
+                    'type': submission_type,
+                    'createdAt': sub.created_at.isoformat(),
+                })
+            except Exception as e:
+                continue
+        
+        return Response({
+            'items': timeline_items
         })
     

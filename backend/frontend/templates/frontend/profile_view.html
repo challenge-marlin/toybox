@@ -256,15 +256,34 @@
     }
     
     .lightbox-content {
-        max-width: 90%;
-        max-height: 90%;
+        position: relative;
+        max-width: 90vw;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
     }
     
     .lightbox-image,
     .lightbox-video {
-        max-width: 100%;
-        max-height: 100%;
+        max-width: 90vw;
+        max-height: 80vh;
         object-fit: contain;
+        border-radius: 8px;
+    }
+    
+    .lightbox-video {
+        background: black;
+    }
+    
+    .discord-share-btn:hover:not(:disabled) {
+        background: #4752C4;
+    }
+    
+    .discord-share-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
     }
     
     .lightbox-close {
@@ -310,6 +329,9 @@
         <div class="profile-view-name" id="profile-name">—</div>
         <div class="profile-view-id" id="profile-id">—</div>
         <div class="profile-view-title" id="profile-title"></div>
+        <div class="profile-view-total-likes" id="profile-total-likes" style="margin-top: 0.5rem; color: var(--steam-gold-300); font-size: 0.875rem;">
+            <span style="color: var(--steam-iron-300);">獲得したいいね:</span> <span id="total-likes-count">0</span>
+        </div>
     </div>
     
     <!-- プロフィール文 -->
@@ -326,9 +348,17 @@
 <!-- ライトボックス -->
 <div class="lightbox-overlay" id="lightbox-overlay" onclick="closeLightbox()">
     <button class="lightbox-close" onclick="closeLightbox()">×</button>
-    <div class="lightbox-content">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
         <img id="lightbox-image" class="lightbox-image" src="" alt="submission" style="display: none;">
         <video id="lightbox-video" class="lightbox-video" controls style="display: none;"></video>
+        <div id="lightbox-actions" style="display: none; margin-top: 1rem; gap: 0.5rem; align-items: center; justify-content: center;">
+            <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
+                </svg>
+                <span>Discordにシェア</span>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -352,42 +382,91 @@
     
     async function loadProfile() {
         try {
-            // 自分のユーザー情報を取得
-            const metaRes = await fetch('/api/users/me/meta/', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                }
-            });
-            const metaData = await metaRes.json();
+            // URLパラメータからuserを取得（他のユーザーのプロフィールを表示する場合）
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetUserId = urlParams.get('user');
             
-            if (metaData.display_id) {
-                currentUserId = metaData.display_id;
+            let targetDisplayId = null;
+            if (targetUserId) {
+                // 指定されたユーザーのプロフィールを表示
+                targetDisplayId = targetUserId;
+            } else {
+                // 自分のユーザー情報を取得
+                const metaRes = await fetch('/api/users/me/meta/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                });
+                const metaData = await metaRes.json();
+                
+                if (metaData.display_id) {
+                    targetDisplayId = metaData.display_id;
+                    currentUserId = metaData.display_id;
+                }
+            }
+            
+            if (targetDisplayId) {
+                // プロフィール情報を取得
+                const profileRes = await fetch(`/api/user/profile/${encodeURIComponent(targetDisplayId)}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                });
+                
+                if (!profileRes.ok) {
+                    throw new Error('Failed to load profile');
+                }
+                
+                const metaData = await profileRes.json();
+                currentUserId = targetDisplayId;
                 
                 // プロフィール情報を表示
-                if (metaData.header_url) {
-                    document.getElementById('header-image').innerHTML = `<img src="${metaData.header_url}" alt="header">`;
+                // APIレスポンスはキャメルケース（headerUrl, avatarUrl）で返される
+                const headerUrl = metaData.headerUrl || metaData.header_url;
+                const avatarUrl = metaData.avatarUrl || metaData.avatar_url;
+                const displayName = metaData.displayName || metaData.display_name;
+                const anonId = metaData.anonId || metaData.display_id;
+                const activeTitle = metaData.activeTitle || metaData.active_title;
+                const activeTitleUntil = metaData.activeTitleUntil || metaData.active_title_until;
+                
+                if (headerUrl) {
+                    document.getElementById('header-image').innerHTML = `<img src="${headerUrl}" alt="header">`;
+                } else {
+                    document.getElementById('header-image').innerHTML = '<div class="no-image">ヘッダー画像なし</div>';
                 }
                 
-                if (metaData.avatar_url) {
-                    document.getElementById('avatar-image').innerHTML = `<img src="${metaData.avatar_url}" alt="avatar">`;
+                if (avatarUrl) {
+                    document.getElementById('avatar-image').innerHTML = `<img src="${avatarUrl}" alt="avatar">`;
+                } else {
+                    document.getElementById('avatar-image').innerHTML = '<div class="no-image">アバターなし</div>';
                 }
                 
-                if (metaData.display_name) {
-                    document.getElementById('profile-name').textContent = metaData.display_name;
-                } else if (metaData.display_id) {
-                    document.getElementById('profile-name').textContent = metaData.display_id;
+                if (displayName) {
+                    document.getElementById('profile-name').textContent = displayName;
+                } else if (anonId) {
+                    document.getElementById('profile-name').textContent = anonId;
                 }
                 
-                document.getElementById('profile-id').textContent = metaData.display_id;
+                if (anonId) {
+                    document.getElementById('profile-id').textContent = anonId;
+                }
                 
-                if (metaData.active_title) {
-                    document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${metaData.active_title}</span>`;
+                if (activeTitle) {
+                    document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${activeTitle}</span>`;
+                } else {
+                    document.getElementById('profile-title').innerHTML = '';
                 }
                 
                 if (metaData.bio) {
                     document.getElementById('profile-bio').textContent = metaData.bio;
                     document.getElementById('profile-bio').style.display = 'block';
+                } else {
+                    document.getElementById('profile-bio').style.display = 'none';
                 }
+                
+                // 獲得したいいねの合計を表示
+                const totalLikes = metaData.totalLikes || 0;
+                document.getElementById('total-likes-count').textContent = totalLikes;
                 
                 // 提出物を読み込み
                 loadSubmissions();
@@ -457,7 +536,7 @@
                 `;
             } else if (isVideo) {
                 content = `
-                    <video src="${videoUrl}" muted preload="metadata" onclick="openLightbox('${videoUrl}', 'video')"></video>
+                    <video src="${videoUrl}" muted preload="metadata" onclick="openLightbox('${videoUrl}', 'video', '${s.id}')"></video>
                     <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;">
                         <div style="height: 3rem; width: 3rem; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -467,7 +546,7 @@
                     </div>
                 `;
             } else {
-                content = `<img src="${imageUrl}" alt="submission" onclick="openLightbox('${imageUrl}', 'image')">`;
+                content = `<img src="${imageUrl}" alt="submission" onclick="openLightbox('${imageUrl}', 'image', '${s.id}')">`;
             }
             
             return `
@@ -501,69 +580,152 @@
         const item = submissions.find(s => s.id === submissionId);
         if (!item) return;
         
-        // 楽観的更新
+        // 楽観的更新（即座にカウントを更新）
         item.liked = !currentLiked;
-        item.likes_count = Math.max(0, (item.likes_count || 0) + (currentLiked ? -1 : 1));
+        // likesCountとlikes_countの両方に対応
+        const currentCount = item.likesCount || item.likes_count || 0;
+        const newCount = Math.max(0, currentCount + (currentLiked ? -1 : 1));
+        item.likesCount = newCount;
+        item.likes_count = newCount;
         renderSubmissions();
         
         try {
-            if (currentLiked) {
-                await fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    }
-                });
-            } else {
-                await fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({})
-                });
+            const method = currentLiked ? 'DELETE' : 'POST';
+            const response = await fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: method === 'POST' ? JSON.stringify({}) : undefined
+            });
+            
+            const data = await response.json();
+            if (data.ok !== undefined && data.likesCount !== undefined) {
+                // サーバーからの結果で更新
+                item.liked = data.liked || false;
+                item.likesCount = data.likesCount || 0;
+                item.likes_count = data.likesCount || 0;
+                renderSubmissions();
             }
         } catch (err) {
             // エラー時は元に戻す
             item.liked = currentLiked;
-            item.likes_count = Math.max(0, (item.likes_count || 0) + (currentLiked ? 1 : -1));
+            const currentCount = item.likesCount || item.likes_count || 0;
+            const rollbackCount = Math.max(0, currentCount + (currentLiked ? 1 : -1));
+            item.likesCount = rollbackCount;
+            item.likes_count = rollbackCount;
             renderSubmissions();
+            console.error('Failed to toggle like:', err);
         }
     }
     
-    function openLightbox(url, type) {
+    // ライトボックス機能
+    let currentLightboxAssetId = null;
+    
+    function openLightbox(url, type, assetId) {
         const overlay = document.getElementById('lightbox-overlay');
         const image = document.getElementById('lightbox-image');
         const video = document.getElementById('lightbox-video');
+        const lightboxActions = document.getElementById('lightbox-actions');
+        
+        currentLightboxAssetId = assetId;
         
         if (type === 'video') {
             image.style.display = 'none';
             video.style.display = 'block';
             video.src = url;
+            video.load();
         } else {
             video.style.display = 'none';
             image.style.display = 'block';
             image.src = url;
         }
         
+        // Discordシェアボタンを表示（画像と動画のみ）
+        if (type === 'image' || type === 'video') {
+            lightboxActions.style.display = 'flex';
+        } else {
+            lightboxActions.style.display = 'none';
+        }
+        
         overlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
     }
     
     function closeLightbox() {
         const overlay = document.getElementById('lightbox-overlay');
         const video = document.getElementById('lightbox-video');
+        
         overlay.classList.remove('show');
-        video.pause();
-        video.src = '';
+        document.body.style.overflow = '';
+        
+        if (video) {
+            video.pause();
+            video.src = '';
+        }
+        
+        currentLightboxAssetId = null;
     }
     
     // ESCキーで閉じる
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            closeLightbox();
+            const overlay = document.getElementById('lightbox-overlay');
+            if (overlay.classList.contains('show')) {
+                closeLightbox();
+            }
         }
     });
+    
+    // Discordシェア機能
+    async function shareToDiscord() {
+        if (!currentLightboxAssetId) {
+            alert('アセットIDが見つかりません');
+            return;
+        }
+        
+        const btn = document.getElementById('discord-share-btn');
+        const originalText = btn.innerHTML;
+        
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '<span>送信中…</span>';
+            
+            const response = await fetch('/api/share/discord/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    assetId: currentLightboxAssetId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.ok) {
+                alert('Discordにシェアしました');
+                if (data.discordMessageId) {
+                    console.log('Discord message ID:', data.discordMessageId);
+                }
+            } else {
+                const errorMsg = data.error || 'Discordへのシェアに失敗しました';
+                if (errorMsg.includes('25MB') || errorMsg.includes('20MB')) {
+                    alert('ファイルサイズが大きすぎます（25MB以下）');
+                } else {
+                    alert(errorMsg);
+                }
+            }
+        } catch (err) {
+            console.error('Discord share error:', err);
+            alert('Discordへのシェアに失敗しました');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
 </script>
 {% endblock %}
 

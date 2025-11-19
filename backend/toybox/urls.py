@@ -33,10 +33,12 @@ urlpatterns += [
     path('api/auth/', include('users.urls')),
     path('api/users/', include('users.urls')),
     path('api/user/profile/', user_views.ProfileUpdateView.as_view(), name='user-profile'),
+    path('api/user/profile/<str:anon_id>/', user_views.ProfileGetView.as_view(), name='user-profile-get'),
     path('api/user/profile/upload', user_views.ProfileUploadView.as_view(), name='user-profile-upload'),
     path('api/cards/', include('gamification.urls')),
     path('api/', include('submissions.urls')),
     path('api/', include('lottery.urls')),
+    path('api/share/', include('sharing.urls')),
     
     # Admin API endpoints
     path('api/', include('adminpanel.urls')),

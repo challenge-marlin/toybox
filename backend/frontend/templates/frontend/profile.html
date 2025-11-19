@@ -359,6 +359,7 @@
             }
             
             // プロフィール更新
+            console.log('Saving profile:', { displayName, bio });
             const response = await fetch('/api/user/profile/', {
                 method: 'PATCH',
                 headers: {
@@ -371,19 +372,32 @@
                 })
             });
             
+            console.log('Profile update response status:', response.status);
+            
             if (response.ok) {
+                const responseData = await response.json();
+                console.log('Profile update response data:', responseData);
+                
                 messageDiv.textContent = '保存しました。マイページへ移動します…';
                 messageDiv.style.display = 'block';
                 messageDiv.style.color = 'var(--steam-gold-300)';
                 
                 setTimeout(() => {
                     // 強制リロードフラグを設定してマイページをリロード
-                    localStorage.setItem('toybox_mypage_force_reload', '1');
+                    localStorage.setItem('toybox_me_force_reload', '1');
                     window.location.href = '/me/';
                 }, 1000);
             } else {
-                const data = await response.json();
-                messageDiv.textContent = data.message || '保存に失敗しました';
+                const errorText = await response.text();
+                console.error('Profile update failed:', response.status, errorText);
+                let errorMessage = '保存に失敗しました';
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMessage = errorData.message || errorData.detail || errorMessage;
+                } catch (e) {
+                    errorMessage = errorText || errorMessage;
+                }
+                messageDiv.textContent = errorMessage;
                 messageDiv.style.display = 'block';
                 messageDiv.style.color = '#dc2626';
                 button.disabled = false;

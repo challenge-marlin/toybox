@@ -268,9 +268,20 @@
 </div>
 
 <!-- ライトボックス -->
-<div id="lightbox" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer;" onclick="closeLightbox()">
-    <img id="lightbox-image" src="" alt="" style="max-width: 90%; max-height: 90%; object-fit: contain; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-    <video id="lightbox-video" controls style="max-width: 90%; max-height: 90%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;"></video>
+<div id="lightbox" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer; align-items: center; justify-content: center;" onclick="closeLightbox()">
+    <div id="lightbox-content" onclick="event.stopPropagation()" style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+        <button id="lightbox-close" onclick="closeLightbox()" aria-label="閉じる" style="position: absolute; top: -2.5rem; right: 0; background: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer;">×</button>
+        <img id="lightbox-image" src="" alt="" style="max-width: 90vw; max-height: 80vh; object-fit: contain; border-radius: 8px; cursor: default; display: none;">
+        <video id="lightbox-video" controls style="max-width: 90vw; max-height: 80vh; background: black; border-radius: 8px; cursor: default; display: none;"></video>
+        <div id="lightbox-actions" style="display: none; gap: 0.5rem; align-items: center;">
+            <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer;">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
+                </svg>
+                <span>Discordにシェア</span>
+            </button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -354,7 +365,7 @@
                 `;
             } else if (isVideo) {
                 content = `
-                    <div class="feed-item-video-container" onclick="openLightbox('${item.videoUrl}', 'video')">
+                    <div class="feed-item-video-container" onclick="openLightbox('${item.videoUrl}', 'video', '${item.id}')">
                         <video src="${item.videoUrl}" class="feed-item-video" muted preload="metadata"></video>
                         <div class="feed-item-play-overlay">
                             <div class="feed-item-play-button">
@@ -366,7 +377,7 @@
                     </div>
                 `;
             } else {
-                content = `<img src="${item.imageUrl || item.displayImageUrl || ''}" alt="submission" class="feed-item-image" onclick="openLightbox('${item.imageUrl || item.displayImageUrl || ''}', 'image')">`;
+                content = `<img src="${item.imageUrl || item.displayImageUrl || ''}" alt="submission" class="feed-item-image" onclick="openLightbox('${item.imageUrl || item.displayImageUrl || ''}', 'image', '${item.id}')">`;
             }
             
             return `
@@ -406,61 +417,150 @@
         const item = items.find(x => x.id === submissionId);
         if (!item) return;
         
-        // 楽観的更新
+        // 楽観的更新（即座にカウントを更新）
         item.liked = !currentLiked;
         item.likesCount = Math.max(0, (item.likesCount || 0) + (currentLiked ? -1 : 1));
         renderFeed();
         
         const method = currentLiked ? 'DELETE' : 'POST';
-        fetch(`/api/submissions/${submissionId}/react/submit_medal/`, {
+        fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
             method: method,
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'X-CSRFToken': csrftoken
-            }
+                'Content-Type': 'application/json',
+            },
+            body: method === 'POST' ? JSON.stringify({}) : undefined
         })
         .then(res => res.json())
         .then(data => {
-            if (data.ok !== undefined) {
+            if (data.ok !== undefined && data.likesCount !== undefined) {
                 // サーバーからの結果で更新
                 item.liked = data.liked || false;
-                item.likesCount = data.reactions_count || 0;
+                item.likesCount = data.likesCount || 0;
                 renderFeed();
             }
         })
         .catch(err => {
-            // ロールバック
+            // エラー時はロールバック
             item.liked = currentLiked;
             item.likesCount = Math.max(0, (item.likesCount || 0) + (currentLiked ? 1 : -1));
             renderFeed();
-            console.error(err);
+            console.error('Failed to toggle like:', err);
         });
     }
     
-    function openLightbox(src, type) {
+    // ライトボックス機能
+    let currentLightboxAssetId = null;
+    
+    function openLightbox(src, type, assetId) {
         const lightbox = document.getElementById('lightbox');
         const lightboxImage = document.getElementById('lightbox-image');
         const lightboxVideo = document.getElementById('lightbox-video');
+        const lightboxActions = document.getElementById('lightbox-actions');
+        
+        currentLightboxAssetId = assetId;
         
         if (type === 'video') {
             lightboxImage.style.display = 'none';
             lightboxVideo.style.display = 'block';
             lightboxVideo.src = src;
+            lightboxVideo.load();
         } else {
             lightboxImage.style.display = 'block';
             lightboxVideo.style.display = 'none';
             lightboxImage.src = src;
         }
         
+        // Discordシェアボタンを表示（画像と動画のみ）
+        if (type === 'image' || type === 'video') {
+            lightboxActions.style.display = 'flex';
+        } else {
+            lightboxActions.style.display = 'none';
+        }
+        
         lightbox.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
     }
     
     function closeLightbox() {
         const lightbox = document.getElementById('lightbox');
         const lightboxVideo = document.getElementById('lightbox-video');
+        
         lightbox.style.display = 'none';
-        lightboxVideo.pause();
-        lightboxVideo.src = '';
+        document.body.style.overflow = '';
+        
+        // 動画を停止
+        if (lightboxVideo) {
+            lightboxVideo.pause();
+            lightboxVideo.src = '';
+        }
+        
+        currentLightboxAssetId = null;
+    }
+    
+    // ESCキーで閉じる
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const lightbox = document.getElementById('lightbox');
+            if (lightbox.style.display === 'flex') {
+                closeLightbox();
+            }
+        }
+    });
+    
+    // Discordシェア機能
+    async function shareToDiscord() {
+        if (!currentLightboxAssetId) {
+            alert('アセットIDが見つかりません');
+            return;
+        }
+        
+        const btn = document.getElementById('discord-share-btn');
+        const originalText = btn.innerHTML;
+        const token = localStorage.getItem('access_token');
+        
+        if (!token) {
+            alert('ログインが必要です');
+            return;
+        }
+        
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '<span>送信中…</span>';
+            
+            const response = await fetch('/api/share/discord/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    assetId: currentLightboxAssetId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.ok) {
+                alert('Discordにシェアしました');
+                if (data.discordMessageId) {
+                    console.log('Discord message ID:', data.discordMessageId);
+                }
+            } else {
+                const errorMsg = data.error || 'Discordへのシェアに失敗しました';
+                if (errorMsg.includes('25MB') || errorMsg.includes('20MB')) {
+                    alert('ファイルサイズが大きすぎます（25MB以下）');
+                } else {
+                    alert(errorMsg);
+                }
+            }
+        } catch (err) {
+            console.error('Discord share error:', err);
+            alert('Discordへのシェアに失敗しました');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
     
     // 無限スクロール

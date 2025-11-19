@@ -14,6 +14,10 @@ urlpatterns = [
     path('refresh/', views.RefreshTokenView.as_view(), name='refresh'),
     path('register/', views.RegisterView.as_view(), name='register'),
     
+    # Notification endpoints
+    path('notifications/', views.NotificationListView.as_view(), name='notifications'),
+    path('notifications/read/', views.NotificationReadView.as_view(), name='notifications-read'),
+    
     # Router URLs
     path('', include(router.urls)),
 ]

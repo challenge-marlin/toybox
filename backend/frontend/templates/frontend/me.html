@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <style>
-    .mypage-container {
+    .me-container {
         max-width: 1200px;
         margin: 0 auto;
         padding: 1rem;
@@ -15,12 +15,12 @@
     }
     
     @media (min-width: 768px) {
-        .mypage-container {
+        .me-container {
             grid-template-columns: 3fr 6fr 3fr;
         }
     }
     
-    .mypage-section {
+    .me-section {
         border-radius: 8px;
         border: 1px solid var(--steam-iron-700);
         background: var(--steam-iron-900);
@@ -28,7 +28,7 @@
         margin-bottom: 1rem;
     }
     
-    .mypage-section h2 {
+    .me-section h2 {
         margin-bottom: 0.5rem;
         color: var(--steam-gold-300);
         font-weight: 600;
@@ -114,18 +114,17 @@
     }
     
     .timeline-avatar {
-        height: 2.5rem;
-        width: 2.5rem;
+        height: 1.5rem;
+        width: 1.5rem;
         overflow: hidden;
         border-radius: 50%;
-        border: 4px solid var(--steam-iron-900);
-        box-shadow: 0 0 0 2px var(--steam-iron-700);
+        border: 1px solid var(--steam-iron-700);
         background: var(--steam-iron-800);
         display: flex;
         align-items: center;
         justify-content: center;
         color: var(--steam-iron-300);
-        font-size: 0.75rem;
+        font-size: 0.625rem;
         flex-shrink: 0;
     }
     
@@ -157,29 +156,119 @@
         padding: 1.5rem 2rem;
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
     }
+    
+    /* ライトボックス */
+    #lightbox {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    #lightbox.show {
+        display: flex;
+    }
+    
+    #lightbox-content {
+        position: relative;
+        max-width: 90vw;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    #lightbox-image,
+    #lightbox-video {
+        max-width: 90vw;
+        max-height: 80vh;
+        object-fit: contain;
+        border-radius: 8px;
+        cursor: default;
+    }
+    
+    #lightbox-video {
+        background: black;
+    }
+    
+    #lightbox-close {
+        position: absolute;
+        top: -2.5rem;
+        right: 0;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+    
+    #lightbox-close:hover {
+        background: rgba(0, 0, 0, 0.8);
+    }
+    
+    #lightbox-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .discord-share-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #5865F2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .discord-share-btn:hover:not(:disabled) {
+        background: #4752C4;
+    }
+    
+    .discord-share-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="mypage-container">
+<div class="me-container">
     <!-- 左カラム -->
     <aside>
         <!-- プロフィール -->
-        <section class="mypage-section">
+        <section class="me-section">
             <h2>プロフィール</h2>
             <div style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem; margin-top: 0.5rem;">
                 <div class="profile-avatar" id="profile-avatar">
                     <span>未設定</span>
                 </div>
                 <div style="color: var(--steam-iron-100); font-weight: 600; font-size: 0.875rem;" id="profile-name">—</div>
-                <div style="font-size: 0.75rem; line-height: 1.6; color: var(--steam-iron-200); text-align: center; padding: 0 0.25rem;" id="profile-bio">—</div>
+                <div style="font-size: 0.75rem; line-height: 1.6; color: var(--steam-iron-200); text-align: center; padding: 0 0.25rem;">
+                    <span id="profile-bio">—</span>
+                    <span id="profile-bio-more" style="display: none; margin-top: 0.25rem;">
+                        <a href="/profile/view/" style="color: var(--steam-gold-400); text-decoration: underline; font-size: 0.6875rem;">続きを見る</a>
+                    </span>
+                </div>
                 <div style="font-size: 0.875rem; color: var(--steam-gold-300);" id="profile-title">称号: —</div>
                 <div style="font-size: 0.75rem; color: var(--steam-iron-300);" id="profile-title-until"></div>
             </div>
         </section>
         
         <!-- リンク -->
-        <section class="mypage-section">
+        <section class="me-section">
             <h2>リンク</h2>
             <ul style="list-style: disc; padding-left: 1.25rem; color: var(--steam-iron-100); font-size: 0.875rem; display: flex; flex-direction: column; gap: 0.5rem;">
                 <li><a href="https://discord.com/" target="_blank" rel="noreferrer" style="color: var(--steam-gold-400); text-decoration: underline;">Discord</a></li>
@@ -189,14 +278,14 @@
         </section>
         
         <!-- お仕事系のお題 -->
-        <section class="mypage-section">
+        <section class="me-section">
             <h2>お仕事系のお題</h2>
             <div id="topic-work" style="color: var(--steam-iron-100); font-size: 0.875rem; display: none;"></div>
             <a href="https://ayatori-inc.co.jp/toybox-std/" target="_blank" rel="noreferrer" onclick="fetchTopic('work')" style="display: inline-block; margin-top: 0.75rem; border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; text-decoration: none; font-size: 1rem;">お題を見る</a>
         </section>
         
         <!-- ゲームのお題 -->
-        <section class="mypage-section">
+        <section class="me-section">
             <h2>ゲームのお題</h2>
             <div id="topic-play" style="color: var(--steam-iron-100); font-size: 0.875rem; display: none;"></div>
             <a href="https://ayatori-inc.co.jp/toybox-game/" target="_blank" rel="noreferrer" onclick="fetchTopic('play')" style="display: inline-block; margin-top: 0.75rem; border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; text-decoration: none; font-size: 1rem;">お題を見る</a>
@@ -217,7 +306,7 @@
     <!-- 右カラム -->
     <aside>
         <!-- 本日の課題提出 -->
-        <section class="mypage-section">
+        <section class="me-section">
             <h2>本日の課題提出</h2>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <input id="upload-input" type="file" accept="image/png,image/jpeg,video/mp4,video/webm,video/ogg" style="display: none;">
@@ -236,8 +325,26 @@
             </div>
         </section>
         
+        <!-- ゲームZIPアップロード -->
+        <section class="me-section">
+            <h2>ゲームをアップロード（ZIP）</h2>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <input id="upload-game-input" type="file" accept=".zip,application/zip" style="display: none;">
+                <div id="upload-game-area" class="upload-area" onclick="document.getElementById('upload-game-input').click()" style="border-color: #a855f7; cursor: pointer;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: #a855f7; margin-bottom: 0.5rem;">
+                        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                    </svg>
+                    <div style="font-size: 0.875rem; color: #a855f7; font-weight: 600;">ZIPファイルを選択</div>
+                    <div style="font-size: 0.75rem; color: var(--steam-iron-300);">ゲームをアップロード</div>
+                </div>
+                <div id="upload-game-error" style="font-size: 0.75rem; color: #dc2626; display: none;"></div>
+                <p style="font-size: 0.75rem; color: var(--steam-iron-300);">必ずindex.htmlを含む <strong style="color: var(--steam-gold-300);">Webブラウザでできるミニゲームで構成されたZIPファイル</strong> をアップロードするようにしてください。</p>
+            </div>
+        </section>
+        
         <!-- タイムライン -->
-        <section class="mypage-section">
+        <section class="me-section">
             <h2>タイムライン</h2>
             <ul id="timeline-list" style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--steam-iron-100);">
                 <li>データなし</li>
@@ -245,7 +352,7 @@
         </section>
         
         <!-- 提出者（当日） -->
-        <section class="mypage-section">
+        <section class="me-section">
             <h2>提出者（当日）</h2>
             <div style="font-size: 0.875rem; color: var(--steam-iron-100); margin-bottom: 0.5rem;" id="submitters-count">0名</div>
             <ul id="submitters-list" style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--steam-iron-200); max-height: 10rem; overflow: auto;">
@@ -254,7 +361,7 @@
         </section>
         
         <!-- デイリーランキング -->
-        <section class="mypage-section">
+        <section class="me-section">
             <h2>デイリーランキング</h2>
             <ol id="ranking-list" style="list-style: decimal; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: var(--steam-iron-100);">
                 <li>データなし</li>
@@ -326,9 +433,9 @@
     document.addEventListener('DOMContentLoaded', function() {
         // 強制リロードフラグをチェック
         try {
-            const shouldReload = localStorage.getItem('toybox_mypage_force_reload') === '1';
+            const shouldReload = localStorage.getItem('toybox_me_force_reload') === '1';
             if (shouldReload) {
-                localStorage.removeItem('toybox_mypage_force_reload');
+                localStorage.removeItem('toybox_me_force_reload');
                 // ページをリロードして最新のプロフィール情報を取得
                 window.location.reload();
                 return;
@@ -343,33 +450,88 @@
         
         // アップロード機能
         setupUpload();
+        setupGameUpload();
     });
     
     function loadProfile() {
+        // まず自分のanonIdを取得
         fetch('/api/users/me/meta/', {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'X-CSRFToken': csrftoken
             }
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                console.error('Failed to fetch user meta:', res.status, res.statusText);
+                return null;
+            }
+            return res.json();
+        })
+        .then(metaData => {
+            if (!metaData) {
+                console.error('No metaData received');
+                return;
+            }
+            
+            console.log('User meta data received:', metaData);
+            const anonId = metaData.display_id;
+            if (!anonId) {
+                console.error('No display_id found in metaData:', metaData);
+                return;
+            }
+            
+            // プロフィール情報を取得
+            return fetch(`/api/user/profile/${encodeURIComponent(anonId)}/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-CSRFToken': csrftoken
+                }
+            });
+        })
+        .then(res => {
+            if (!res) return null;
+            return res.json();
+        })
         .then(data => {
+            if (!data) return;
+            
+            console.log('Profile data received:', data);
+            
             // ユーザー名を表示
-            if (data.display_name) {
-                document.getElementById('profile-name').textContent = data.display_name;
-            } else if (data.display_id) {
-                document.getElementById('profile-name').textContent = data.display_id;
+            if (data.displayName) {
+                document.getElementById('profile-name').textContent = data.displayName;
+                console.log('Set profile name to:', data.displayName);
+            } else if (data.anonId) {
+                document.getElementById('profile-name').textContent = data.anonId;
+                console.log('Set profile name to anonId:', data.anonId);
             }
             
             // プロフィール文を表示
             if (data.bio) {
-                document.getElementById('profile-bio').textContent = data.bio;
+                const bioElement = document.getElementById('profile-bio');
+                const bioMoreElement = document.getElementById('profile-bio-more');
+                const bio = data.bio;
+                const isLong = bio.length > 100;
+                const short = isLong ? bio.slice(0, 100) + '…' : bio;
+                bioElement.textContent = short;
+                console.log('Set profile bio to:', short);
+                if (isLong && bioMoreElement) {
+                    bioMoreElement.style.display = 'block';
+                } else if (bioMoreElement) {
+                    bioMoreElement.style.display = 'none';
+                }
+            } else {
+                document.getElementById('profile-bio').textContent = '—';
+                const bioMoreElement = document.getElementById('profile-bio-more');
+                if (bioMoreElement) bioMoreElement.style.display = 'none';
+                console.log('No bio data, set to —');
             }
             
             // アバター画像を表示
             const avatarDiv = document.getElementById('profile-avatar');
-            if (data.avatar_url) {
-                avatarDiv.innerHTML = `<img src="${data.avatar_url}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;">`;
+            if (data.avatarUrl) {
+                avatarDiv.innerHTML = `<img src="${data.avatarUrl}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;">`;
             } else {
                 avatarDiv.innerHTML = '<span>未設定</span>';
             }
@@ -378,14 +540,14 @@
             const titleElement = document.getElementById('profile-title');
             const titleUntilElement = document.getElementById('profile-title-until');
             
-            if (data.active_title && data.expires_at) {
-                const expiresAt = new Date(data.expires_at);
+            if (data.activeTitle && data.activeTitleUntil) {
+                const expiresAt = new Date(data.activeTitleUntil);
                 const now = new Date();
                 
                 if (expiresAt > now) {
                     // 有効期限内
                     if (titleElement) {
-                        titleElement.textContent = `称号: ${data.active_title}`;
+                        titleElement.textContent = `称号: ${data.activeTitle}`;
                         titleElement.style.display = 'block';
                     }
                     if (titleUntilElement) {
@@ -395,18 +557,18 @@
                 } else {
                     // 期限切れ
                     if (titleElement) {
-                        titleElement.textContent = '';
-                        titleElement.style.display = 'none';
+                        titleElement.textContent = '称号: —';
+                        titleElement.style.display = 'block';
                     }
                     if (titleUntilElement) {
                         titleUntilElement.textContent = '';
                         titleUntilElement.style.display = 'none';
                     }
                 }
-            } else if (data.active_title) {
+            } else if (data.activeTitle) {
                 // expires_atがない場合は表示
                 if (titleElement) {
-                    titleElement.textContent = `称号: ${data.active_title}`;
+                    titleElement.textContent = `称号: ${data.activeTitle}`;
                     titleElement.style.display = 'block';
                 }
                 if (titleUntilElement) {
@@ -416,8 +578,8 @@
             } else {
                 // 称号がない場合
                 if (titleElement) {
-                    titleElement.textContent = '';
-                    titleElement.style.display = 'none';
+                    titleElement.textContent = '称号: —';
+                    titleElement.style.display = 'block';
                 }
                 if (titleUntilElement) {
                     titleUntilElement.textContent = '';
@@ -425,7 +587,7 @@
                 }
             }
         })
-        .catch(err => console.error(err));
+        .catch(err => console.error('Failed to load profile:', err));
     }
     
     function loadSubmissions() {
@@ -464,12 +626,24 @@
                     const imageUrl = item.displayImageUrl || item.imageUrl;
                     
                     let content = '';
+                    let onClickHandler = '';
+                    let assetType = '';
+                    let assetUrl = '';
+                    
                     if (isGame) {
                         content = '<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; user-select: none;"><div style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--steam-iron-200);"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 0.25rem;"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/></svg><div style="font-size: 0.75rem; letter-spacing: 0.1em; font-weight: 600;">GAME</div></div></div>';
+                        assetType = 'game';
+                        assetUrl = item.gameUrl || '';
                     } else if (isVideo) {
-                        content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; position: relative;"><video src="${item.videoUrl}" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px;" muted preload="metadata"></video><div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><div style="height: 3rem; width: 3rem; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></div></div></div>`;
+                        assetUrl = item.videoUrl || '';
+                        assetType = 'video';
+                        onClickHandler = `onclick="openLightbox('${assetUrl}', 'video', '${item.id}')"`;
+                        content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; position: relative;" ${onClickHandler}><video src="${assetUrl}" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px;" muted preload="metadata"></video><div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><div style="height: 3rem; width: 3rem; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></div></div></div>`;
                     } else {
-                        content = `<img src="${imageUrl || ''}" alt="submission" style="width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; cursor: zoom-in;">`;
+                        assetUrl = imageUrl || '';
+                        assetType = 'image';
+                        onClickHandler = `onclick="openLightbox('${assetUrl}', 'image', '${item.id}')"`;
+                        content = `<img src="${assetUrl}" alt="submission" style="width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; cursor: zoom-in;" ${onClickHandler}>`;
                     }
                     
                     return `
@@ -502,8 +676,41 @@
     }
     
     function loadTimeline() {
-        // タイムラインの読み込み（簡易実装）
-        document.getElementById('timeline-list').innerHTML = '<li>データなし</li>';
+        fetch('/api/timeline/', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            const list = document.getElementById('timeline-list');
+            if (data.items && data.items.length > 0) {
+                list.innerHTML = data.items.map(item => {
+                    const displayName = item.displayName || item.anonId;
+                    const typeText = item.type === 'ゲーム' ? 'ゲーム' : (item.type === '動画' ? '動画' : '画像');
+                    const avatarUrl = item.avatarUrl || item.avatar_url;
+                    
+                    let avatarHtml = '';
+                    if (avatarUrl) {
+                        avatarHtml = `<div class="timeline-avatar"><img src="${avatarUrl}" alt="${displayName}" onerror="this.parentElement.innerHTML='<span>${displayName.charAt(0)}</span>'"></div>`;
+                    } else {
+                        avatarHtml = `<div class="timeline-avatar"><span>${displayName.charAt(0)}</span></div>`;
+                    }
+                    
+                    return `<li class="timeline-item">
+                        ${avatarHtml}
+                        <a href="/profile/view/?user=${encodeURIComponent(item.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
+                        <span>さんが${typeText}を投稿しました。</span>
+                    </li>`;
+                }).join('');
+            } else {
+                list.innerHTML = '<li>データなし</li>';
+            }
+        })
+        .catch(err => {
+            console.error('Failed to load timeline:', err);
+            document.getElementById('timeline-list').innerHTML = '<li>データなし</li>';
+        });
     }
     
     function loadSubmitters() {
@@ -519,7 +726,7 @@
                 list.innerHTML = data.submitters.map(s => {
                     const displayName = s.displayName || s.anonId;
                     return `<li style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="color: var(--steam-gold-200);">${displayName}</span>
+                        <a href="/profile/view/?user=${encodeURIComponent(s.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
                     </li>`;
                 }).join('');
             } else {
@@ -545,7 +752,7 @@
                 list.innerHTML = data.ranking.map((r, index) => {
                     const displayName = r.displayName || r.anonId;
                     return `<li style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="color: var(--steam-gold-200);">${displayName}</span>
+                        <a href="/profile/view/?user=${encodeURIComponent(r.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
                         <span style="color: var(--steam-iron-300); font-size: 0.75rem;">(${r.count}件)</span>
                     </li>`;
                 }).join('');
@@ -720,6 +927,106 @@
         });
     }
     
+    function setupGameUpload() {
+        const uploadGameInput = document.getElementById('upload-game-input');
+        const uploadGameArea = document.getElementById('upload-game-area');
+        
+        if (!uploadGameInput || !uploadGameArea) return;
+        
+        uploadGameInput.addEventListener('change', function(e) {
+            const file = e.target.files?.[0];
+            if (file) handleGameUpload(file);
+            e.target.value = '';
+        });
+    }
+    
+    async function handleGameUpload(file) {
+        // ZIPファイルの検証
+        if (!file.name.toLowerCase().endsWith('.zip')) {
+            document.getElementById('upload-game-error').textContent = 'ZIPファイルを選択してください';
+            document.getElementById('upload-game-error').style.display = 'block';
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        document.getElementById('upload-overlay').classList.add('show');
+        document.getElementById('upload-game-error').style.display = 'none';
+        
+        try {
+            // 1. ZIPファイルをアップロード
+            const uploadRes = await fetch('/api/submit/uploadGame', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData
+            });
+            
+            if (!uploadRes.ok) {
+                let msg = 'ZIPファイルのアップロードに失敗しました';
+                try {
+                    const ct = uploadRes.headers.get('Content-Type') || '';
+                    if (ct.includes('application/json')) {
+                        const j = await uploadRes.json();
+                        msg = j?.message || j?.error || msg;
+                    } else {
+                        msg = await uploadRes.text();
+                    }
+                } catch {}
+                throw new Error(msg || `HTTP ${uploadRes.status}`);
+            }
+            
+            const uploadData = await uploadRes.json();
+            const gameUrl = uploadData.gameUrl;
+            
+            if (!gameUrl) {
+                throw new Error('ゲームURLの取得に失敗しました');
+            }
+            
+            // 2. Submit with gameUrl to get rewards
+            const submitRes = await fetch('/api/submit/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    aim: 'ゲーム提出',
+                    steps: ['準備', '実行', '完了'],
+                    frameType: 'none',
+                    gameUrl: gameUrl
+                })
+            });
+            
+            if (!submitRes.ok) {
+                throw new Error('提出に失敗しました');
+            }
+            
+            const submitData = await submitRes.json();
+            
+            // 3. Hide upload overlay
+            document.getElementById('upload-overlay').classList.remove('show');
+            
+            // 4. Show reward flow (card → title)
+            if (submitData.rewardCard || submitData.rewardTitle) {
+                showRewardFlow(submitData);
+            } else {
+                // 報酬がない場合も提出物をリロード
+                loadSubmissions();
+                loadProfile();
+                loadSubmitters();
+                loadRanking();
+            }
+        } catch (err) {
+            document.getElementById('upload-overlay').classList.remove('show');
+            document.getElementById('upload-game-error').textContent = err.message || 'ゲームのアップロードに失敗しました';
+            document.getElementById('upload-game-error').style.display = 'block';
+            console.error('Game upload error:', err);
+        }
+    }
+    
     function fetchTopic(type) {
         const element = document.getElementById(`topic-${type}`);
         element.style.display = 'block';
@@ -799,6 +1106,133 @@
         loadSubmitters();
         loadRanking();
     }
+    
+    // ライトボックス機能
+    let currentLightboxAssetId = null;
+    
+    function openLightbox(url, type, assetId) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxVideo = document.getElementById('lightbox-video');
+        const lightboxActions = document.getElementById('lightbox-actions');
+        
+        currentLightboxAssetId = assetId;
+        
+        if (type === 'video') {
+            lightboxImage.style.display = 'none';
+            lightboxVideo.style.display = 'block';
+            lightboxVideo.src = url;
+            lightboxVideo.load();
+        } else {
+            lightboxImage.style.display = 'block';
+            lightboxVideo.style.display = 'none';
+            lightboxImage.src = url;
+        }
+        
+        // Discordシェアボタンを表示（画像と動画のみ）
+        if (type === 'image' || type === 'video') {
+            lightboxActions.style.display = 'flex';
+        } else {
+            lightboxActions.style.display = 'none';
+        }
+        
+        lightbox.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxVideo = document.getElementById('lightbox-video');
+        
+        lightbox.classList.remove('show');
+        document.body.style.overflow = '';
+        
+        // 動画を停止
+        if (lightboxVideo) {
+            lightboxVideo.pause();
+            lightboxVideo.src = '';
+        }
+        
+        currentLightboxAssetId = null;
+    }
+    
+    // ESCキーで閉じる
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const lightbox = document.getElementById('lightbox');
+            if (lightbox.classList.contains('show')) {
+                closeLightbox();
+            }
+        }
+    });
+    
+    // Discordシェア機能
+    async function shareToDiscord() {
+        if (!currentLightboxAssetId) {
+            alert('アセットIDが見つかりません');
+            return;
+        }
+        
+        const btn = document.getElementById('discord-share-btn');
+        const originalText = btn.innerHTML;
+        
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '<span>送信中…</span>';
+            
+            const response = await fetch('/api/share/discord/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    assetId: currentLightboxAssetId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.ok) {
+                alert('Discordにシェアしました');
+                if (data.discordMessageId) {
+                    // Discordで開くリンクを表示（オプション）
+                    console.log('Discord message ID:', data.discordMessageId);
+                }
+            } else {
+                const errorMsg = data.error || 'Discordへのシェアに失敗しました';
+                if (errorMsg.includes('25MB') || errorMsg.includes('20MB')) {
+                    alert('ファイルサイズが大きすぎます（25MB以下）');
+                } else {
+                    alert(errorMsg);
+                }
+            }
+        } catch (err) {
+            console.error('Discord share error:', err);
+            alert('Discordへのシェアに失敗しました');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
 </script>
+
+<!-- ライトボックス -->
+<div id="lightbox" onclick="closeLightbox()">
+    <div id="lightbox-content" onclick="event.stopPropagation()">
+        <button id="lightbox-close" onclick="closeLightbox()" aria-label="閉じる">×</button>
+        <img id="lightbox-image" src="" alt="" style="display: none;">
+        <video id="lightbox-video" controls style="display: none;"></video>
+        <div id="lightbox-actions" style="display: none;">
+            <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
+                </svg>
+                <span>Discordにシェア</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 

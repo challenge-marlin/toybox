@@ -12,35 +12,37 @@ User = get_user_model()
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Custom token serializer that uses email instead of username."""
+    """Custom token serializer that uses display_id (ID) instead of email or username."""
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Remove username field if it exists
+        # Remove username and email fields if they exist
         if 'username' in self.fields:
             del self.fields['username']
-        # Add email field
-        self.fields['email'] = serializers.EmailField()
+        if 'email' in self.fields:
+            del self.fields['email']
+        # Add display_id field (ID)
+        self.fields['display_id'] = serializers.CharField()
     
     def validate(self, attrs):
-        email = attrs.get('email')
+        display_id = attrs.get('display_id')
         password = attrs.get('password')
         
-        if not email or not password:
+        if not display_id or not password:
             raise serializers.ValidationError({
-                'non_field_errors': ['Must include "email" and "password".']
+                'non_field_errors': ['Must include "display_id" and "password".']
             })
         
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(display_id=display_id)
         except User.DoesNotExist:
             raise serializers.ValidationError({
-                'non_field_errors': ['Invalid email or password.']
+                'non_field_errors': ['Invalid ID or password.']
             })
         
         if not user.check_password(password):
             raise serializers.ValidationError({
-                'non_field_errors': ['Invalid email or password.']
+                'non_field_errors': ['Invalid ID or password.']
             })
         
         if not user.is_active:
@@ -73,8 +75,8 @@ class UserMetaSerializer(serializers.ModelSerializer):
     avatar_url = serializers.URLField(source='user.avatar_url', read_only=True)
     
     def get_display_name(self, obj):
-        """Get display name from bio or display_id."""
-        return obj.bio or obj.user.display_id
+        """Get display name from display_name field, fallback to bio, then display_id."""
+        return obj.display_name or obj.bio or obj.user.display_id
     
     def to_representation(self, instance):
         """Override to check title expiry."""
@@ -93,7 +95,7 @@ class UserMetaSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserMeta
         fields = ['display_id', 'display_name', 'avatar_url', 'active_title', 'title_color', 'expires_at', 'bio', 'header_url', 'lottery_bonus_count']
-        read_only_fields = ['display_id', 'display_name', 'avatar_url', 'lottery_bonus_count']
+        read_only_fields = ['display_id', 'avatar_url', 'lottery_bonus_count']
 
 
 class UserCardSerializer(serializers.ModelSerializer):

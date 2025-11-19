@@ -718,7 +718,20 @@ export default function MyPage() {
                 try { (e.target as HTMLInputElement).value=''; } catch {}
               }
             }} />
-            <button onClick={() => document.getElementById('upload-game-input')?.click()} className="w-full rounded bg-fuchsia-600 px-4 py-2 text-white hover:bg-fuchsia-500">ZIPを選択</button>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => document.getElementById('upload-game-input')?.click()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('upload-game-input')?.click(); }}
+              className="flex flex-col items-center justify-center rounded border-2 border-dashed border-fuchsia-600 bg-steam-iron-900 p-4 text-center select-none cursor-pointer hover:bg-steam-iron-800/50 transition-colors"
+            >
+              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" className="text-fuchsia-400 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+              </svg>
+              <div className="text-sm text-fuchsia-300 font-semibold">ZIPファイルを選択</div>
+              <div className="text-xs text-steam-iron-300 mt-1">ゲームをアップロード</div>
+            </div>
             <p className="text-xs text-steam-iron-300">必ずindex.htmlを含む <strong className="text-steam-gold-300">Webブラウザでできるミニゲームで構成されたZIPファイル</strong> をアップロードするようにしてください。</p>
           </div>
         </section>

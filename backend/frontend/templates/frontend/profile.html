@@ -234,6 +234,39 @@
     
     // 初期データ読み込み
     document.addEventListener('DOMContentLoaded', function() {
+        // ロールチェック：一般ユーザー（FREE_USER）はこのページにアクセスできない
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            fetch('/api/users/me/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(res => {
+                if (res.ok) {
+                    return res.json();
+                }
+                throw new Error(`HTTP ${res.status}`);
+            })
+            .then(userData => {
+                if (userData.role === 'FREE_USER') {
+                    window.location.href = '/upgrade/';
+                    return;
+                }
+                // 課金ユーザー以上の場合は通常の処理を続行
+                initializeProfile();
+            })
+            .catch(err => {
+                console.error('Error fetching user data:', err);
+                // エラーが発生した場合は通常の処理を続行
+                initializeProfile();
+            });
+        } else {
+            // トークンがない場合はログインページにリダイレクト
+            window.location.href = '/login/';
+        }
+        
+        function initializeProfile() {
         loadProfile();
         
         // プロフィール文の文字数カウント

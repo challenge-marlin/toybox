@@ -440,6 +440,14 @@
     
     // 初期データ読み込み
     document.addEventListener('DOMContentLoaded', function() {
+        // リダイレクトチェック中フラグをチェック（無限ループ防止）
+        if (sessionStorage.getItem('toybox_role_checking') === '1') {
+            sessionStorage.removeItem('toybox_role_checking');
+            // チェック中の場合は通常の処理を続行
+            initializePage();
+            return;
+        }
+        
         // 強制リロードフラグをチェック
         try {
             const shouldReload = localStorage.getItem('toybox_me_force_reload') === '1';
@@ -451,16 +459,58 @@
             }
         } catch (e) {}
         
-        loadProfile();
-        loadAnnouncements();
-        loadSubmissions();
-        loadTimeline();
-        loadSubmitters();
-        loadRanking();
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            window.location.href = '/login/';
+            return;
+        }
         
-        // アップロード機能
-        setupUpload();
-        setupGameUpload();
+        // まず、ユーザーのロールを確認してリダイレクトが必要かチェック
+        sessionStorage.setItem('toybox_role_checking', '1');
+        fetch('/api/users/me/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        .then(res => {
+            sessionStorage.removeItem('toybox_role_checking');
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            return res.json();
+        })
+        .then(userData => {
+            console.log('User data:', userData);
+            // ロールがFREE_USERの場合は問い合わせページにリダイレクト
+            if (userData.role === 'FREE_USER') {
+                console.log('User is FREE_USER, redirecting to /upgrade/');
+                // リダイレクト前にフラグを設定して無限ループを防ぐ
+                sessionStorage.setItem('toybox_redirecting_to_upgrade', '1');
+                window.location.href = '/upgrade/';
+                return;
+            }
+            // それ以外の場合は通常の処理を続行
+            initializePage();
+        })
+        .catch(err => {
+            sessionStorage.removeItem('toybox_role_checking');
+            console.error('Error fetching user data:', err);
+            // エラーが発生した場合は通常の処理を続行（サーバー側でリダイレクトされる可能性がある）
+            initializePage();
+        });
+        
+        function initializePage() {
+            loadProfile();
+            loadAnnouncements();
+            loadSubmissions();
+            loadTimeline();
+            loadSubmitters();
+            loadRanking();
+            
+            // アップロード機能
+            setupUpload();
+            setupGameUpload();
+        }
     });
     
     function loadProfile() {

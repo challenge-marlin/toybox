@@ -323,10 +323,16 @@ class SubmitView(APIView):
 
 class FeedView(APIView):
     """Feed endpoint compatible with Next.js format."""
-    permission_classes = [AllowAny]  # Allow anonymous access
+    permission_classes = [IsAuthenticated]  # Require authentication
     
     def get(self, request):
         """Get feed items."""
+        # 一般ユーザー（FREE_USER）はアクセスできない
+        if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
+            return Response(
+                {'error': 'この機能は課金ユーザー限定です。'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         queryset = Submission.objects.filter(deleted_at__isnull=True)
         
         # Get pagination params

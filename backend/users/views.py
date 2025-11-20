@@ -2,24 +2,24 @@
 Users app views for DRF.
 """
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import get_user_model
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import UserMeta
-from .serializers import UserMetaSerializer, CustomTokenObtainPairSerializer, RegisterSerializer
+from django.utils import timezone
+from .serializers import UserMetaSerializer, CustomTokenObtainPairSerializer, RegisterSerializer, UserSerializer
+from .models import UserMeta, UserCard, UserRegistration
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 
 class LoginView(TokenObtainPairView):
-    """Login endpoint - returns JWT tokens."""
+    """Login endpoint."""
     serializer_class = CustomTokenObtainPairSerializer
 
 
@@ -57,6 +57,16 @@ class RegisterView(APIView):
             'ok': False,
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CurrentUserView(APIView):
+    """Get current user information."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get current user's information including role."""
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
 
 
 class UserMetaViewSet(viewsets.ModelViewSet):
@@ -107,25 +117,21 @@ class ProfileUpdateView(APIView):
         import logging
         logger = logging.getLogger(__name__)
         
-        meta, _ = UserMeta.objects.get_or_create(user=request.user)
+        display_name = request.data.get('displayName', '').strip()
+        bio = request.data.get('bio', '').strip()
         
-        display_name = request.data.get('displayName')
-        bio = request.data.get('bio')
+        # Get or create UserMeta
+        meta, created = UserMeta.objects.get_or_create(user=request.user)
         
-        logger.info(f'Profile update request: user={request.user.id}, displayName={display_name}, bio={bio}')
-        
-        # Update display_name if provided
-        if display_name is not None:
-            meta.display_name = display_name.strip() if display_name else ''
-            logger.info(f'Updated display_name to: {meta.display_name}')
-        
-        # Update bio if provided
+        # Update fields
+        if display_name:
+            meta.display_name = display_name
         if bio is not None:
-            meta.bio = bio.strip() if bio else ''
-            logger.info(f'Updated bio to: {meta.bio}')
+            meta.bio = bio
         
         meta.save()
-        logger.info(f'Saved UserMeta: display_name={meta.display_name}, bio={meta.bio}')
+        
+        logger.info(f'Updated profile for user {request.user.display_id}: display_name={display_name}, bio length={len(bio)}')
         
         serializer = UserMetaSerializer(meta)
         return Response(serializer.data)
@@ -238,29 +244,13 @@ class ProfileGetView(APIView):
 
 
 class NotificationListView(APIView):
-    """Get user's notifications."""
+    """List notifications for current user."""
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        """Get notifications list."""
-        meta, _ = UserMeta.objects.get_or_create(user=request.user)
-        notifications = meta.notifications or []
-        
-        # Pagination
-        limit = int(request.query_params.get('limit', 20))
-        offset = int(request.query_params.get('offset', 0))
-        limit = max(1, min(100, limit))
-        offset = max(0, offset)
-        
-        items = notifications[offset:offset + limit]
-        unread_count = sum(1 for n in notifications if not n.get('read', False))
-        next_offset = offset + len(items) if offset + len(items) < len(notifications) else None
-        
-        return Response({
-            'items': items,
-            'unread': unread_count,
-            'nextOffset': next_offset
-        })
+        """Get notifications."""
+        # TODO: Implement notification system
+        return Response({'notifications': []})
 
 
 class NotificationReadView(APIView):
@@ -269,22 +259,5 @@ class NotificationReadView(APIView):
     
     def post(self, request):
         """Mark notifications as read."""
-        meta, _ = UserMeta.objects.get_or_create(user=request.user)
-        notifications = meta.notifications or []
-        
-        # If no indexes provided, mark all as read
-        indexes = request.data.get('indexes', [])
-        if not indexes:
-            # Mark all as read
-            for notification in notifications:
-                notification['read'] = True
-        else:
-            # Mark specific indexes as read
-            for idx in indexes:
-                if isinstance(idx, int) and 0 <= idx < len(notifications):
-                    notifications[idx]['read'] = True
-        
-        meta.notifications = notifications
-        meta.save()
-        
+        # TODO: Implement notification system
         return Response({'ok': True})

@@ -14,6 +14,9 @@ urlpatterns = [
     path('refresh/', views.RefreshTokenView.as_view(), name='refresh'),
     path('register/', views.RegisterView.as_view(), name='register'),
     
+    # Current user endpoint
+    path('me/', views.CurrentUserView.as_view(), name='current-user'),
+    
     # Notification endpoints
     path('notifications/', views.NotificationListView.as_view(), name='notifications'),
     path('notifications/read/', views.NotificationReadView.as_view(), name='notifications-read'),

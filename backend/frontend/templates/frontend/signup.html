@@ -205,6 +205,10 @@
                 }
                 
                 // ロールに応じてリダイレクト先を決定
+                // デバッグ用: ロール情報を確認
+                console.log('Registration response:', data);
+                console.log('User role:', data.role);
+                
                 const redirectUrl = (data.role === 'FREE_USER') ? '/upgrade/' : '/me/';
                 const redirectMessage = (data.role === 'FREE_USER') 
                     ? 'アカウントを作成しました。課金についてのページへ移動します…' 
@@ -216,6 +220,7 @@
                 
                 // Redirect based on role
                 setTimeout(() => {
+                    console.log('Redirecting to:', redirectUrl);
                     window.location.href = redirectUrl;
                 }, 1000);
             } else {

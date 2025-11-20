@@ -57,20 +57,8 @@ def me(request):
 
 def upgrade(request):
     """一般ユーザー向けの課金問い合わせページ。"""
-    from django.contrib.auth import get_user_model
-    
-    User = get_user_model()
-    
-    # ログインしているかチェック
-    if not request.user.is_authenticated:
-        from django.shortcuts import redirect
-        return redirect('/login/')
-    
-    # 既に課金ユーザー以上の場合はマイページにリダイレクト
-    if request.user.role != User.Role.FREE_USER:
-        from django.shortcuts import redirect
-        return redirect('/me/')
-    
+    # JWTトークン認証を使用しているため、サーバー側での認証チェックは行わない
+    # フロントエンド側でJWTトークンを使ってロールチェックを行う
     return render(request, 'frontend/upgrade.html')
 
 

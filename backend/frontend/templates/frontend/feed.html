@@ -312,6 +312,14 @@
                 window.location.href = '/login/';
                 return null;
             }
+            if (res.status === 403) {
+                // 403エラーの場合は課金ページにリダイレクト
+                window.location.href = '/upgrade/';
+                return null;
+            }
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
             return res.json();
         })
         .then(data => {
@@ -573,16 +581,75 @@
     }, { root: null, rootMargin: '200px', threshold: 0 });
     
     document.addEventListener('DOMContentLoaded', function() {
-        loadFeed();
-        observer.observe(document.getElementById('sentinel'));
+        // ロールチェック：一般ユーザー（FREE_USER）はこのページにアクセスできない
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            // トークンがない場合はログインページにリダイレクト
+            window.location.href = '/login/';
+            return;
+        }
         
-        // すべて表示済みのチェック
-        const checkEnd = setInterval(() => {
-            if (initialized && !loading && !nextCursor && items.length > 0) {
-                document.getElementById('end-message').style.display = 'block';
-                clearInterval(checkEnd);
+        // ロールチェックを実行（並行してfeedも読み込み開始）
+        let roleCheckCompleted = false;
+        let shouldRedirect = false;
+        
+        const roleCheckPromise = fetch('/api/users/me/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
-        }, 100);
+        })
+        .then(res => {
+            if (res.ok) {
+                return res.json();
+            }
+            throw new Error(`HTTP ${res.status}`);
+        })
+        .then(userData => {
+            roleCheckCompleted = true;
+            if (userData.role === 'FREE_USER') {
+                shouldRedirect = true;
+                window.location.href = '/upgrade/';
+                return;
+            }
+            // 課金ユーザー以上の場合は通常の処理を続行
+            if (!feedInitialized) {
+                initializeFeed();
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching user data:', err);
+            roleCheckCompleted = true;
+            // エラーが発生した場合は通常の処理を続行（API側でチェックされる）
+            if (!feedInitialized) {
+                initializeFeed();
+            }
+        });
+        
+        // タイムアウトを設定（1秒以内にロールチェックが完了しない場合は続行）
+        setTimeout(() => {
+            if (!roleCheckCompleted && !shouldRedirect && !feedInitialized) {
+                console.warn('Role check timeout, proceeding with feed load');
+                roleCheckCompleted = true;
+                initializeFeed();
+            }
+        }, 1000);
+        
+        let feedInitialized = false;
+        
+        function initializeFeed() {
+            if (feedInitialized) return;
+            feedInitialized = true;
+            loadFeed();
+            observer.observe(document.getElementById('sentinel'));
+            
+            // すべて表示済みのチェック
+            const checkEnd = setInterval(() => {
+                if (initialized && !loading && !nextCursor && items.length > 0) {
+                    document.getElementById('end-message').style.display = 'block';
+                    clearInterval(checkEnd);
+                }
+            }, 100);
+        }
     });
 </script>
 {% endblock %}

@@ -3,6 +3,103 @@
 
 {% block title %}課金について - ToyBox{% endblock %}
 
+{% block extra_js %}
+<script>
+    // リダイレクトチェック（無限ループ防止）
+    document.addEventListener('DOMContentLoaded', function() {
+        // リダイレクトフラグをクリア
+        sessionStorage.removeItem('toybox_redirecting_to_upgrade');
+        
+        // ナビゲーションリンクを無効化する関数
+        function disableNavigationLinks() {
+            const navMe = document.getElementById('nav-me');
+            const navCollection = document.getElementById('nav-collection');
+            const navProfile = document.getElementById('nav-profile');
+            const navFeed = document.querySelector('a[href="/feed/"]');
+            const logoLink = document.getElementById('logo-link');
+            
+            // リンクを非表示にする
+            if (navMe) {
+                navMe.style.display = 'none';
+                navMe.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+            if (navCollection) {
+                navCollection.style.display = 'none';
+                navCollection.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+            if (navProfile) {
+                navProfile.style.display = 'none';
+                navProfile.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+            if (navFeed) {
+                navFeed.style.display = 'none';
+                navFeed.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+            if (logoLink) {
+                logoLink.href = '/';
+                logoLink.addEventListener('click', function(e) {
+                    // ロゴクリック時もトップページに移動
+                    e.preventDefault();
+                    window.location.href = '/';
+                    return false;
+                });
+            }
+        }
+        
+        // 即座に実行
+        disableNavigationLinks();
+        
+        // base.htmlのJavaScriptが実行された後にも実行（念のため）
+        setTimeout(disableNavigationLinks, 100);
+        setTimeout(disableNavigationLinks, 500);
+        
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            window.location.href = '/login/';
+            return;
+        }
+        
+        // ユーザーのロールを確認
+        fetch('/api/users/me/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            return res.json();
+        })
+        .then(userData => {
+            // 既に課金ユーザー以上の場合はマイページにリダイレクト
+            if (userData.role !== 'FREE_USER') {
+                console.log('User is not FREE_USER, redirecting to /me/');
+                window.location.href = '/me/';
+                return;
+            }
+            // FREE_USERの場合はこのページを表示
+        })
+        .catch(err => {
+            console.error('Error fetching user data:', err);
+            // エラーが発生した場合はこのページを表示
+        });
+    });
+</script>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .upgrade-container {

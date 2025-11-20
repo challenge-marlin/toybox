@@ -230,6 +230,10 @@
                     showPenaltyModal(data.penalty.type, data.penalty.message);
                 } else {
                     // ロールに応じてリダイレクト先を決定
+                    // デバッグ用: ロール情報を確認
+                    console.log('Login response:', data);
+                    console.log('User role:', data.role);
+                    
                     const redirectUrl = (data.role === 'FREE_USER') ? '/upgrade/' : '/me/';
                     const redirectMessage = (data.role === 'FREE_USER') 
                         ? 'ログイン成功！課金についてのページへ移動します...' 
@@ -238,6 +242,7 @@
                     successDiv.textContent = redirectMessage;
                     successDiv.style.display = 'block';
                     setTimeout(() => {
+                        console.log('Redirecting to:', redirectUrl);
                         window.location.href = redirectUrl;
                     }, 1000);
                 }

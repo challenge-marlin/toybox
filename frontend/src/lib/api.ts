@@ -18,8 +18,24 @@ export async function apiGet<T>(path: string, opts?: { anonId?: string; signal?:
   if (opts?.anonId) headers['x-anon-id'] = opts.anonId;
   const res = await fetch(url, { headers, signal: opts?.signal, cache: 'no-store', credentials: 'include' });
   if (!res.ok) {
-    if (res.status === 401) throw new Error('ログイン情報の有効期限が切れました。再ログインしてください。');
-    throw new Error(`HTTP ${res.status}`);
+    let errorMessage = `HTTP ${res.status}`;
+    try {
+      const errorData = await res.json();
+      if (errorData.error) {
+        errorMessage = errorData.error;
+      } else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
+    } catch {
+      // JSON parse failed, use default message
+    }
+    if (res.status === 401) {
+      throw new Error('ログイン情報の有効期限が切れました。再ログインしてください。');
+    }
+    if (res.status === 403) {
+      throw new Error(errorMessage || 'アクセスが拒否されました');
+    }
+    throw new Error(errorMessage);
   }
   return (await res.json()) as T;
 }

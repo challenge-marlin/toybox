@@ -26,7 +26,7 @@
             </nav>
             <div id="user-info" style="display: flex; align-items: center; gap: 0.75rem; color: var(--steam-iron-200); display: none;">
                 <div id="notification-container" style="position: relative; display: none;">
-                    <button id="notification-button" onclick="toggleNotifications()" style="position: relative; background: transparent; border: none; padding: 0.25rem 0.5rem; cursor: pointer; color: var(--steam-gold-300); border-radius: 4px;" aria-label="通知">
+                    <button id="notification-button" onclick="toggleNotifications()" style="position: relative; background: transparent; border: none; padding: 0.25rem 0.5rem; cursor: pointer; color: var(--steam-gold-300); border-radius: 9999px;" aria-label="通知">
                         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
                             <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
                             <path d="M13.73 21a2 2 0 01-3.46 0" />
@@ -71,10 +71,16 @@
                     'Authorization': `Bearer ${token}`,
                 }
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                return res.json();
+            })
             .then(data => {
-                notificationItems = data.items || [];
-                notificationUnread = data.unread || 0;
+                // APIレスポンス形式に対応（items/unread または notifications/unreadCount）
+                notificationItems = data.items || data.notifications || [];
+                notificationUnread = data.unread !== undefined ? data.unread : (data.unreadCount || 0);
                 notificationNextOffset = data.nextOffset || null;
                 
                 updateNotificationBadge();
@@ -82,7 +88,12 @@
                     renderNotifications();
                 }
             })
-            .catch(err => console.error('Failed to load notifications:', err));
+            .catch(err => {
+                console.error('Failed to load notifications:', err);
+                // エラーが発生してもバッジは非表示のままにする
+                notificationUnread = 0;
+                updateNotificationBadge();
+            });
         }
         
         function updateNotificationBadge() {
@@ -186,7 +197,7 @@
             .catch(err => console.error('Failed to mark notifications as read:', err));
         }
         
-        // ナビゲーションの認証状態に応じた表示切り替え
+        // ナビゲーションの認証状態に応じた表示切り替えと通知読み込み
         document.addEventListener('DOMContentLoaded', function() {
             const isAuthenticated = hasValidToken();
             const logoLink = document.getElementById('logo-link');
@@ -229,8 +240,11 @@
                 })
                 .catch(err => console.error('Failed to load user info:', err));
                 
-                // 通知を読み込む
+                // 通知を読み込む（初回）
                 loadNotifications();
+                
+                // 定期的に通知を更新（30秒ごと）
+                setInterval(loadNotifications, 30000);
             } else {
                 // 未ログインの場合
                 if (logoLink) logoLink.href = '/';
@@ -257,11 +271,6 @@
                     }
                 }
             });
-            
-            // 定期的に通知を更新（30秒ごと）
-            if (isAuthenticated) {
-                setInterval(loadNotifications, 30000);
-            }
         });
     </script>
 </body>

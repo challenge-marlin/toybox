@@ -18,6 +18,42 @@ docker compose up -d
 
 詳細は [backend/README_DJANGO.md](./backend/README_DJANGO.md) を参照してください。
 
+## Djangoサーバーの再起動方法
+
+### ローカルで起動している場合（推奨・開発時）
+
+1. **サーバーを停止**
+   - サーバーが起動しているターミナルで `Ctrl + C` を押す（Windowsの場合は `Ctrl + Break` も可）
+
+2. **サーバーを再起動**
+   ```powershell
+   cd backend
+   .\venv\Scripts\Activate.ps1
+   python manage.py runserver
+   ```
+
+### Dockerで起動している場合
+
+```powershell
+cd backend
+docker compose restart web
+```
+
+または、すべてのサービスを再起動する場合：
+
+```powershell
+cd backend
+docker compose restart
+```
+
+### 確認方法
+
+サーバーが正常に起動しているか確認：
+
+- **API**: http://localhost:8000/api/
+- **Admin**: http://localhost:8000/admin/
+- **ヘルスチェック**: http://localhost:8000/api/health/
+
 ## ドキュメント
 
 - **開発ガイド**: [backend/README_DJANGO.md](./backend/README_DJANGO.md)

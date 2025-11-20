@@ -21,6 +21,9 @@ urlpatterns = [
     path('notifications/', views.NotificationListView.as_view(), name='notifications'),
     path('notifications/read/', views.NotificationReadView.as_view(), name='notifications-read'),
     
+    # Topic endpoints
+    path('topic/generate/', views.TopicGenerateView.as_view(), name='topic-generate'),
+    
     # Router URLs
     path('', include(router.urls)),
 ]

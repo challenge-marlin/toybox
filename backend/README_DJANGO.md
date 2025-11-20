@@ -123,6 +123,47 @@ celery -A toybox worker --loglevel=info
 celery -A toybox beat --loglevel=info
 ```
 
+## サーバーの再起動方法
+
+### ローカルで起動している場合（推奨・開発時）
+
+1. **サーバーを停止**
+   - サーバーが起動しているターミナルで `Ctrl + C` を押す
+   - Windowsの場合は `Ctrl + Break` も可
+
+2. **サーバーを再起動**
+   ```bash
+   # 仮想環境を有効化（必要に応じて）
+   source venv/bin/activate  # Windows: venv\Scripts\Activate.ps1
+   
+   # サーバーを起動
+   python manage.py runserver
+   ```
+
+### Dockerで起動している場合
+
+```bash
+# Djangoコンテナのみ再起動
+docker compose restart web
+
+# または、すべてのサービスを再起動
+docker compose restart
+```
+
+### コード変更後の再起動が必要な場合
+
+Djangoの開発サーバー（`runserver`）は通常、コード変更を自動検知して再読み込みしますが、以下の場合は手動で再起動が必要です：
+
+- 新しいモデルフィールドを追加した場合
+- 設定ファイル（`settings.py`など）を変更した場合
+- URLルーティングを変更した場合
+- 依存関係を追加・更新した場合
+- コードの変更が反映されない場合
+
+**再起動手順**:
+1. `Ctrl + C` でサーバーを停止
+2. `python manage.py runserver` で再起動
+
 ## 主要コマンド
 
 ### Linux/macOS (makeコマンド使用)

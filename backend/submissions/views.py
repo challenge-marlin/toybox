@@ -72,6 +72,9 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post', 'delete'], url_path='like')
     def like(self, request, pk=None):
         """Like/unlike submission (compatible with Next.js API)."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         submission = self.get_object()
         
         if request.method == 'POST':
@@ -90,6 +93,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             
             # 通知を作成（自分で自分にいいねは通知しない）
             if created and submission.author != request.user:
+                
                 try:
                     target_meta, _ = UserMeta.objects.get_or_create(user=submission.author)
                     liker_meta, _ = UserMeta.objects.get_or_create(user=request.user)
@@ -114,10 +118,12 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                         notifications = notifications[:100]
                     target_meta.notifications = notifications
                     target_meta.save()
+                    
+                    logger.info(f'Notification created: user={submission.author.display_id}, liker={request.user.display_id}, submission={submission.id}')
                 except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f'Failed to create notification: {str(e)}')
+                    logger.error(f'Failed to create notification: {str(e)}', exc_info=True)
+            elif not created:
+                logger.debug(f'Like already exists: user={request.user.display_id}, submission={submission.id}')
             
             return Response({
                 'ok': True,
@@ -399,6 +405,66 @@ class FeedView(APIView):
         })
 
 
+class PopularFeedView(APIView):
+    """Popular feed endpoint - returns submissions ordered by likes count."""
+    permission_classes = [IsAuthenticated]  # Require authentication
+    
+    def get(self, request):
+        """Get popular feed items ordered by likes count."""
+        # 一般ユーザー（FREE_USER）はアクセスできない
+        if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
+            return Response(
+                {'error': 'この機能は課金ユーザー限定です。'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        queryset = Submission.objects.filter(deleted_at__isnull=True)
+        
+        # Get limit param
+        try:
+            limit = int(request.query_params.get('limit', 12))
+            limit = max(1, min(50, limit))  # Clamp between 1 and 50
+        except (ValueError, TypeError):
+            limit = 12
+        
+        # Annotate with reactions count
+        queryset = queryset.annotate(
+            reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
+        )
+        
+        # Order by reactions count descending, then by created_at descending
+        queryset = queryset.order_by('-reactions_count', '-created_at')
+        
+        # Get items
+        items = queryset[:limit]
+        
+        # Serialize items
+        serializer = SubmissionSerializer(items, many=True, context={'request': request})
+        
+        # Transform to Next.js format
+        feed_items = []
+        for item_data in serializer.data:
+            # Get image URL (prefer display_image_url, then image, then image_url)
+            image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
+            
+            feed_items.append({
+                'id': str(item_data['id']),
+                'anonId': item_data.get('author_display_id') or 'unknown',
+                'displayName': item_data.get('author_display_id'),
+                'createdAt': item_data['created_at'],
+                'imageUrl': image_url,
+                'videoUrl': item_data.get('video_url'),
+                'displayImageUrl': image_url,
+                'title': item_data.get('caption'),
+                'gameUrl': item_data.get('game_url'),
+                'likesCount': item_data.get('reactions_count', 0),
+                'liked': item_data.get('user_reacted', False),
+            })
+        
+        return Response({
+            'items': feed_items
+        })
+
+
 class UserSubmissionsView(APIView):
     """Get user's submissions by display_id."""
     permission_classes = [AllowAny]
@@ -579,47 +645,89 @@ class TimelineView(APIView):
     
     def get(self, request):
         """Get recent submissions for timeline."""
-        # Get recent submissions (last 20)
-        submissions = Submission.objects.filter(
-            deleted_at__isnull=True
-        ).select_related('author', 'author__meta').order_by('-created_at')[:20]
+        import logging
+        logger = logging.getLogger(__name__)
         
-        timeline_items = []
-        for sub in submissions:
+        try:
+            # Get pagination params
             try:
-                meta = getattr(sub.author, 'meta', None)
-                
-                # Get display name from display_name field, fallback to display_id
-                display_name = None
-                if meta and meta.display_name:
-                    display_name = meta.display_name
-                else:
-                    display_name = sub.author.display_id
-                
-                # Determine submission type
-                submission_type = '画像'
-                if sub.game_url:
-                    submission_type = 'ゲーム'
-                elif sub.video_url:
-                    submission_type = '動画'
-                elif sub.image_url or sub.image:
+                limit = int(request.query_params.get('limit', 10))
+                limit = max(1, min(50, limit))  # Clamp between 1 and 50
+            except (ValueError, TypeError):
+                limit = 10
+            
+            cursor = request.query_params.get('cursor')
+            
+            queryset = Submission.objects.filter(
+                deleted_at__isnull=True
+            ).select_related('author').order_by('-created_at')
+            
+            # If cursor provided, decode and filter
+            if cursor:
+                try:
+                    cursor_id = int(cursor)
+                    queryset = queryset.filter(id__lt=cursor_id)
+                except (ValueError, TypeError):
+                    pass
+            
+            # Get items
+            submissions = list(queryset[:limit])
+            
+            timeline_items = []
+            for sub in submissions:
+                try:
+                    # Get UserMeta if it exists
+                    try:
+                        meta = sub.author.meta
+                    except AttributeError:
+                        meta = None
+                    
+                    # Get display name from display_name field, fallback to display_id
+                    display_name = None
+                    if meta and hasattr(meta, 'display_name') and meta.display_name:
+                        display_name = meta.display_name
+                    else:
+                        display_name = sub.author.display_id
+                    
+                    # Determine submission type
                     submission_type = '画像'
-                
-                # Get avatar URL
-                avatar_url = sub.author.avatar_url if hasattr(sub.author, 'avatar_url') and sub.author.avatar_url else None
-                
-                timeline_items.append({
-                    'id': str(sub.id),
-                    'anonId': sub.author.display_id,
-                    'displayName': display_name,
-                    'avatarUrl': avatar_url,
-                    'type': submission_type,
-                    'createdAt': sub.created_at.isoformat(),
-                })
-            except Exception as e:
-                continue
-        
-        return Response({
-            'items': timeline_items
-        })
+                    if sub.game_url:
+                        submission_type = 'ゲーム'
+                    elif sub.video_url:
+                        submission_type = '動画'
+                    elif sub.image_url or sub.image:
+                        submission_type = '画像'
+                    
+                    # Get avatar URL
+                    avatar_url = None
+                    if hasattr(sub.author, 'avatar_url') and sub.author.avatar_url:
+                        avatar_url = sub.author.avatar_url
+                    
+                    timeline_items.append({
+                        'id': str(sub.id),
+                        'anonId': sub.author.display_id,
+                        'displayName': display_name,
+                        'avatarUrl': avatar_url,
+                        'type': submission_type,
+                        'createdAt': sub.created_at.isoformat(),
+                    })
+                except Exception as e:
+                    logger.error(f'Error processing timeline item {sub.id}: {str(e)}', exc_info=True)
+                    continue
+            
+            # Determine next cursor
+            next_cursor = None
+            if len(submissions) == limit and submissions:
+                next_cursor = str(submissions[-1].id)
+            
+            return Response({
+                'items': timeline_items,
+                'nextCursor': next_cursor
+            })
+        except Exception as e:
+            logger.error(f'TimelineView error: {str(e)}', exc_info=True)
+            return Response(
+                {'error': 'タイムラインの読み込みに失敗しました。', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     

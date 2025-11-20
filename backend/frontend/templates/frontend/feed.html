@@ -259,9 +259,22 @@
 {% block content %}
 <div class="feed-container">
     <h1 class="feed-title">みんなの投稿</h1>
-    <div id="feed" class="feed-grid">
-        <div class="loading">読み込み中...</div>
-    </div>
+    
+    <!-- 人気作品セクション -->
+    <section id="popular-section" style="margin-bottom: 2rem;">
+        <h2 style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600; color: var(--steam-gold-300);">人気作品</h2>
+        <div id="popular-feed" class="feed-grid">
+            <div class="loading">読み込み中...</div>
+        </div>
+    </section>
+    
+    <!-- 通常の投稿一覧 -->
+    <section>
+        <h2 style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600; color: var(--steam-gold-300);">最新の投稿</h2>
+        <div id="feed" class="feed-grid">
+            <div class="loading">読み込み中...</div>
+        </div>
+    </section>
     <div id="sentinel" class="feed-sentinel"></div>
     <div id="loading-indicator" class="loading" style="display: none;">読み込み中…</div>
     <div id="end-message" class="feed-end-message" style="display: none;">すべて表示しました</div>
@@ -270,11 +283,11 @@
 <!-- ライトボックス -->
 <div id="lightbox" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer; align-items: center; justify-content: center;" onclick="closeLightbox()">
     <div id="lightbox-content" onclick="event.stopPropagation()" style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-        <button id="lightbox-close" onclick="closeLightbox()" aria-label="閉じる" style="position: absolute; top: -2.5rem; right: 0; background: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer;">×</button>
+        <button id="lightbox-close" onclick="closeLightbox()" aria-label="閉じる" style="position: absolute; top: -2.5rem; right: 0; background: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer;">×</button>
         <img id="lightbox-image" src="" alt="" style="max-width: 90vw; max-height: 80vh; object-fit: contain; border-radius: 8px; cursor: default; display: none;">
         <video id="lightbox-video" controls style="max-width: 90vw; max-height: 80vh; background: black; border-radius: 8px; cursor: default; display: none;"></video>
         <div id="lightbox-actions" style="display: none; gap: 0.5rem; align-items: center;">
-            <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer;">
+            <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer;">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
                 </svg>
@@ -287,8 +300,10 @@
 <script>
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     let items = [];
+    let popularItems = [];
     let nextCursor = null;
     let loading = false;
+    let popularLoading = false;
     let initialized = false;
     
     function loadFeed(cursor = null) {
@@ -346,6 +361,121 @@
         });
     }
     
+    function loadPopularFeed() {
+        if (popularLoading) return;
+        popularLoading = true;
+        
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            popularLoading = false;
+            return;
+        }
+        
+        fetch('/api/feed/popular/?limit=12', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(res => {
+            if (res.status === 401 || res.status === 403) {
+                return null;
+            }
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (!data) return;
+            popularItems = data.items || [];
+            renderPopularFeed();
+        })
+        .catch(err => {
+            console.error('Failed to load popular feed:', err);
+            const popularFeed = document.getElementById('popular-feed');
+            if (popularFeed) {
+                popularFeed.innerHTML = '<div class="loading" style="grid-column: 1 / -1; color: #ef4444;">人気作品の読み込みに失敗しました</div>';
+            }
+        })
+        .finally(() => {
+            popularLoading = false;
+        });
+    }
+    
+    function renderPopularFeed() {
+        const popularFeed = document.getElementById('popular-feed');
+        if (!popularFeed) return;
+        
+        if (popularItems.length === 0) {
+            popularFeed.innerHTML = '<div class="loading" style="grid-column: 1 / -1;">人気作品はまだありません</div>';
+            return;
+        }
+        
+        popularFeed.innerHTML = popularItems.map(item => renderFeedItem(item)).join('');
+    }
+    
+    function renderFeedItem(item) {
+        const isGame = item.gameUrl;
+        const isVideo = item.videoUrl;
+        const itemClass = isGame ? 'game' : (isVideo ? 'video' : '');
+        
+        let content = '';
+        if (isGame) {
+            content = `
+                <div class="feed-item-game-container">
+                    <div class="feed-item-game-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                        </svg>
+                        <div class="feed-item-game-label">GAME</div>
+                    </div>
+                </div>
+            `;
+        } else if (isVideo) {
+            content = `
+                <div class="feed-item-video-container" onclick="openLightbox('${item.videoUrl}', 'video', '${item.id}')">
+                    <video src="${item.videoUrl}" class="feed-item-video" muted preload="metadata"></video>
+                    <div class="feed-item-play-overlay">
+                        <div class="feed-item-play-button">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 22px; height: 22px;">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            content = `<img src="${item.imageUrl || item.displayImageUrl || ''}" alt="submission" class="feed-item-image" onclick="openLightbox('${item.imageUrl || item.displayImageUrl || ''}', 'image', '${item.id}')">`;
+        }
+        
+        return `
+            <div class="feed-item ${itemClass}">
+                <div class="feed-item-ring"></div>
+                <div class="feed-item-header">
+                    <a href="/users/${item.anonId || 'unknown'}/">${item.displayName || item.anonId || 'Unknown'}</a>
+                </div>
+                ${content}
+                <button class="feed-like-btn ${item.liked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${item.liked || false})">
+                    <svg viewBox="0 0 24 24" fill="${item.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                    <span>${item.likesCount || 0}</span>
+                </button>
+                ${isGame ? `
+                    <a href="${item.gameUrl}" target="_blank" rel="noreferrer" class="feed-game-link" title="ゲームを開く" onclick="event.stopPropagation()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                        </svg>
+                        開く
+                    </a>
+                ` : ''}
+            </div>
+        `;
+    }
+    
     function renderFeed() {
         const feed = document.getElementById('feed');
         if (items.length === 0 && initialized) {
@@ -353,66 +483,7 @@
             return;
         }
         
-        feed.innerHTML = items.map(item => {
-            const isGame = item.gameUrl;
-            const isVideo = item.videoUrl;
-            const itemClass = isGame ? 'game' : (isVideo ? 'video' : '');
-            
-            let content = '';
-            if (isGame) {
-                content = `
-                    <div class="feed-item-game-container">
-                        <div class="feed-item-game-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
-                            </svg>
-                            <div class="feed-item-game-label">GAME</div>
-                        </div>
-                    </div>
-                `;
-            } else if (isVideo) {
-                content = `
-                    <div class="feed-item-video-container" onclick="openLightbox('${item.videoUrl}', 'video', '${item.id}')">
-                        <video src="${item.videoUrl}" class="feed-item-video" muted preload="metadata"></video>
-                        <div class="feed-item-play-overlay">
-                            <div class="feed-item-play-button">
-                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 22px; height: 22px;">
-                                    <path d="M8 5v14l11-7z" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                content = `<img src="${item.imageUrl || item.displayImageUrl || ''}" alt="submission" class="feed-item-image" onclick="openLightbox('${item.imageUrl || item.displayImageUrl || ''}', 'image', '${item.id}')">`;
-            }
-            
-            return `
-                <div class="feed-item ${itemClass}">
-                    <div class="feed-item-ring"></div>
-                    <div class="feed-item-header">
-                        <a href="/users/${item.anonId || 'unknown'}/">${item.displayName || item.anonId || 'Unknown'}</a>
-                    </div>
-                    ${content}
-                    <button class="feed-like-btn ${item.liked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${item.liked || false})">
-                        <svg viewBox="0 0 24 24" fill="${item.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg>
-                        <span>${item.likesCount || 0}</span>
-                    </button>
-                    ${isGame ? `
-                        <a href="${item.gameUrl}" target="_blank" rel="noreferrer" class="feed-game-link" title="ゲームを開く" onclick="event.stopPropagation()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
-                            </svg>
-                            開く
-                        </a>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
+        feed.innerHTML = items.map(item => renderFeedItem(item)).join('');
     }
     
     function toggleLike(submissionId, currentLiked) {
@@ -640,6 +711,7 @@
             if (feedInitialized) return;
             feedInitialized = true;
             loadFeed();
+            loadPopularFeed(); // 人気作品を読み込む
             observer.observe(document.getElementById('sentinel'));
             
             // すべて表示済みのチェック

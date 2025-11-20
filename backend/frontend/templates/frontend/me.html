@@ -203,7 +203,7 @@
         background: rgba(0, 0, 0, 0.6);
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 9999px;
         padding: 0.5rem 1rem;
         font-size: 1rem;
         cursor: pointer;
@@ -226,7 +226,7 @@
         background: #5865F2;
         color: white;
         border: none;
-        border-radius: 8px;
+        border-radius: 9999px;
         padding: 0.5rem 1rem;
         font-size: 0.875rem;
         cursor: pointer;
@@ -270,27 +270,23 @@
         <!-- Discord参加 -->
         <section class="me-section">
             <h2>Discord</h2>
-            <a href="https://discord.gg/{{ DISCORD_INVITE_CODE|default:'' }}" target="_blank" rel="noreferrer" class="discord-join-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; width: 100%; justify-content: center; background: #5865F2; color: white; border: none; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; margin-top: 0.5rem;">
+            <a href="https://discord.gg/{{ DISCORD_INVITE_CODE|default:'' }}" target="_blank" rel="noreferrer" class="discord-join-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; width: 100%; justify-content: center; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; margin-top: 0.5rem;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
                 </svg>
-                <span>Discord TOYBOXサーバーに参加する</span>
+                <span>TOYBOXサーバーに参加</span>
             </a>
         </section>
         
-        <!-- お仕事系のお題 -->
+        <!-- タイムライン -->
         <section class="me-section">
-            <h2>お仕事系のお題</h2>
-            <div id="topic-work" style="color: var(--steam-iron-100); font-size: 0.875rem; display: none;"></div>
-            <a href="https://ayatori-inc.co.jp/toybox-std/" target="_blank" rel="noreferrer" onclick="fetchTopic('work')" style="display: inline-block; margin-top: 0.75rem; border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; text-decoration: none; font-size: 1rem;">お題を見る</a>
+            <h2>タイムライン</h2>
+            <ul id="timeline-list" style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--steam-iron-100);">
+                <li>読み込み中...</li>
+            </ul>
+            <button id="timeline-load-more" onclick="loadMoreTimeline()" style="display: none; margin-top: 0.5rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;" onmouseover="this.style.background='var(--steam-iron-700)'" onmouseout="this.style.background='var(--steam-iron-800)'">続きを見る</button>
         </section>
         
-        <!-- ゲームのお題 -->
-        <section class="me-section">
-            <h2>ゲームのお題</h2>
-            <div id="topic-play" style="color: var(--steam-iron-100); font-size: 0.875rem; display: none;"></div>
-            <a href="https://ayatori-inc.co.jp/toybox-game/" target="_blank" rel="noreferrer" onclick="fetchTopic('play')" style="display: inline-block; margin-top: 0.75rem; border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; text-decoration: none; font-size: 1rem;">お題を見る</a>
-        </section>
     </aside>
     
     <!-- 中央カラム -->
@@ -314,6 +310,18 @@
     
     <!-- 右カラム -->
     <aside>
+        <!-- お題をジェネレート -->
+        <section class="me-section">
+            <h2>お題をジェネレート</h2>
+            <div id="topic-display" style="color: var(--steam-iron-100); font-size: 0.875rem; margin-bottom: 0.75rem; padding: 0.75rem; background: var(--steam-iron-800); border-radius: 4px; border: 1px solid var(--steam-iron-700); display: none;">
+                <div id="topic-content" style="line-height: 1.6;"></div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button onclick="generateTopic('work')" style="flex: 1; border-radius: 9999px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-brown-600)'" onmouseout="this.style.background='var(--steam-brown-500)'">画像・動画</button>
+                <button onclick="generateTopic('game')" style="flex: 1; border-radius: 9999px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-brown-600)'" onmouseout="this.style.background='var(--steam-brown-500)'">ゲーム</button>
+            </div>
+        </section>
+        
         <!-- 本日の課題提出 -->
         <section class="me-section">
             <h2>本日の課題提出</h2>
@@ -350,14 +358,6 @@
                 <div id="upload-game-error" style="font-size: 0.75rem; color: #dc2626; display: none;"></div>
                 <p style="font-size: 0.75rem; color: var(--steam-iron-300);">必ずindex.htmlを含む <strong style="color: var(--steam-gold-300);">Webブラウザでできるミニゲームで構成されたZIPファイル</strong> をアップロードするようにしてください。</p>
             </div>
-        </section>
-        
-        <!-- タイムライン -->
-        <section class="me-section">
-            <h2>タイムライン</h2>
-            <ul id="timeline-list" style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--steam-iron-100);">
-                <li>データなし</li>
-            </ul>
         </section>
         
         <!-- 提出者（当日） -->
@@ -397,7 +397,7 @@
             </div>
             <div style="margin-top: 0.5rem; text-align: center; color: var(--steam-iron-100);" id="card-name">Card</div>
             <div style="text-align: center; margin-top: 0.75rem;">
-                <button onclick="nextToTitle()" style="border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; cursor: pointer; font-size: 1rem;">閉じる</button>
+                <button onclick="nextToTitle()" style="border-radius: 9999px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; cursor: pointer; font-size: 1rem;">閉じる</button>
             </div>
         </div>
         
@@ -409,7 +409,7 @@
             </div>
             <div style="margin-top: 0.25rem; font-size: 1.5rem; font-weight: bold; color: var(--steam-gold-300);" id="title-name">—</div>
             <div style="margin-top: 1rem;">
-                <button onclick="closeRewardFlow()" style="border-radius: 4px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; cursor: pointer; font-size: 1rem;">OK</button>
+                <button onclick="closeRewardFlow()" style="border-radius: 9999px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; cursor: pointer; font-size: 1rem;">OK</button>
             </div>
         </div>
     </div>
@@ -784,7 +784,7 @@
                                     開く
                                 </a>
                             ` : ''}
-                            <button onclick="deleteSubmission('${item.id}')" style="display: none; position: absolute; top: 0.5rem; right: 0.5rem; border-radius: 4px; background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border: none; cursor: pointer; z-index: 10; pointer-events: auto;" class="submission-delete-btn">削除</button>
+                            <button onclick="deleteSubmission('${item.id}')" style="display: none; position: absolute; top: 0.5rem; right: 0.5rem; border-radius: 9999px; background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border: none; cursor: pointer; z-index: 10; pointer-events: auto;" class="submission-delete-btn">削除</button>
                         </div>
                     `;
                 }).join('');
@@ -810,60 +810,136 @@
         });
     }
     
+    let timelineItems = [];
+    let timelineNextCursor = null;
+    let timelineLoading = false;
+    
+    function renderTimelineItem(item) {
+        const displayName = item.displayName || item.anonId;
+        const typeText = item.type === 'ゲーム' ? 'ゲーム' : (item.type === '動画' ? '動画' : '画像');
+        const avatarUrl = item.avatarUrl || item.avatar_url;
+        
+        let avatarHtml = '';
+        if (avatarUrl) {
+            avatarHtml = `<div class="timeline-avatar"><img src="${avatarUrl}" alt="${displayName}" onerror="this.parentElement.innerHTML='<span>${displayName.charAt(0)}</span>'"></div>`;
+        } else {
+            avatarHtml = `<div class="timeline-avatar"><span>${displayName.charAt(0)}</span></div>`;
+        }
+        
+        return `<li class="timeline-item">
+            ${avatarHtml}
+            <a href="/profile/view/?user=${encodeURIComponent(item.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
+            <span>さんが${typeText}を投稿しました。</span>
+        </li>`;
+    }
+    
+    function renderTimeline() {
+        const list = document.getElementById('timeline-list');
+        const loadMoreBtn = document.getElementById('timeline-load-more');
+        
+        if (timelineItems.length === 0) {
+            list.innerHTML = '<li>データなし</li>';
+            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        } else {
+            list.innerHTML = timelineItems.map(item => renderTimelineItem(item)).join('');
+            if (loadMoreBtn) {
+                loadMoreBtn.style.display = timelineNextCursor ? 'block' : 'none';
+            }
+        }
+    }
+    
     function loadTimeline() {
-        fetch('/api/timeline/', {
-            headers: {
-                'Authorization': `Bearer ${token}`,
+        if (timelineLoading) return;
+        timelineLoading = true;
+        
+        const list = document.getElementById('timeline-list');
+        if (timelineItems.length === 0) {
+            list.innerHTML = '<li>読み込み中...</li>';
+        }
+        
+        // Timeline API doesn't require authentication
+        fetch('/api/timeline/?limit=10')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
             }
+            return res.json();
         })
-        .then(res => res.json())
         .then(data => {
-            const list = document.getElementById('timeline-list');
-            if (data.items && data.items.length > 0) {
-                list.innerHTML = data.items.map(item => {
-                    const displayName = item.displayName || item.anonId;
-                    const typeText = item.type === 'ゲーム' ? 'ゲーム' : (item.type === '動画' ? '動画' : '画像');
-                    const avatarUrl = item.avatarUrl || item.avatar_url;
-                    
-                    let avatarHtml = '';
-                    if (avatarUrl) {
-                        avatarHtml = `<div class="timeline-avatar"><img src="${avatarUrl}" alt="${displayName}" onerror="this.parentElement.innerHTML='<span>${displayName.charAt(0)}</span>'"></div>`;
-                    } else {
-                        avatarHtml = `<div class="timeline-avatar"><span>${displayName.charAt(0)}</span></div>`;
-                    }
-                    
-                    return `<li class="timeline-item">
-                        ${avatarHtml}
-                        <a href="/profile/view/?user=${encodeURIComponent(item.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
-                        <span>さんが${typeText}を投稿しました。</span>
-                    </li>`;
-                }).join('');
-            } else {
-                list.innerHTML = '<li>データなし</li>';
-            }
+            timelineItems = data.items || [];
+            timelineNextCursor = data.nextCursor || null;
+            renderTimeline();
         })
         .catch(err => {
             console.error('Failed to load timeline:', err);
-            document.getElementById('timeline-list').innerHTML = '<li>データなし</li>';
+            const list = document.getElementById('timeline-list');
+            if (list) {
+                list.innerHTML = '<li style="color: var(--steam-iron-300);">データなし</li>';
+            }
+            const loadMoreBtn = document.getElementById('timeline-load-more');
+            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        })
+        .finally(() => {
+            timelineLoading = false;
+        });
+    }
+    
+    function loadMoreTimeline() {
+        if (timelineLoading || !timelineNextCursor) return;
+        timelineLoading = true;
+        
+        const loadMoreBtn = document.getElementById('timeline-load-more');
+        if (loadMoreBtn) loadMoreBtn.textContent = '読み込み中...';
+        
+        // Timeline API doesn't require authentication
+        fetch(`/api/timeline/?limit=10&cursor=${encodeURIComponent(timelineNextCursor)}`)
+        .then(res => res.json())
+        .then(data => {
+            const newItems = data.items || [];
+            timelineItems = [...timelineItems, ...newItems];
+            timelineNextCursor = data.nextCursor || null;
+            renderTimeline();
+        })
+        .catch(err => {
+            console.error('Failed to load more timeline:', err);
+        })
+        .finally(() => {
+            timelineLoading = false;
+            if (loadMoreBtn) loadMoreBtn.textContent = '続きを見る';
         });
     }
     
     function loadSubmitters() {
-        fetch('/api/submitters/today/', {
-            headers: {
-                'Authorization': `Bearer ${token}`,
+        fetch('/api/submitters/today/')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
             }
+            return res.json();
         })
-        .then(res => res.json())
         .then(data => {
             const list = document.getElementById('submitters-list');
             const countElement = document.getElementById('submitters-count');
+            
+            // Remove duplicates by anonId (in case API returns duplicates)
+            const uniqueSubmitters = [];
+            const seenIds = new Set();
             if (data.submitters && data.submitters.length > 0) {
-                // カウントを更新
-                if (countElement) {
-                    countElement.textContent = `${data.submitters.length}名`;
+                for (const s of data.submitters) {
+                    if (!seenIds.has(s.anonId)) {
+                        seenIds.add(s.anonId);
+                        uniqueSubmitters.push(s);
+                    }
                 }
-                list.innerHTML = data.submitters.map(s => {
+            }
+            
+            if (uniqueSubmitters.length > 0) {
+                // Use unique count
+                const uniqueCount = uniqueSubmitters.length;
+                if (countElement) {
+                    countElement.textContent = `${uniqueCount}名`;
+                }
+                list.innerHTML = uniqueSubmitters.map(s => {
                     const displayName = s.displayName || s.anonId;
                     return `<li style="display: flex; align-items: center; gap: 0.5rem;">
                         <a href="/profile/view/?user=${encodeURIComponent(s.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
@@ -883,7 +959,10 @@
             if (countElement) {
                 countElement.textContent = '0名';
             }
-            document.getElementById('submitters-list').innerHTML = '<li>データなし</li>';
+            const list = document.getElementById('submitters-list');
+            if (list) {
+                list.innerHTML = '<li>データなし</li>';
+            }
         });
     }
     
@@ -1175,11 +1254,63 @@
         }
     }
     
-    function fetchTopic(type) {
-        const element = document.getElementById(`topic-${type}`);
-        element.style.display = 'block';
-        element.textContent = '読み込み中…';
-        // 実際のAPI呼び出しは実装が必要
+    function generateTopic(type) {
+        const display = document.getElementById('topic-display');
+        const content = document.getElementById('topic-content');
+        
+        display.style.display = 'block';
+        content.innerHTML = '<div style="text-align: center; color: var(--steam-iron-300);">読み込み中…</div>';
+        
+        const token = getAccessToken();
+        const url = `/api/users/topic/generate/?type=${type}`;
+        
+        fetch(url, {
+            headers: token ? {
+                'Authorization': `Bearer ${token}`,
+            } : {}
+        })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (data.error) {
+                content.innerHTML = `<div style="color: #dc2626;">${data.error}</div>`;
+                return;
+            }
+            
+            if (type === 'game' && data.title) {
+                const difficultyStars = '★'.repeat(Math.min(data.difficulty || 0, 8));
+                content.innerHTML = `
+                    <div style="font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem; font-size: 1rem;">${data.title}</div>
+                    <div style="color: var(--steam-iron-200); margin-bottom: 0.25rem;">${data.shortIdea || ''}</div>
+                    <div style="color: var(--steam-iron-300); font-size: 0.75rem; margin-bottom: 0.5rem;">${data.description || ''}</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--steam-iron-700);">
+                        <span style="color: var(--steam-iron-400); font-size: 0.75rem;">難易度:</span>
+                        <span style="color: var(--steam-gold-400); font-size: 0.875rem;">${difficultyStars}</span>
+                        ${data.category ? `<span style="color: var(--steam-iron-400); font-size: 0.75rem; margin-left: auto;">${data.category}</span>` : ''}
+                    </div>
+                `;
+            } else if (type === 'work' && data.title) {
+                const typeText = data.typeText || (data.mediaType === 'video' ? '動画' : '画像');
+                const typeColor = data.mediaType === 'video' ? '#0ea5e9' : '#10b981';
+                content.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <span style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 9999px; background: ${typeColor}; color: white; font-size: 0.75rem; font-weight: 600;">${typeText}</span>
+                        <div style="font-weight: 600; color: var(--steam-gold-300); font-size: 1rem; flex: 1;">${data.title}</div>
+                    </div>
+                    <div style="color: var(--steam-iron-200); font-size: 0.875rem; line-height: 1.6;">${data.shortIdea || ''}</div>
+                `;
+            } else {
+                content.innerHTML = '<div style="color: #dc2626;">お題を取得できませんでした。</div>';
+            }
+        })
+        .catch(err => {
+            console.error('Failed to generate topic:', err);
+            content.innerHTML = '<div style="color: #dc2626;">お題の取得に失敗しました。</div>';
+        });
     }
     
     // 報酬演出フロー

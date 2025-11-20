@@ -16,6 +16,8 @@ urlpatterns = [
     path('submit/uploadGame', views.SubmitGameUploadView.as_view(), name='submit-upload-game'),
     # Submit endpoint (compatible with Next.js - returns rewards)
     path('submit/', views.SubmitView.as_view(), name='submit'),
+    # Popular feed endpoint (ordered by likes count) - must be before feed/
+    path('feed/popular/', views.PopularFeedView.as_view(), name='feed-popular'),
     # Feed endpoint (compatible with Next.js)
     path('feed/', views.FeedView.as_view(), name='feed'),
     # User submissions endpoint

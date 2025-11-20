@@ -34,7 +34,7 @@ export default function MyPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const FEED_MAX_ITEMS = 100;
+  const FEED_MAX_ITEMS = 50; // タイムラインは最大50件まで
   const [submitters, setSubmitters] = useState<{ anonId: string; displayName?: string | null }[]>([]);
   const [ranking, setRanking] = useState<{ anonId: string; displayName?: string | null; count: number }[]>([]);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -277,7 +277,7 @@ export default function MyPage() {
         apiGet<{ items: Submission[] }>(`/api/submissions/me?limit=12`),
         apiGet<{ activeTitle?: string | null; activeTitleUntil?: string | null }>(`/api/user/me`),
         apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(userId!)}`),
-        apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=6`),
+        apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/timeline?limit=10`),
         apiGet<{ submitters: { anonId: string; displayName?: string | null }[] }>(`/api/submitters/today`),
         apiGet<{ ranking: { anonId: string; displayName?: string | null; count: number }[] }>(`/api/ranking/daily`),
       ]);
@@ -368,7 +368,7 @@ export default function MyPage() {
     if (!nextCursor) return;
     if (feed.length >= FEED_MAX_ITEMS) return;
     try {
-      const f = await apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/feed?limit=6&cursor=${encodeURIComponent(nextCursor)}`);
+      const f = await apiGet<{ items: FeedItem[]; nextCursor: string | null }>(`/api/timeline?limit=10&cursor=${encodeURIComponent(nextCursor)}`);
       setFeed((prev) => {
         const merged = [...prev, ...f.items];
         return merged.slice(0, FEED_MAX_ITEMS);

@@ -21,6 +21,8 @@ Django 5 + DRF + PostgreSQL + Celery + Redis 構成のバックエンドAPI
 
 ### Dockerでの起動（推奨）
 
+#### 初回セットアップ
+
 1. **環境変数の設定**
 
 ```bash
@@ -39,6 +41,28 @@ docker compose up -d
 ```
 
 **注意**: `backend/`ディレクトリから実行してください。ルートディレクトリの`docker-compose.yml`は既存のNext.js/Expressプロジェクト用です。
+
+#### 次回から起動する場合
+
+PCを再起動した後や、Dockerコンテナを停止した後に再度起動する場合：
+
+**Windows PowerShell:**
+```powershell
+cd C:\github\toybox\backend
+.\make.ps1 up
+# または
+docker compose up -d
+```
+
+**Linux/macOS:**
+```bash
+cd backend
+make up
+# または
+docker compose up -d
+```
+
+これだけで、PostgreSQL、Redis、Django Webサーバー、Celery Worker/Beatがすべて起動します。
 
 3. **マイグレーション実行**
 

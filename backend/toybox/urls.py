@@ -20,7 +20,10 @@ except ImportError:
     SPECTACULAR_AVAILABLE = False
 
 urlpatterns = [
-    # Admin
+    # Admin panel (custom admin UI) - Must be before admin.site.urls
+    path('admin/console/', include('adminpanel.urls')),
+    
+    # Django admin site
     path('admin/', admin.site.urls),
 ]
 
@@ -52,9 +55,6 @@ urlpatterns += [
     # Admin API endpoints
     path('api/', include('adminpanel.urls')),
     
-    # Admin panel (custom admin UI)
-    path('admin/console/', include('adminpanel.urls')),
-    
     # Frontend (Django templates)
     path('', include('frontend.urls')),
 ]
@@ -66,9 +66,22 @@ if settings.DEBUG:
     # Serve card images from static directory
     from django.views.static import serve
     from django.urls import re_path
+    from django.http import Http404
+    from django.views.static import serve as static_serve
+    from django.views.decorators.cache import cache_control
+    
+    def favicon_view(request):
+        """Serve favicon.ico from static directory."""
+        favicon_path = settings.BASE_DIR / 'frontend' / 'static' / 'frontend' / 'favicon.ico'
+        if favicon_path.exists():
+            return static_serve(request, 'favicon.ico', document_root=str(settings.BASE_DIR / 'frontend' / 'static' / 'frontend'))
+        raise Http404("Favicon not found")
+    
     urlpatterns += [
         re_path(r'^uploads/cards/(?P<path>.*)$', serve, {'document_root': settings.BASE_DIR / 'frontend' / 'static' / 'frontend' / 'uploads' / 'cards'}),
         # Serve game files from /media/ path (for compatibility with game URLs)
         re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+        # Serve favicon.ico from root path (browsers automatically look for /favicon.ico)
+        path('favicon.ico', cache_control(max_age=86400)(favicon_view)),
     ]
 

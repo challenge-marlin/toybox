@@ -171,3 +171,10 @@ def audit_log_list(request):
         'user_id': user_id
     })
 
+
+@admin_required
+@require_http_methods(["GET"])
+def discord_bot_post(request):
+    """Discord bot post page."""
+    return render(request, 'adminpanel/discord_bot_post.html')
+

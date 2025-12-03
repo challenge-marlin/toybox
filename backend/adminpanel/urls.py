@@ -13,14 +13,19 @@ router.register(r'admin/discord-shares', views.AdminDiscordShareViewSet, basenam
 router.register(r'admin/audit-logs', views.AdminAuditLogViewSet, basename='admin-audit-log')
 
 urlpatterns = [
-    # API endpoints
-    path('', include(router.urls)),
+    # Admin UI (Django templates) - Must be before API endpoints
+    # Note: These paths are included under 'admin/console/' in toybox/urls.py
+    # So we don't include 'admin/console/' prefix here
+    path('', template_views.dashboard, name='admin-dashboard'),
+    path('users/', template_views.user_list, name='admin-user-list'),
+    path('users/<int:user_id>/', template_views.user_detail, name='admin-user-detail'),
+    path('submissions/', template_views.submission_list, name='admin-submission-list'),
+    path('discord-shares/', template_views.discord_share_list, name='admin-discord-share-list'),
+    path('discord-post/', template_views.discord_share_list, name='admin-discord-post-list'),  # Alias for discord-shares
+    path('discord-bot-post/', template_views.discord_bot_post, name='admin-discord-bot-post'),  # Discord bot post page
+    path('audit-logs/', template_views.audit_log_list, name='admin-audit-log-list'),
     
-    # Admin UI (Django templates)
-    path('admin/console/', template_views.dashboard, name='admin-dashboard'),
-    path('admin/console/users/', template_views.user_list, name='admin-user-list'),
-    path('admin/console/users/<int:user_id>/', template_views.user_detail, name='admin-user-detail'),
-    path('admin/console/submissions/', template_views.submission_list, name='admin-submission-list'),
-    path('admin/console/discord-shares/', template_views.discord_share_list, name='admin-discord-share-list'),
-    path('admin/console/audit-logs/', template_views.audit_log_list, name='admin-audit-log-list'),
+    # API endpoints (must be after template views to avoid conflicts)
+    path('api/', include(router.urls)),
+    path('api/admin/discord-bot-post/', views.DiscordBotPostView.as_view(), name='admin-discord-bot-post-api'),
 ]

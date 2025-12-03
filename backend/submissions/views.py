@@ -181,7 +181,7 @@ class SubmitUploadView(APIView):
             return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Validate file type
-        allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png']
+        allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
         allowed_video_types = ['video/mp4', 'video/webm', 'video/ogg']
         
         if file.content_type not in allowed_image_types + allowed_video_types:
@@ -196,7 +196,16 @@ class SubmitUploadView(APIView):
         import os
         
         # Generate filename
-        file_ext = os.path.splitext(file.name)[1] or ('.mp4' if is_video else '.png')
+        # Determine extension based on file type
+        if is_video:
+            default_ext = '.mp4'
+        elif file.content_type == 'image/webp':
+            default_ext = '.webp'
+        elif file.content_type in ['image/jpeg', 'image/jpg']:
+            default_ext = '.jpg'
+        else:
+            default_ext = '.png'
+        file_ext = os.path.splitext(file.name)[1] or default_ext
         filename = f'submissions/{request.user.id}_{int(timezone.now().timestamp())}{file_ext}'
         
         # Save file
@@ -312,19 +321,39 @@ class SubmitView(APIView):
         image_url = request.data.get('imageUrl')
         video_url = request.data.get('videoUrl')
         game_url = request.data.get('gameUrl')
+        title = request.data.get('title')
+        caption = request.data.get('caption')
+        hashtags = request.data.get('hashtags')
         
         # Handle submission and lottery
-        result = handle_submission_and_lottery(
-            user=user,
-            aim=aim,
-            steps=steps,
-            frame_type=frame_type,
-            image_url=image_url,
-            video_url=video_url,
-            game_url=game_url
-        )
-        
-        return Response(result)
+        try:
+            result = handle_submission_and_lottery(
+                user=user,
+                aim=aim,
+                steps=steps,
+                frame_type=frame_type,
+                image_url=image_url,
+                video_url=video_url,
+                game_url=game_url,
+                title=title,
+                caption=caption,
+                hashtags=hashtags
+            )
+            return Response(result)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'SubmitView error: {str(e)}', exc_info=True)
+            import traceback
+            error_detail = traceback.format_exc()
+            logger.error(f'SubmitView traceback: {error_detail}')
+            return Response({
+                'error': '投稿に失敗しました',
+                'detail': str(e),
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class FeedView(APIView):
@@ -333,76 +362,108 @@ class FeedView(APIView):
     
     def get(self, request):
         """Get feed items."""
-        # 一般ユーザー（FREE_USER）はアクセスできない
-        if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
-            return Response(
-                {'error': 'この機能は課金ユーザー限定です。'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        queryset = Submission.objects.filter(deleted_at__isnull=True)
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # Get pagination params
         try:
-            limit = int(request.query_params.get('limit', 24))
-            limit = max(1, min(50, limit))  # Clamp between 1 and 50
-        except (ValueError, TypeError):
-            limit = 24
-        
-        cursor = request.query_params.get('cursor')
-        
-        # If cursor provided, decode and filter
-        if cursor:
-            try:
-                # Cursor is typically the last item's ID or timestamp
-                # For simplicity, we'll use ID-based pagination
-                cursor_id = int(cursor)
-                queryset = queryset.filter(id__lt=cursor_id)
-            except (ValueError, TypeError):
-                pass
-        
-        # Order by created_at descending
-        queryset = queryset.order_by('-created_at')
-        
-        # Annotate with reactions count
-        queryset = queryset.annotate(
-            reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
-        )
-        
-        # Get items
-        items = queryset[:limit]
-        
-        # Serialize items
-        serializer = SubmissionSerializer(items, many=True, context={'request': request})
-        
-        # Determine next cursor
-        next_cursor = None
-        if len(items) == limit:
-            next_cursor = str(items[-1].id)
-        
-        # Transform to Next.js format
-        feed_items = []
-        for item_data in serializer.data:
-            # Get image URL (prefer display_image_url, then image, then image_url)
-            image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
+            # 一般ユーザー（FREE_USER）はアクセスできない
+            if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
+                return Response(
+                    {'error': 'この機能は課金ユーザー限定です。'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            queryset = Submission.objects.filter(deleted_at__isnull=True)
             
-            feed_items.append({
-                'id': str(item_data['id']),
-                'anonId': item_data.get('author_display_id') or 'unknown',
-                'displayName': item_data.get('author_display_id'),
-                'createdAt': item_data['created_at'],
-                'imageUrl': image_url,
-                'videoUrl': item_data.get('video_url'),
-                'displayImageUrl': image_url,
-                'title': item_data.get('caption'),
-                'gameUrl': item_data.get('game_url'),
-                'likesCount': item_data.get('reactions_count', 0),
-                'liked': item_data.get('user_reacted', False),
+            # Filter by hashtag if provided
+            hashtag = request.query_params.get('hashtag')
+            if hashtag:
+                # JSONFieldのhashtags配列に指定されたハッシュタグが含まれる投稿をフィルター
+                # PostgreSQLのJSONFieldではcontainsを使用（配列に要素が含まれるかチェック）
+                try:
+                    queryset = queryset.filter(hashtags__contains=[hashtag])
+                except Exception as e:
+                    # エラーが発生した場合は、Python側でフィルタリング
+                    logger.warning(f'Hashtag filter error: {str(e)}, falling back to Python filtering', exc_info=True)
+                    # Python側でフィルタリング（非効率だが安全）
+                    submission_ids = []
+                    for sub in queryset:
+                        if sub.hashtags and isinstance(sub.hashtags, list) and hashtag in sub.hashtags:
+                            submission_ids.append(sub.id)
+                    queryset = queryset.filter(id__in=submission_ids)
+            
+            # Get pagination params
+            try:
+                limit = int(request.query_params.get('limit', 24))
+                limit = max(1, min(50, limit))  # Clamp between 1 and 50
+            except (ValueError, TypeError):
+                limit = 24
+            
+            cursor = request.query_params.get('cursor')
+            
+            # If cursor provided, decode and filter
+            if cursor:
+                try:
+                    # Cursor is typically the last item's ID or timestamp
+                    # For simplicity, we'll use ID-based pagination
+                    cursor_id = int(cursor)
+                    queryset = queryset.filter(id__lt=cursor_id)
+                except (ValueError, TypeError):
+                    pass
+            
+            # Order by created_at descending
+            queryset = queryset.order_by('-created_at')
+            
+            # Annotate with reactions count
+            queryset = queryset.annotate(
+                reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
+            )
+            
+            # Get items
+            items = queryset[:limit]
+            
+            # Serialize items
+            serializer = SubmissionSerializer(items, many=True, context={'request': request})
+            
+            # Determine next cursor
+            next_cursor = None
+            if len(items) == limit:
+                next_cursor = str(items[-1].id)
+            
+            # Transform to Next.js format
+            feed_items = []
+            for item_data in serializer.data:
+                # Get image URL (prefer display_image_url, then image, then image_url)
+                image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
+                
+                feed_items.append({
+                    'id': str(item_data['id']),
+                    'anonId': item_data.get('author_display_id') or 'unknown',
+                    'displayName': item_data.get('author_display_id'),
+                    'createdAt': item_data['created_at'],
+                    'imageUrl': image_url,
+                    'videoUrl': item_data.get('video_url'),
+                    'displayImageUrl': image_url,
+                    'title': item_data.get('title') or item_data.get('caption'),
+                    'caption': item_data.get('caption'),
+                    'hashtags': item_data.get('hashtags', []),
+                    'gameUrl': item_data.get('game_url'),
+                    'likesCount': item_data.get('reactions_count', 0),
+                    'liked': item_data.get('user_reacted', False),
+                })
+            
+            return Response({
+                'items': feed_items,
+                'nextCursor': next_cursor
             })
-        
-        return Response({
-            'items': feed_items,
-            'nextCursor': next_cursor
-        })
+        except Exception as e:
+            logger.error(f'FeedView error: {str(e)}', exc_info=True)
+            import traceback
+            error_detail = traceback.format_exc()
+            logger.error(f'FeedView traceback: {error_detail}')
+            return Response({
+                'error': 'フィードの読み込みに失敗しました',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PopularFeedView(APIView):
@@ -454,7 +515,9 @@ class PopularFeedView(APIView):
                 'imageUrl': image_url,
                 'videoUrl': item_data.get('video_url'),
                 'displayImageUrl': image_url,
-                'title': item_data.get('caption'),
+                'title': item_data.get('title') or item_data.get('caption'),
+                'caption': item_data.get('caption'),
+                'hashtags': item_data.get('hashtags', []),
                 'gameUrl': item_data.get('game_url'),
                 'likesCount': item_data.get('reactions_count', 0),
                 'liked': item_data.get('user_reacted', False),

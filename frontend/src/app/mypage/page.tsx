@@ -54,6 +54,13 @@ export default function MyPage() {
   const [lightboxAsset, setLightboxAsset] = useState<{ id: string; type: 'image' | 'video' | 'game' | 'other'; title?: string; authorName?: string; mimeType: string; sizeBytes?: number; fileUrl: string } | null>(null);
   const [pendingFlow, setPendingFlow] = useState<SubmitResult | null>(null);
   const [okLoading, setOkLoading] = useState(false);
+  
+  // 投稿情報入力モーダル
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState<{ imageUrl?: string; videoUrl?: string; displayImageUrl?: string; isVideo: boolean } | null>(null);
+  const [submitTitle, setSubmitTitle] = useState('');
+  const [submitCaption, setSubmitCaption] = useState('');
+  const [submitHashtags, setSubmitHashtags] = useState<string[]>(['']);
 
   function localKey(a: string) {
     return `toybox_local_submissions_${a}`;
@@ -75,6 +82,93 @@ export default function MyPage() {
     try {
       localStorage.setItem(localKey(a), JSON.stringify(items));
     } catch {}
+  }
+
+  async function onSubmitPost() {
+    if (!pendingUpload || !anonId) return;
+    
+    setUploading(true);
+    try {
+      const payload: any = {
+        aim: (pendingUpload.isVideo ? '動画提出' : '画像提出'),
+        steps: ['準備', '実行', '完了'],
+        frameType: 'none',
+        ...(pendingUpload.imageUrl ? { imageUrl: pendingUpload.imageUrl } : {}),
+        ...(pendingUpload.videoUrl ? { videoUrl: pendingUpload.videoUrl } : {}),
+        ...(submitTitle ? { title: submitTitle } : {}),
+        ...(submitCaption ? { caption: submitCaption } : {}),
+        ...(submitHashtags.filter(t => t.trim()).length > 0 ? { hashtags: submitHashtags.filter(t => t.trim()) } : {})
+      };
+
+      const submitRes = await apiPost<SubmitResult, typeof payload>(`/api/submit`, payload);
+
+      // アップロード中オーバーレイが閉じた後に演出開始
+      setPendingFlow(submitRes);
+      
+      // タイムラインへ即時反映（ローカル）: アバターを使う
+      const selfAvatar = resolveUploadUrl(profile?.avatarUrl) || null;
+      const newItem: Submission = {
+        id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        imageUrl: pendingUpload.imageUrl,
+        videoUrl: pendingUpload.videoUrl,
+        displayImageUrl: pendingUpload.displayImageUrl,
+        createdAt: new Date().toISOString()
+      };
+      
+      setSubmissions((prev) => {
+        const ids = new Set(prev.map((s) => s.id));
+        if (ids.has(newItem.id)) return prev;
+        const next = [newItem, ...prev];
+        saveLocalSubmissions(anonId, next.filter((s) => s.id.startsWith('local-')));
+        return next;
+      });
+      
+      setFeed((prev) => [
+        {
+          id: newItem.id,
+          anonId,
+          imageUrl: newItem.imageUrl || newItem.videoUrl || '',
+          avatarUrl: selfAvatar || '',
+          displayImageUrl: newItem.imageUrl || newItem.videoUrl || selfAvatar || '',
+          createdAt: newItem.createdAt,
+          title: titleBadge ?? null
+        },
+        ...prev,
+      ]);
+
+      // 称号などの更新反映 + 自分の提出物の再フェッチ（重複排除）
+      try {
+        // 即時にローカルの称号表示を更新
+        if (submitRes?.rewardTitle) {
+          setTitleBadge(submitRes.rewardTitle);
+          setFeed((prev) => prev.map((it) => it.id === newItem.id ? { ...it, title: submitRes?.rewardTitle || it.title } : it));
+        }
+        // サーバの最新値で上書き（永続化の確認）
+        const me = await apiGet<{ activeTitle?: string | null; activeTitleUntil?: string | null }>(`/api/user/me`);
+        setTitleBadge(me.activeTitle ?? (submitRes?.rewardTitle ?? null));
+        setTitleUntil(me.activeTitleUntil ?? null);
+        const p = await apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(anonId)}`);
+        setProfile(p);
+
+        // 自分の提出物をサーバーの最新に完全同期し、ローカル一時提出をクリア（重複回避）
+        const latest = await apiGet<{ items: Submission[] }>(`/api/submissions/me?limit=12`);
+        setSubmissions(latest.items);
+        saveLocalSubmissions(anonId, []);
+      } catch {}
+      
+      // モーダルを閉じる
+      setSubmitModalOpen(false);
+      setPendingUpload(null);
+      setSubmitTitle('');
+      setSubmitCaption('');
+      setSubmitHashtags(['']);
+    } catch (e: any) {
+      const msg = e?.message ?? '投稿に失敗しました';
+      setUploadError(msg);
+      toast.error(msg);
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function onUploadFile(file: File) {
@@ -143,70 +237,28 @@ export default function MyPage() {
         return next;
       });
 
-      // タイムラインへ即時反映（ローカル）: アバターを使う
-      const selfAvatar = resolveUploadUrl(profile?.avatarUrl) || null;
-      setFeed((prev) => [
-        {
-          id: newItem.id,
-          anonId,
-          imageUrl: newItem.imageUrl || newItem.videoUrl || '',
-          avatarUrl: selfAvatar || '',
-          displayImageUrl: newItem.imageUrl || newItem.videoUrl || selfAvatar || '',
-          createdAt: newItem.createdAt,
-          title: titleBadge ?? null
-        },
-        ...prev,
-      ]);
-
-      // 2) 提出API（imageUrl を保存）
-      const payload: any = {
-        aim: (isVideo ? '動画提出' : '画像提出'),
-        steps: ['準備', '実行', '完了'],
-        frameType: 'none',
-        ...(imageUrl ? { imageUrl } : {}),
-        ...(videoUrl ? { videoUrl } : {})
-      };
-
-      let submitRes: SubmitResult | null = null;
-      try {
-        submitRes = await apiPost<SubmitResult, typeof payload>(`/api/submit`, payload);
-      } catch {
-        submitRes = { jpResult: 'none', probability: 0, bonusCount: 0, rewardTitle: undefined, rewardCardId: undefined, jackpotRecordedAt: null };
-      }
-
-      // アップロード中オーバーレイが閉じた後に演出開始
-      setPendingFlow(submitRes);
-      // スロットはOKボタンで閉じる（自動クローズはしない）
-
-      // 称号などの更新反映 + 自分の提出物の再フェッチ（重複排除）
-      try {
-        // 即時にローカルの称号表示を更新
-        if (submitRes?.rewardTitle) {
-          setTitleBadge(submitRes.rewardTitle);
-          setFeed((prev) => prev.map((it) => it.id === newItem.id ? { ...it, title: submitRes?.rewardTitle || it.title } : it));
-        }
-        // サーバの最新値で上書き（永続化の確認）
-        const me = await apiGet<{ activeTitle?: string | null; activeTitleUntil?: string | null }>(`/api/user/me`);
-        setTitleBadge(me.activeTitle ?? (submitRes?.rewardTitle ?? null));
-        setTitleUntil(me.activeTitleUntil ?? null);
-        const p = await apiGet<PublicProfile>(`/api/user/profile/${encodeURIComponent(anonId)}`);
-        setProfile(p);
-
-        // 自分の提出物をサーバーの最新に完全同期し、ローカル一時提出をクリア（重複回避）
-        const latest = await apiGet<{ items: Submission[] }>(`/api/submissions/me?limit=12`);
-        setSubmissions(latest.items);
-        saveLocalSubmissions(anonId, []);
-      } catch {}
+      // ファイルアップロード成功後、投稿情報入力モーダルを表示
+      const elapsed = Date.now() - startedAt;
+      const remain = Math.max(0, 800 - elapsed);
+      try { await new Promise((r) => setTimeout(r, remain)); } catch {}
+      
+      setPendingUpload({
+        imageUrl,
+        videoUrl,
+        displayImageUrl: displayFromServer || imageUrl || videoUrl,
+        isVideo
+      });
+      setSubmitTitle('');
+      setSubmitCaption('');
+      setSubmitHashtags(['']);
+      setUploading(false); // アップロード完了
+      setSubmitModalOpen(true); // モーダルを表示
+      toast.success('アップロードが完了しました。投稿情報を入力してください。');
     } catch (e: any) {
       const msg = e?.message ?? 'アップロードに失敗しました';
       setUploadError(msg);
       toast.error(msg);
-    } finally {
-      const elapsed = Date.now() - startedAt;
-      const remain = Math.max(0, 800 - elapsed);
-      try { await new Promise((r) => setTimeout(r, remain)); } catch {}
       setUploading(false);
-      toast.success('アップロードが完了しました');
     }
   }
 
@@ -384,6 +436,105 @@ export default function MyPage() {
         <div className="fixed inset-0 z-[2000] bg-black/70 flex items-center justify-center">
           <div className="rounded-md border border-steam-iron-700 bg-steam-iron-900 text-steam-gold-200 px-6 py-4 shadow-xl">
             アップロード中…完了までお待ちください
+          </div>
+        </div>
+      )}
+      {/* 投稿情報入力モーダル */}
+      {submitModalOpen && pendingUpload && (
+        <div className="fixed inset-0 z-[2001] flex items-center justify-center bg-black/60" onClick={(e) => {
+          // 背景クリックで閉じないようにする（必要に応じて変更可能）
+        }}>
+          <div className="w-full max-w-lg rounded-md border border-steam-iron-700 bg-steam-iron-800 text-steam-gold-200 shadow-xl p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-xl font-semibold text-steam-gold-300">投稿情報を入力</h2>
+            {/* プレビュー画像/動画 */}
+            {pendingUpload.displayImageUrl && (
+              <div className="mb-4 rounded border border-steam-iron-700 overflow-hidden">
+                {pendingUpload.isVideo ? (
+                  <video src={pendingUpload.displayImageUrl} className="w-full max-h-48 object-contain" controls />
+                ) : (
+                  <img src={pendingUpload.displayImageUrl} alt="プレビュー" className="w-full max-h-48 object-contain" />
+                )}
+              </div>
+            )}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-steam-gold-300 mb-1">題名（20文字まで）</label>
+                <input
+                  type="text"
+                  maxLength={20}
+                  value={submitTitle}
+                  onChange={(e) => setSubmitTitle(e.target.value)}
+                  className="w-full rounded border border-steam-iron-700 bg-steam-iron-900 p-2 text-steam-iron-100"
+                  placeholder="題名を入力（任意）"
+                />
+                <div className="text-xs text-steam-iron-400 mt-1">{submitTitle.length}/20</div>
+              </div>
+              <div>
+                <label className="block text-sm text-steam-gold-300 mb-1">キャプション（140文字まで）</label>
+                <textarea
+                  maxLength={140}
+                  value={submitCaption}
+                  onChange={(e) => setSubmitCaption(e.target.value)}
+                  className="w-full rounded border border-steam-iron-700 bg-steam-iron-900 p-2 text-steam-iron-100"
+                  placeholder="キャプションを入力（任意）"
+                  rows={4}
+                />
+                <div className="text-xs text-steam-iron-400 mt-1">{submitCaption.length}/140</div>
+              </div>
+              <div>
+                <label className="block text-sm text-steam-gold-300 mb-1">ハッシュタグ（3つまで）</label>
+                <div className="space-y-2">
+                  {submitHashtags.map((tag, index) => (
+                    <input
+                      key={index}
+                      type="text"
+                      value={tag}
+                      onChange={(e) => {
+                        const newTags = [...submitHashtags];
+                        newTags[index] = e.target.value;
+                        setSubmitHashtags(newTags);
+                      }}
+                      className="w-full rounded border border-steam-iron-700 bg-steam-iron-900 p-2 text-steam-iron-100"
+                      placeholder={`ハッシュタグ ${index + 1}（任意）`}
+                      maxLength={50}
+                    />
+                  ))}
+                  {submitHashtags.length < 3 && (
+                    <button
+                      onClick={() => setSubmitHashtags([...submitHashtags, ''])}
+                      className="text-sm text-steam-gold-400 underline"
+                    >
+                      + ハッシュタグを追加
+                    </button>
+                  )}
+                </div>
+                <div className="text-xs text-steam-iron-400 mt-1">
+                  {submitHashtags.filter(t => t.trim()).length}/3
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setSubmitModalOpen(false);
+                    setPendingUpload(null);
+                    setSubmitTitle('');
+                    setSubmitCaption('');
+                    setSubmitHashtags(['']);
+                  }}
+                  className="flex-1 rounded bg-steam-iron-700 px-4 py-2 text-white hover:bg-steam-iron-600"
+                  disabled={uploading}
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={onSubmitPost}
+                  disabled={uploading}
+                  className="flex-1 rounded bg-steam-gold-500 px-4 py-2 text-black hover:bg-steam-gold-400 disabled:opacity-50"
+                >
+                  {uploading ? '投稿中…' : '投稿する'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

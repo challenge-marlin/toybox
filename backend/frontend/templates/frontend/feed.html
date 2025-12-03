@@ -258,7 +258,14 @@
 
 {% block content %}
 <div class="feed-container">
-    <h1 class="feed-title">みんなの投稿</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h1 class="feed-title" style="margin-bottom: 0;">みんなの投稿</h1>
+        <div id="hashtag-filter" style="display: none; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.875rem; color: var(--steam-iron-300);">フィルター:</span>
+            <span id="hashtag-filter-tag" style="display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-gold-500); color: black; font-size: 0.75rem; font-weight: 600;">#</span>
+            <button onclick="clearHashtagFilter()" style="padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-iron-700); color: var(--steam-iron-200); border: none; font-size: 0.75rem; cursor: pointer;">×</button>
+        </div>
+    </div>
     
     <!-- 人気作品セクション -->
     <section id="popular-section" style="margin-bottom: 2rem;">
@@ -281,11 +288,34 @@
 </div>
 
 <!-- ライトボックス -->
-<div id="lightbox" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer; align-items: center; justify-content: center;" onclick="closeLightbox()">
-    <div id="lightbox-content" onclick="event.stopPropagation()" style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-        <button id="lightbox-close" onclick="closeLightbox()" aria-label="閉じる" style="position: absolute; top: -2.5rem; right: 0; background: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer;">×</button>
-        <img id="lightbox-image" src="" alt="" style="max-width: 90vw; max-height: 80vh; object-fit: contain; border-radius: 8px; cursor: default; display: none;">
-        <video id="lightbox-video" controls style="max-width: 90vw; max-height: 80vh; background: black; border-radius: 8px; cursor: default; display: none;"></video>
+<div id="lightbox" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer; align-items: center; justify-content: center; overflow-y: auto;" onclick="closeLightbox()">
+    <div id="lightbox-content" onclick="event.stopPropagation()" style="position: relative; max-width: 90vw; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem 0; margin: auto;">
+        <button id="lightbox-close" onclick="closeLightbox()" aria-label="閉じる" style="position: fixed; top: 1rem; right: 1rem; background: rgba(0, 0, 0, 0.7); color: white; border: none; border-radius: 50%; width: 2.5rem; height: 2.5rem; font-size: 1.5rem; cursor: pointer; z-index: 10000; display: flex; align-items: center; justify-content: center; transition: background 0.2s; line-height: 1;">×</button>
+        <div id="lightbox-media-container" style="max-width: 90vw; display: flex; flex-direction: column; align-items: center;">
+            <img id="lightbox-image" src="" alt="" style="max-width: 90vw; width: auto; height: auto; object-fit: contain; border-radius: 8px; cursor: default; display: none;">
+            <video id="lightbox-video" controls style="max-width: 90vw; width: auto; height: auto; background: black; border-radius: 8px; cursor: default; display: none;"></video>
+            <div id="lightbox-game" style="display: none; max-width: 90vw; width: auto; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 1rem;">
+                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                </svg>
+                <div id="lightbox-game-label" style="font-size: 1.25rem; letter-spacing: 0.1em; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem;">GAME</div>
+                <a id="lightbox-game-link" href="" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: var(--steam-gold-500); color: black; font-size: 0.875rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-gold-400)'" onmouseout="this.style.background='var(--steam-gold-500)'">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    ゲームを開く
+                </a>
+            </div>
+        </div>
+        <!-- 情報表示（画像の下） -->
+        <div id="lightbox-info" style="display: none; max-width: 90vw; width: 100%; padding: 1rem; color: var(--steam-gold-200);">
+            <div id="lightbox-title" style="font-size: 1.125rem; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem; display: none;"></div>
+            <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
+            <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+        </div>
         <div id="lightbox-actions" style="display: none; gap: 0.5rem; align-items: center;">
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer;">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -311,9 +341,22 @@
         loading = true;
         document.getElementById('loading-indicator').style.display = 'block';
         
-        const url = cursor 
+        // URLパラメータからハッシュタグを取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashtag = urlParams.get('hashtag');
+        
+        let url = cursor 
             ? `/api/feed/?cursor=${encodeURIComponent(cursor)}`
             : '/api/feed/';
+        
+        if (hashtag) {
+            url += (url.includes('?') ? '&' : '?') + `hashtag=${encodeURIComponent(hashtag)}`;
+            // ハッシュタグフィルターを表示
+            document.getElementById('hashtag-filter').style.display = 'flex';
+            document.getElementById('hashtag-filter-tag').textContent = `#${hashtag}`;
+        } else {
+            document.getElementById('hashtag-filter').style.display = 'none';
+        }
         
         fetch(url, {
             headers: {
@@ -423,7 +466,7 @@
         let content = '';
         if (isGame) {
             content = `
-                <div class="feed-item-game-container">
+                <div class="feed-item-game-container" onclick="openLightbox('${item.gameUrl}', 'game', '${item.id}')" style="cursor: pointer;">
                     <div class="feed-item-game-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
@@ -531,22 +574,39 @@
     // ライトボックス機能
     let currentLightboxAssetId = null;
     
-    function openLightbox(src, type, assetId) {
+    async function openLightbox(src, type, assetId) {
         const lightbox = document.getElementById('lightbox');
         const lightboxImage = document.getElementById('lightbox-image');
         const lightboxVideo = document.getElementById('lightbox-video');
         const lightboxActions = document.getElementById('lightbox-actions');
+        const lightboxInfo = document.getElementById('lightbox-info');
+        const lightboxTitle = document.getElementById('lightbox-title');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+        const lightboxHashtags = document.getElementById('lightbox-hashtags');
+        const lightboxGame = document.getElementById('lightbox-game');
+        const lightboxGameLink = document.getElementById('lightbox-game-link');
         
         currentLightboxAssetId = assetId;
         
         if (type === 'video') {
             lightboxImage.style.display = 'none';
             lightboxVideo.style.display = 'block';
+            if (lightboxGame) lightboxGame.style.display = 'none';
             lightboxVideo.src = src;
             lightboxVideo.load();
+        } else if (type === 'game') {
+            lightboxImage.style.display = 'none';
+            lightboxVideo.style.display = 'none';
+            if (lightboxGame) {
+                lightboxGame.style.display = 'flex';
+                if (lightboxGameLink && src) {
+                    lightboxGameLink.href = src;
+                }
+            }
         } else {
             lightboxImage.style.display = 'block';
             lightboxVideo.style.display = 'none';
+            if (lightboxGame) lightboxGame.style.display = 'none';
             lightboxImage.src = src;
         }
         
@@ -557,8 +617,73 @@
             lightboxActions.style.display = 'none';
         }
         
+        // 投稿詳細情報を取得
+        if (assetId) {
+            try {
+                const token = localStorage.getItem('access_token');
+                const res = await fetch(`/api/submissions/${assetId}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // タイトルを表示
+                    if (data.title) {
+                        lightboxTitle.textContent = data.title;
+                        lightboxTitle.style.display = 'block';
+                    } else {
+                        lightboxTitle.style.display = 'none';
+                    }
+                    // キャプションを表示
+                    if (data.caption) {
+                        lightboxCaption.textContent = data.caption;
+                        lightboxCaption.style.display = 'block';
+                    } else {
+                        lightboxCaption.style.display = 'none';
+                    }
+                    // ハッシュタグを表示
+                    lightboxHashtags.innerHTML = '';
+                    if (data.hashtags && Array.isArray(data.hashtags) && data.hashtags.length > 0) {
+                        data.hashtags.forEach(tag => {
+                            if (tag && tag.trim()) {
+                                const tagEl = document.createElement('span');
+                                tagEl.textContent = `#${tag}`;
+                                tagEl.style.cssText = 'display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-gold-500); color: black; font-size: 0.75rem; cursor: pointer; font-weight: 600;';
+                                tagEl.onclick = (e) => {
+                                    e.stopPropagation();
+                                    filterByHashtag(tag);
+                                    closeLightbox();
+                                };
+                                lightboxHashtags.appendChild(tagEl);
+                            }
+                        });
+                    }
+                    lightboxInfo.style.display = 'block';
+                } else {
+                    lightboxInfo.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Failed to load submission details:', err);
+                lightboxInfo.style.display = 'none';
+            }
+        } else {
+            lightboxInfo.style.display = 'none';
+        }
+        
         lightbox.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+    }
+    
+    // ハッシュタグで絞り込む関数
+    function filterByHashtag(tag) {
+        // URLパラメータにハッシュタグを追加してフィードページに遷移
+        window.location.href = `/feed/?hashtag=${encodeURIComponent(tag)}`;
+    }
+    
+    // ハッシュタグフィルターをクリア
+    function clearHashtagFilter() {
+        window.location.href = '/feed/';
     }
     
     function closeLightbox() {

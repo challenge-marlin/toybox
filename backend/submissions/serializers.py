@@ -22,7 +22,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'author', 'author_display_id', 'author_avatar_url',
             'image', 'display_image_url', 'image_url', 'video_url', 'game_url',
-            'caption', 'comment_enabled', 'status',
+            'title', 'caption', 'hashtags', 'comment_enabled', 'status',
             'active_title', 'title_color',
             'reactions_count', 'user_reacted',
             'created_at', 'deleted_at'
@@ -89,7 +89,31 @@ class SubmissionCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Submission
-        fields = ['image', 'caption', 'comment_enabled']
+        fields = ['image', 'title', 'caption', 'hashtags', 'comment_enabled']
+    
+    def validate_title(self, value):
+        """Validate title length."""
+        if value and len(value) > 20:
+            raise serializers.ValidationError('題名は20文字までです。')
+        return value
+    
+    def validate_caption(self, value):
+        """Validate caption length."""
+        if value and len(value) > 140:
+            raise serializers.ValidationError('キャプションは140文字までです。')
+        return value
+    
+    def validate_hashtags(self, value):
+        """Validate hashtags count."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('ハッシュタグは配列形式で指定してください。')
+        if len(value) > 3:
+            raise serializers.ValidationError('ハッシュタグは3つまでです。')
+        # 各ハッシュタグが文字列であることを確認
+        for tag in value:
+            if not isinstance(tag, str):
+                raise serializers.ValidationError('ハッシュタグは文字列で指定してください。')
+        return value
     
     def create(self, validated_data):
         """Create submission with current user as author."""

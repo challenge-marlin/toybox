@@ -55,8 +55,32 @@ export async function apiPost<T, B = unknown>(path: string, body: B, opts?: { an
     credentials: 'include'
   });
   if (!res.ok) {
-    if (res.status === 401) throw new Error('ログイン情報の有効期限が切れました。再ログインしてください。');
-    throw new Error(`HTTP ${res.status}`);
+    let errorMessage = `HTTP ${res.status}`;
+    try {
+      const errorData = await res.json();
+      if (errorData.error) {
+        errorMessage = errorData.error;
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const detailMessages = errorData.details.map((d: any) => d.message || d).join(', ');
+          if (detailMessages) errorMessage += ': ' + detailMessages;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      } else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      }
+    } catch {
+      // JSON parse failed, use default message
+    }
+    if (res.status === 401) {
+      throw new Error('ログイン情報の有効期限が切れました。再ログインしてください。');
+    }
+    if (res.status === 403) {
+      throw new Error(errorMessage || 'アクセスが拒否されました');
+    }
+    throw new Error(errorMessage);
   }
   return (await res.json()) as T;
 }

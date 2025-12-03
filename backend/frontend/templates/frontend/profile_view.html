@@ -249,6 +249,12 @@
         display: none;
         align-items: center;
         justify-content: center;
+        overflow-y: auto;
+        cursor: pointer;
+    }
+    
+    .lightbox-content {
+        cursor: default;
     }
     
     .lightbox-overlay.show {
@@ -258,11 +264,12 @@
     .lightbox-content {
         position: relative;
         max-width: 90vw;
-        max-height: 90vh;
+        width: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 1rem;
+        margin: auto;
     }
     
     .lightbox-image,
@@ -287,23 +294,27 @@
     }
     
     .lightbox-close {
-        position: absolute;
+        position: fixed;
         top: 1rem;
         right: 1rem;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.7);
         color: white;
         border: none;
         border-radius: 50%;
-        width: 2rem;
-        height: 2rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1.5rem;
         cursor: pointer;
+        z-index: 10000;
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: background 0.2s;
+        line-height: 1;
     }
     
     .lightbox-close:hover {
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.9);
     }
 </style>
 {% endblock %}
@@ -348,9 +359,32 @@
 <!-- ライトボックス -->
 <div class="lightbox-overlay" id="lightbox-overlay" onclick="closeLightbox()">
     <button class="lightbox-close" onclick="closeLightbox()">×</button>
-    <div class="lightbox-content" onclick="event.stopPropagation()">
-        <img id="lightbox-image" class="lightbox-image" src="" alt="submission" style="display: none;">
-        <video id="lightbox-video" class="lightbox-video" controls style="display: none;"></video>
+    <div class="lightbox-content" onclick="event.stopPropagation()" style="display: flex; flex-direction: column; align-items: center; gap: 1rem; max-width: 90vw; width: 100%; padding: 1rem 0; margin: auto;">
+        <div id="lightbox-media-container" style="max-width: 90vw; display: flex; flex-direction: column; align-items: center;">
+            <img id="lightbox-image" class="lightbox-image" src="" alt="submission" style="display: none; max-width: 90vw; width: auto; height: auto; object-fit: contain;">
+            <video id="lightbox-video" class="lightbox-video" controls style="display: none; max-width: 90vw; width: auto; height: auto; background: black;"></video>
+            <div id="lightbox-game" style="display: none; max-width: 90vw; width: auto; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 1rem;">
+                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                </svg>
+                <div id="lightbox-game-label" style="font-size: 1.25rem; letter-spacing: 0.1em; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem;">GAME</div>
+                <a id="lightbox-game-link" href="" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: var(--steam-gold-500); color: black; font-size: 0.875rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-gold-400)'" onmouseout="this.style.background='var(--steam-gold-500)'">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    ゲームを開く
+                </a>
+            </div>
+        </div>
+        <!-- 情報表示（画像の下） -->
+        <div id="lightbox-info" style="display: none; max-width: 90vw; width: 100%; padding: 1rem; color: var(--steam-gold-200);">
+            <div id="lightbox-title" style="font-size: 1.125rem; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem; display: none;"></div>
+            <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
+            <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+        </div>
         <div id="lightbox-actions" style="display: none; margin-top: 1rem; gap: 0.5rem; align-items: center; justify-content: center;">
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -589,13 +623,13 @@
                         <span>${s.likesCount || 0}</span>
                     </button>
                     ${isGame && gameUrl ? `
-                        <a href="${gameUrl}" target="_blank" rel="noreferrer" class="game-link" onclick="event.stopPropagation()">
+                        <div class="game-link" onclick="openLightbox('${gameUrl}', 'game', '${s.id}')" style="cursor: pointer;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="3"></circle>
                                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
                             </svg>
                             開く
-                        </a>
+                        </div>
                     ` : ''}
                 </div>
             `;
@@ -653,22 +687,39 @@
     // ライトボックス機能
     let currentLightboxAssetId = null;
     
-    function openLightbox(url, type, assetId) {
+    async function openLightbox(url, type, assetId) {
         const overlay = document.getElementById('lightbox-overlay');
         const image = document.getElementById('lightbox-image');
         const video = document.getElementById('lightbox-video');
         const lightboxActions = document.getElementById('lightbox-actions');
+        const lightboxInfo = document.getElementById('lightbox-info');
+        const lightboxTitle = document.getElementById('lightbox-title');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+        const lightboxHashtags = document.getElementById('lightbox-hashtags');
+        const lightboxGame = document.getElementById('lightbox-game');
+        const lightboxGameLink = document.getElementById('lightbox-game-link');
         
         currentLightboxAssetId = assetId;
         
         if (type === 'video') {
             image.style.display = 'none';
             video.style.display = 'block';
+            if (lightboxGame) lightboxGame.style.display = 'none';
             video.src = url;
             video.load();
+        } else if (type === 'game') {
+            image.style.display = 'none';
+            video.style.display = 'none';
+            if (lightboxGame) {
+                lightboxGame.style.display = 'flex';
+                if (lightboxGameLink && url) {
+                    lightboxGameLink.href = url;
+                }
+            }
         } else {
             video.style.display = 'none';
             image.style.display = 'block';
+            if (lightboxGame) lightboxGame.style.display = 'none';
             image.src = url;
         }
         
@@ -679,8 +730,67 @@
             lightboxActions.style.display = 'none';
         }
         
+        // 投稿詳細情報を取得
+        if (assetId) {
+            try {
+                const res = await fetch(`/api/submissions/${assetId}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // タイトルを表示
+                    if (data.title) {
+                        lightboxTitle.textContent = data.title;
+                        lightboxTitle.style.display = 'block';
+                    } else {
+                        lightboxTitle.style.display = 'none';
+                    }
+                    // キャプションを表示
+                    if (data.caption) {
+                        lightboxCaption.textContent = data.caption;
+                        lightboxCaption.style.display = 'block';
+                    } else {
+                        lightboxCaption.style.display = 'none';
+                    }
+                    // ハッシュタグを表示
+                    lightboxHashtags.innerHTML = '';
+                    if (data.hashtags && Array.isArray(data.hashtags) && data.hashtags.length > 0) {
+                        data.hashtags.forEach(tag => {
+                            if (tag && tag.trim()) {
+                                const tagEl = document.createElement('span');
+                                tagEl.textContent = `#${tag}`;
+                                tagEl.style.cssText = 'display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-gold-500); color: black; font-size: 0.75rem; cursor: pointer; font-weight: 600;';
+                                tagEl.onclick = (e) => {
+                                    e.stopPropagation();
+                                    filterByHashtag(tag);
+                                    closeLightbox();
+                                };
+                                lightboxHashtags.appendChild(tagEl);
+                            }
+                        });
+                    }
+                    lightboxInfo.style.display = 'block';
+                } else {
+                    lightboxInfo.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Failed to load submission details:', err);
+                lightboxInfo.style.display = 'none';
+            }
+        } else {
+            lightboxInfo.style.display = 'none';
+        }
+        
         overlay.classList.add('show');
         document.body.style.overflow = 'hidden';
+    }
+    
+    // ハッシュタグで絞り込む関数
+    function filterByHashtag(tag) {
+        // URLパラメータにハッシュタグを追加してフィードページに遷移
+        window.location.href = `/feed/?hashtag=${encodeURIComponent(tag)}`;
     }
     
     function closeLightbox() {

@@ -1,13 +1,14 @@
 """
 Adminpanel app views for DRF - Admin API.
 """
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, status, filters, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
+from django.conf import settings
 from toybox.permissions import IsAdminOrAyatoriOrOffice, IsAdminOrAyatori, IsAdmin
 from .models import AdminAuditLog
 from users.models import User, UserMeta, UserCard, UserRegistration
@@ -18,6 +19,11 @@ from .serializers import (
     AdminSubmissionSerializer, AdminDiscordShareSerializer,
     AdminAuditLogSerializer
 )
+import requests
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -219,3 +225,144 @@ class AdminAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['actor', 'target_user', 'target_submission', 'action']
     ordering = ['-created_at']
+
+
+class DiscordBotPostView(views.APIView):
+    """Discord bot post API endpoint for admin."""
+    permission_classes = [IsAuthenticated, IsAdmin]
+    
+    def post(self, request):
+        """Post message to Discord channel."""
+        message = request.data.get('message', '').strip()
+        file = request.FILES.get('file')
+        
+        if not message and not file:
+            return Response({
+                'ok': False,
+                'error': 'メッセージまたはファイルのいずれかが必要です。'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get Discord configuration
+        try:
+            bot_token = getattr(settings, 'DISCORD_BOT_TOKEN', '')
+            channel_id = getattr(settings, 'DISCORD_CHANNEL_ID', '')
+        except Exception as e:
+            logger.error(f'Failed to get Discord settings: {str(e)}', exc_info=True)
+            return Response({
+                'ok': False,
+                'error': 'Discord設定の取得に失敗しました。'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        if not bot_token or not channel_id:
+            return Response({
+                'ok': False,
+                'error': 'Discord機能が設定されていません。DISCORD_BOT_TOKENとDISCORD_CHANNEL_IDを設定してください。'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
+        # Validate file size if provided
+        if file and file.size > 25 * 1024 * 1024:
+            return Response({
+                'ok': False,
+                'error': 'ファイルサイズが25MBを超えています。'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            discord_api_url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+            headers = {
+                'Authorization': f'Bot {bot_token}'
+            }
+            
+            if file:
+                # Upload file with message
+                # Determine content type
+                content_type = file.content_type
+                if not content_type:
+                    if file.name.endswith('.png'):
+                        content_type = 'image/png'
+                    elif file.name.endswith('.jpg') or file.name.endswith('.jpeg'):
+                        content_type = 'image/jpeg'
+                    elif file.name.endswith('.webp'):
+                        content_type = 'image/webp'
+                    elif file.name.endswith('.gif'):
+                        content_type = 'image/gif'
+                    elif file.name.endswith('.mp4'):
+                        content_type = 'video/mp4'
+                    elif file.name.endswith('.webm'):
+                        content_type = 'video/webm'
+                    elif file.name.endswith('.ogg'):
+                        content_type = 'video/ogg'
+                    else:
+                        content_type = 'application/octet-stream'
+                
+                # Prepare multipart/form-data payload
+                payload_data = {}
+                if message:
+                    payload_data['content'] = message
+                
+                files_data = {
+                    'file': (file.name, file.read(), content_type)
+                }
+                data = {
+                    'payload_json': json.dumps(payload_data)
+                }
+                
+                response = requests.post(
+                    discord_api_url,
+                    headers=headers,
+                    files=files_data,
+                    data=data,
+                    timeout=60
+                )
+            else:
+                # Send text message only
+                payload = {
+                    'content': message
+                }
+                
+                response = requests.post(
+                    discord_api_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+            
+            if response.status_code == 200 or response.status_code == 201:
+                response_data = response.json()
+                message_id = response_data.get('id')
+                
+                # Log audit
+                AdminAuditLog.objects.create(
+                    actor=request.user,
+                    action=AdminAuditLog.Action.OTHER,
+                    payload={
+                        'action': 'discord_bot_post',
+                        'message_id': message_id,
+                        'has_file': bool(file),
+                        'message_length': len(message) if message else 0
+                    }
+                )
+                
+                return Response({
+                    'ok': True,
+                    'message_id': message_id
+                })
+            else:
+                error_text = response.text
+                logger.error(f'Discord API error: {response.status_code} - {error_text}')
+                return Response({
+                    'ok': False,
+                    'error': f'Discord APIエラー: {response.status_code}'
+                }, status=status.HTTP_502_BAD_GATEWAY)
+                
+        except requests.exceptions.Timeout:
+            logger.error('Discord API timeout')
+            return Response({
+                'ok': False,
+                'error': 'Discord APIへのリクエストがタイムアウトしました。'
+            }, status=status.HTTP_504_GATEWAY_TIMEOUT)
+        except Exception as e:
+            logger.error(f'Discord bot post error: {str(e)}', exc_info=True)
+            return Response({
+                'ok': False,
+                'error': f'投稿処理中にエラーが発生しました: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

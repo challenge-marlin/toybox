@@ -3,6 +3,7 @@ Submissions app models - RDB redesign with soft delete.
 """
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -20,7 +21,9 @@ class Submission(models.Model):
     
     # Content
     image = models.ImageField('画像', upload_to='submissions/', blank=True, null=True)
-    caption = models.TextField('キャプション', max_length=1000, blank=True)
+    title = models.CharField('題名', max_length=20, blank=True)
+    caption = models.TextField('キャプション', max_length=140, blank=True)
+    hashtags = models.JSONField('ハッシュタグ', default=list, blank=True)
     comment_enabled = models.BooleanField('コメント有効', default=True)
     
     # Status and moderation

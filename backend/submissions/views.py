@@ -268,17 +268,30 @@ class SubmitGameUploadView(APIView):
             base_path = os.path.join(settings.MEDIA_ROOT, game_dir)
             
             # ディレクトリの存在確認と作成
-            from submissions.utils import ensure_directory_exists
-            if not ensure_directory_exists(base_path):
+            try:
+                os.makedirs(base_path, exist_ok=True)
+                logger.info(f'Created game directory: {base_path}')
+            except Exception as e:
+                logger.error(f'Failed to create directory {base_path}: {str(e)}', exc_info=True)
                 return Response({
-                    'error': 'ディレクトリの作成に失敗しました'
+                    'error': 'ディレクトリの作成に失敗しました',
+                    'detail': str(e)
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Save ZIP file temporarily
             zip_path = os.path.join(base_path, file.name)
-            with open(zip_path, 'wb') as f:
-                for chunk in file.chunks():
-                    f.write(chunk)
+            try:
+                with open(zip_path, 'wb') as f:
+                    for chunk in file.chunks():
+                        f.write(chunk)
+                logger.info(f'ZIP file saved: {zip_path}')
+            except Exception as e:
+                logger.error(f'Failed to save ZIP file {zip_path}: {str(e)}', exc_info=True)
+                shutil.rmtree(base_path, ignore_errors=True)
+                return Response({
+                    'error': 'ZIPファイルの保存に失敗しました',
+                    'detail': str(e)
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Verify ZIP file was saved
             if not os.path.exists(zip_path):

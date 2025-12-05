@@ -180,7 +180,8 @@
     
     #lightbox-content {
         position: relative;
-        max-width: 90vw;
+        max-width: 80vw;
+        max-width: min(80vw, 1200px); /* デスクトップでは最大1200px */
         width: 100%;
         display: flex;
         flex-direction: column;
@@ -190,15 +191,29 @@
         margin: auto;
     }
     
+    @media (max-width: 768px) {
+        #lightbox-content {
+            max-width: 95vw; /* モバイルでは95vw */
+        }
+    }
+    
     #lightbox-image,
     #lightbox-video {
-        max-width: 90vw;
-        max-height: none;
+        max-width: 80vw;
+        max-width: min(80vw, 1200px); /* デスクトップでは最大1200px */
+        max-height: 85vh; /* 高さも制限 */
         width: auto;
         height: auto;
         object-fit: contain;
         border-radius: 8px;
         cursor: default;
+    }
+    
+    @media (max-width: 768px) {
+        #lightbox-image,
+        #lightbox-video {
+            max-width: 95vw; /* モバイルでは95vw */
+        }
     }
     
     #lightbox-video {
@@ -2054,10 +2069,10 @@
 <div id="lightbox" onclick="closeLightbox()">
     <div id="lightbox-content" onclick="event.stopPropagation()">
         <button id="lightbox-close" onclick="closeLightbox()" aria-label="閉じる">×</button>
-        <div id="lightbox-media-container" style="max-width: 90vw; display: flex; flex-direction: column; align-items: center;">
-            <img id="lightbox-image" src="" alt="" style="display: none; max-width: 90vw; width: auto; height: auto; object-fit: contain; border-radius: 8px;">
-            <video id="lightbox-video" controls style="display: none; max-width: 90vw; width: auto; height: auto; background: black; border-radius: 8px;"></video>
-            <div id="lightbox-game" style="display: none; max-width: 90vw; width: auto; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
+        <div id="lightbox-media-container" style="max-width: min(80vw, 1200px); display: flex; flex-direction: column; align-items: center;">
+            <img id="lightbox-image" src="" alt="" style="display: none; max-width: min(80vw, 1200px); max-height: 85vh; width: auto; height: auto; object-fit: contain; border-radius: 8px;">
+            <video id="lightbox-video" controls style="display: none; max-width: min(80vw, 1200px); max-height: 85vh; width: auto; height: auto; background: black; border-radius: 8px;"></video>
+            <div id="lightbox-game" style="display: none; max-width: min(80vw, 1200px); width: auto; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
                 <img id="lightbox-game-thumbnail" src="" alt="ゲームサムネイル" style="display: none; max-width: 100%; max-height: 60vh; width: auto; height: auto; object-fit: contain; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--steam-iron-700);">
                 <div id="lightbox-game-icon" style="display: flex; flex-direction: column; align-items: center;">
                     <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 1rem;">
@@ -2077,7 +2092,7 @@
             </div>
         </div>
         <!-- 情報表示（画像の下） -->
-        <div id="lightbox-info" style="display: none; max-width: 90vw; width: 100%; padding: 1rem; color: var(--steam-gold-200);">
+        <div id="lightbox-info" style="display: none; max-width: min(80vw, 1200px); width: 100%; padding: 1rem; color: var(--steam-gold-200);">
             <div id="lightbox-title" style="font-size: 1.125rem; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem; display: none;"></div>
             <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
             <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>

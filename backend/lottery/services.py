@@ -101,28 +101,10 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
     if caption is not None:
         submission_data['caption'] = caption
     if thumbnail is not None:
-        # サムネイルファイルを保存
-        try:
-            from submissions.utils import save_file_safely
-            import os
-            from django.utils import timezone
-            
-            timestamp = int(timezone.now().timestamp())
-            thumbnail_filename = f'submissions/thumbnails/{user.id}_{timestamp}{os.path.splitext(thumbnail.name)[1] or ".png"}'
-            
-            success, saved_path, error_message = save_file_safely(thumbnail, thumbnail_filename)
-            
-            if success:
-                # ファイルを再度読み込んでFileFieldに設定
-                thumbnail.seek(0)
-                submission_data['thumbnail'] = thumbnail
-                logger.info('submission.thumbnail_saved', extra={'user_id': user.id, 'saved_path': saved_path})
-            else:
-                logger.error('submission.thumbnail_save_failed', extra={'user_id': user.id, 'error': error_message})
-                # サムネイル保存に失敗しても提出は続行（警告のみ）
-        except Exception as e:
-            logger.error('submission.thumbnail_save_exception', extra={'user_id': user.id, 'error': str(e)}, exc_info=True)
-            # サムネイル保存に失敗しても提出は続行（警告のみ）
+        # サムネイルファイルを保存（FileFieldに直接設定するため、事前保存は不要）
+        # DjangoのFileFieldは自動的に保存されるため、ここではファイルオブジェクトをそのまま設定
+        submission_data['thumbnail'] = thumbnail
+        logger.info('submission.thumbnail_set', extra={'user_id': user.id})
     
     submission_data['hashtags'] = processed_hashtags
     

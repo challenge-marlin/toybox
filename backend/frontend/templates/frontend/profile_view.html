@@ -359,11 +359,11 @@
 <!-- ライトボックス -->
 <div class="lightbox-overlay" id="lightbox-overlay" onclick="closeLightbox()">
     <button class="lightbox-close" onclick="closeLightbox()">×</button>
-    <div class="lightbox-content" onclick="event.stopPropagation()" style="display: flex; flex-direction: column; align-items: center; gap: 1rem; max-width: 90vw; width: 100%; padding: 1rem 0; margin: auto;">
-        <div id="lightbox-media-container" style="max-width: 90vw; display: flex; flex-direction: column; align-items: center;">
-            <img id="lightbox-image" class="lightbox-image" src="" alt="submission" style="display: none; max-width: 90vw; width: auto; height: auto; object-fit: contain;">
-            <video id="lightbox-video" class="lightbox-video" controls style="display: none; max-width: 90vw; width: auto; height: auto; background: black;"></video>
-            <div id="lightbox-game" style="display: none; max-width: 90vw; width: auto; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
+    <div class="lightbox-content" onclick="event.stopPropagation()" style="display: flex; flex-direction: column; align-items: center; gap: 1rem; max-width: min(80vw, 1200px); width: 100%; padding: 1rem 0; margin: auto;">
+        <div id="lightbox-media-container" style="max-width: min(80vw, 1200px); display: flex; flex-direction: column; align-items: center;">
+            <img id="lightbox-image" class="lightbox-image" src="" alt="submission" style="display: none; max-width: min(80vw, 1200px); max-height: 85vh; width: auto; height: auto; object-fit: contain;">
+            <video id="lightbox-video" class="lightbox-video" controls style="display: none; max-width: min(80vw, 1200px); max-height: 85vh; width: auto; height: auto; background: black;"></video>
+            <div id="lightbox-game" style="display: none; max-width: min(80vw, 1200px); width: auto; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
                 <img id="lightbox-game-thumbnail" src="" alt="ゲームサムネイル" style="display: none; max-width: 100%; max-height: 60vh; width: auto; height: auto; object-fit: contain; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--steam-iron-700);">
                 <div id="lightbox-game-icon" style="display: flex; flex-direction: column; align-items: center;">
                     <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 1rem;">

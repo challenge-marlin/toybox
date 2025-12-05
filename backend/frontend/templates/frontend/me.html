@@ -1492,14 +1492,24 @@
                 imageUrl = card.image_url.startsWith('http') ? card.image_url : card.image_url;
             } else {
                 // image_urlがない場合はデフォルトパスを使用（card_idをそのまま使用）
+                // エフェクトカード（Eプレフィックス）も正しく処理される
                 imageUrl = `/uploads/cards/${card.card_id || 'C001'}.png`;
             }
+            
+            // デバッグログ（開発時のみ）
+            console.log('Card reward:', {
+                card_id: card.card_id,
+                card_name: card.card_name,
+                image_url: card.image_url,
+                resolved_imageUrl: imageUrl
+            });
             
             document.getElementById('card-image').src = imageUrl;
             document.getElementById('card-image').style.display = 'block';
             document.getElementById('card-image').onerror = function() {
                 // 画像読み込みエラー時は非表示にする
                 console.warn('Failed to load card image:', imageUrl);
+                console.warn('Card details:', card);
                 this.style.display = 'none';
             };
             

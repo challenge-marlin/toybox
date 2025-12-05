@@ -175,6 +175,9 @@ class SubmitUploadView(APIView):
     
     def post(self, request):
         """Upload file and return URL."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         file = request.FILES.get('file')
         
         if not file:
@@ -190,13 +193,8 @@ class SubmitUploadView(APIView):
         # Save file
         is_video = file.content_type in allowed_video_types
         
-        # Use Django's default storage to save the file temporarily
-        from django.core.files.storage import default_storage
-        from django.core.files.base import ContentFile
-        import os
-        
         # Generate filename
-        # Determine extension based on file type
+        import os
         if is_video:
             default_ext = '.mp4'
         elif file.content_type == 'image/webp':
@@ -208,12 +206,23 @@ class SubmitUploadView(APIView):
         file_ext = os.path.splitext(file.name)[1] or default_ext
         filename = f'submissions/{request.user.id}_{int(timezone.now().timestamp())}{file_ext}'
         
-        # Save file
-        saved_path = default_storage.save(filename, ContentFile(file.read()))
-        file_url = default_storage.url(saved_path)
+        # Save file safely
+        from submissions.utils import save_file_safely, build_file_url
         
-        # Build absolute URL
-        absolute_url = request.build_absolute_uri(file_url)
+        success, saved_path, error_message = save_file_safely(file, filename)
+        
+        if not success:
+            logger.error(f'File upload failed: {error_message}')
+            return Response({
+                'error': 'ファイルの保存に失敗しました',
+                'detail': error_message
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # URLを構築（/uploads/submissions/パスを使用）
+        url_path = f'/uploads/submissions/{os.path.basename(saved_path)}'
+        absolute_url = build_file_url(request, url_path, base_path='/uploads/submissions/')
+        
+        logger.info(f'File uploaded successfully: {saved_path} -> {absolute_url}')
         
         # Return URLs compatible with Next.js format
         return Response({
@@ -229,6 +238,9 @@ class SubmitGameUploadView(APIView):
     
     def post(self, request):
         """Upload ZIP file, extract it, and return gameUrl."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         file = request.FILES.get('file')
         
         if not file:
@@ -240,10 +252,11 @@ class SubmitGameUploadView(APIView):
         
         import zipfile
         import os
-        from django.core.files.storage import default_storage
-        from django.core.files.base import ContentFile
+        import shutil
         from django.conf import settings
+        from submissions.utils import normalize_url_path, build_file_url
         
+        base_path = None
         try:
             # Get user's display_id for directory structure
             user = request.user
@@ -253,13 +266,25 @@ class SubmitGameUploadView(APIView):
             timestamp = int(timezone.now().timestamp())
             game_dir = f'games/{display_id}/{timestamp}'
             base_path = os.path.join(settings.MEDIA_ROOT, game_dir)
-            os.makedirs(base_path, exist_ok=True)
+            
+            # ディレクトリの存在確認と作成
+            from submissions.utils import ensure_directory_exists
+            if not ensure_directory_exists(base_path):
+                return Response({
+                    'error': 'ディレクトリの作成に失敗しました'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Save ZIP file temporarily
             zip_path = os.path.join(base_path, file.name)
             with open(zip_path, 'wb') as f:
                 for chunk in file.chunks():
                     f.write(chunk)
+            
+            # Verify ZIP file was saved
+            if not os.path.exists(zip_path):
+                return Response({
+                    'error': 'ZIPファイルの保存に失敗しました'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Extract ZIP file
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -279,15 +304,25 @@ class SubmitGameUploadView(APIView):
             index_path = find_index_html(base_path)
             if not index_path:
                 # Clean up on error
-                import shutil
                 shutil.rmtree(base_path, ignore_errors=True)
                 return Response({'error': 'index.html not found in ZIP'}, status=status.HTTP_400_BAD_REQUEST)
             
+            # Verify index.html exists
+            index_full_path = os.path.join(settings.MEDIA_ROOT, index_path)
+            if not os.path.exists(index_full_path):
+                logger.error(f'index.html not found at {index_full_path} after extraction')
+                shutil.rmtree(base_path, ignore_errors=True)
+                return Response({
+                    'error': 'index.htmlが見つかりませんでした'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
             # Convert to URL path (use forward slashes)
-            game_url = f'/media/{index_path.replace(os.sep, "/")}'
+            game_url = f'/media/{normalize_url_path(index_path)}'
             
             # Build absolute URL
-            absolute_game_url = request.build_absolute_uri(game_url)
+            absolute_game_url = build_file_url(request, game_url, base_path='/media/')
+            
+            logger.info(f'Game uploaded successfully: {index_path} -> {absolute_game_url}')
             
             return Response({
                 'ok': True,
@@ -295,15 +330,20 @@ class SubmitGameUploadView(APIView):
             })
             
         except zipfile.BadZipFile:
+            if base_path and os.path.exists(base_path):
+                shutil.rmtree(base_path, ignore_errors=True)
             return Response({'error': 'Invalid ZIP file'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            import shutil
-            try:
-                if 'base_path' in locals():
+            logger.error(f'Failed to process ZIP file: {str(e)}', exc_info=True)
+            if base_path and os.path.exists(base_path):
+                try:
                     shutil.rmtree(base_path, ignore_errors=True)
-            except:
-                pass
-            return Response({'error': f'Failed to process ZIP file: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                except:
+                    pass
+            return Response({
+                'error': 'ゲームファイルの処理に失敗しました',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SubmitView(APIView):

@@ -190,14 +190,14 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
             }
             rarity = rarity_map_reverse.get(card_row.rarity, 'N')
             
-            # Use static URL for card images
+            # Use /uploads/cards/ URL for card images (consistent with frontend)
             image_url = card_row.image_url
             if not image_url or image_url == '-':
-                # Use static file path for card images
-                image_url = f'/static/frontend/uploads/cards/{card_id}.png'
-            elif image_url.startswith('/uploads/'):
-                # Convert /uploads/ to /static/frontend/uploads/ for static files
-                image_url = image_url.replace('/uploads/', '/static/frontend/uploads/')
+                # Use /uploads/cards/ path for card images (works with media.py URL patterns)
+                image_url = f'/uploads/cards/{card_id}.png'
+            elif image_url.startswith('/static/frontend/uploads/'):
+                # Convert /static/frontend/uploads/ to /uploads/ for consistency
+                image_url = image_url.replace('/static/frontend/uploads/', '/uploads/')
             
             card_meta = {
                 'card_id': card_id,

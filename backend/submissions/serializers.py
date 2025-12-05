@@ -44,20 +44,37 @@ class SubmissionSerializer(serializers.ModelSerializer):
     
     def get_display_image_url(self, obj):
         """Get display image URL (prefer thumbnail for games, then image_url, then image field)."""
+        request = self.context.get('request')
+        
         # ゲームの場合はサムネイルを優先
         if obj.game_url and obj.thumbnail:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.thumbnail.url)
-            return obj.thumbnail.url
+            try:
+                if request:
+                    return request.build_absolute_uri(obj.thumbnail.url)
+                return obj.thumbnail.url
+            except (ValueError, AttributeError) as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to get thumbnail URL for submission {obj.id}: {str(e)}')
+                # フォールバック: image_urlを使用
+                if obj.image_url:
+                    return obj.image_url
         
+        # image_urlを優先（レガシーまたは外部URL）
         if obj.image_url:
             return obj.image_url
+        
+        # imageフィールドを使用
         if obj.image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
+            try:
+                if request:
+                    return request.build_absolute_uri(obj.image.url)
+                return obj.image.url
+            except (ValueError, AttributeError) as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to get image URL for submission {obj.id}: {str(e)}')
+        
         return None
     
     def get_thumbnail(self, obj):

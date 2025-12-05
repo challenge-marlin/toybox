@@ -145,6 +145,9 @@ class UserMeta(models.Model):
     # Notifications (JSON array of notification objects)
     notifications = models.JSONField(default=list, blank=True)
     
+    # Onboarding (page-specific completion status)
+    onboarding_completed = models.JSONField('オンボーディング完了状態', default=dict, blank=True, help_text='各ページごとのオンボーディング完了状態 {"me": false, "collection": false, "profile": false, "feed": false}')
+    
     # ETL tracking
     old_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     
@@ -177,10 +180,11 @@ class UserCard(models.Model):
         db_table = 'user_cards'
         verbose_name = 'ユーザーカード'
         verbose_name_plural = 'ユーザーカード'
-        unique_together = [['user', 'card']]
+        # unique_together制約を削除して、同じカードを複数枚持てるようにする
         indexes = [
             models.Index(fields=['user', 'obtained_at']),
             models.Index(fields=['old_id']),
+            models.Index(fields=['user', 'card']),  # 検索用インデックス
         ]
     
     def __str__(self):

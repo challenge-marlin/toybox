@@ -51,6 +51,7 @@ urlpatterns += [
     path('api/share/', include('sharing.urls')),
     path('api/announcements/', AnnouncementsView.as_view(), name='announcements'),
     path('api/contact/', frontend_views.ContactView.as_view(), name='contact'),
+    path('api/inquiry/', frontend_views.InquiryView.as_view(), name='inquiry'),
     
     # Admin API endpoints
     path('api/', include('adminpanel.urls')),
@@ -59,29 +60,11 @@ urlpatterns += [
     path('', include('frontend.urls')),
 ]
 
-# Serve media files in development
+# Media files serving
+from toybox.media import get_media_urlpatterns
+urlpatterns += get_media_urlpatterns()
+
+# Static files serving (for static files only, not media)
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    # Serve card images from static directory
-    from django.views.static import serve
-    from django.urls import re_path
-    from django.http import Http404
-    from django.views.static import serve as static_serve
-    from django.views.decorators.cache import cache_control
-    
-    def favicon_view(request):
-        """Serve favicon.ico from static directory."""
-        favicon_path = settings.BASE_DIR / 'frontend' / 'static' / 'frontend' / 'favicon.ico'
-        if favicon_path.exists():
-            return static_serve(request, 'favicon.ico', document_root=str(settings.BASE_DIR / 'frontend' / 'static' / 'frontend'))
-        raise Http404("Favicon not found")
-    
-    urlpatterns += [
-        re_path(r'^uploads/cards/(?P<path>.*)$', serve, {'document_root': settings.BASE_DIR / 'frontend' / 'static' / 'frontend' / 'uploads' / 'cards'}),
-        # Serve game files from /media/ path (for compatibility with game URLs)
-        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
-        # Serve favicon.ico from root path (browsers automatically look for /favicon.ico)
-        path('favicon.ico', cache_control(max_age=86400)(favicon_view)),
-    ]
 

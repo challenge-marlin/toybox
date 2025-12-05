@@ -129,6 +129,15 @@
     .card-name {
         font-size: 0.875rem;
         color: var(--steam-gold-200);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .card-quantity {
+        font-size: 0.75rem;
+        color: var(--steam-gold-400);
+        font-weight: 600;
     }
     
     .card-attribute {
@@ -151,13 +160,18 @@
     }
     
     .lightbox-content {
-        max-width: 90%;
-        max-height: 90%;
+        max-width: 80vw;
+        max-height: 85vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     .lightbox-image {
         max-width: 100%;
         max-height: 100%;
+        width: auto;
+        height: auto;
         object-fit: contain;
     }
 </style>
@@ -195,8 +209,8 @@
         <button class="tab-button" id="tab-effect" onclick="switchTab('effect')">効果</button>
     </div>
     
-    <div class="cards-grid" id="cards-grid">
-        <div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">読み込み中...</div>
+    <div class="cards-grid" id="collection-cards-entry">
+        <div id="cards-grid-inner" style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">読み込み中...</div>
     </div>
 </div>
 
@@ -283,7 +297,7 @@
         })
         .catch(err => {
             console.error('Failed to load collection:', err);
-            document.getElementById('cards-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">データの読み込みに失敗しました</div>';
+            document.getElementById('collection-cards-entry').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">データの読み込みに失敗しました</div>';
         });
     }
     
@@ -295,7 +309,7 @@
     }
     
     function renderCards() {
-        const grid = document.getElementById('cards-grid');
+        const grid = document.getElementById('collection-cards-entry');
         const filtered = allEntries.filter(e => {
             const type = e.meta?.card_type;
             if (currentTab === 'character') {
@@ -319,6 +333,7 @@
         grid.innerHTML = filtered.map(e => {
             const meta = e.meta || {};
             const imageUrl = meta.image_url || `/uploads/cards/${meta.card_id || e.id}.png`;
+            const quantity = e.quantity || 1;
             
             return `
                 <div class="card-tile" onclick="openLightbox('${imageUrl}')">
@@ -326,7 +341,10 @@
                         <img src="${imageUrl}" alt="${meta.card_name || e.id}" class="card-image" onerror="this.style.display='none'">
                     </div>
                     <div class="card-rarity">${meta.rarity || '-'}</div>
-                    <div class="card-name">${meta.card_name || e.id}</div>
+                    <div class="card-name">
+                        <span>${meta.card_name || e.id}</span>
+                        ${quantity > 1 ? `<span class="card-quantity">×${quantity}</span>` : ''}
+                    </div>
                     ${meta.card_type === 'Character' && meta.attribute ? `<div class="card-attribute">${meta.attribute}</div>` : ''}
                 </div>
             `;

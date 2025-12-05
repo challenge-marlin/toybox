@@ -96,6 +96,21 @@ def announcement_detail(request, announcement_id):
     })
 
 
+def terms(request):
+    """Terms of use page."""
+    return render(request, 'frontend/terms.html')
+
+
+def inquiry(request):
+    """Inquiry/Report form page."""
+    return render(request, 'frontend/inquiry.html')
+
+
+def derivative_guidelines(request):
+    """Derivative works guidelines page."""
+    return render(request, 'frontend/derivative_guidelines.html')
+
+
 # API views
 class AnnouncementsView(APIView):
     """Get active announcements."""
@@ -182,6 +197,90 @@ class ContactView(APIView):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f'Failed to send contact email: {str(e)}', exc_info=True)
+            return Response(
+                {'ok': False, 'error': 'メール送信に失敗しました。しばらくしてから再度お試しください。'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class InquiryView(APIView):
+    """Inquiry/Report form API endpoint (for terms violations, bug reports, etc.)."""
+    permission_classes = [AllowAny]  # 認証なしで利用可能
+    
+    def post(self, request):
+        """Send inquiry/report email to AYATORI."""
+        inquiry_type = request.data.get('type', '').strip()
+        game_title = request.data.get('gameTitle', '').strip()
+        detail = request.data.get('detail', '').strip()
+        contact = request.data.get('contact', '').strip()
+        
+        # Validation
+        if not inquiry_type:
+            return Response(
+                {'ok': False, 'error': '種別は必須です。'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not detail or len(detail) < 10:
+            return Response(
+                {'ok': False, 'error': '詳細内容は10文字以上で入力してください。'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 種別のラベル
+        type_labels = {
+            'bug_report': '不具合報告',
+            'violation_report': '規約違反の通報',
+            'other': 'その他お問い合わせ',
+        }
+        type_label = type_labels.get(inquiry_type, inquiry_type)
+        
+        # Prepare email content
+        subject = f'[ToyBox] {type_label}'
+        email_body = f"""種別: {type_label}
+対象ゲーム名: {game_title or '未入力'}
+任意連絡先: {contact or '未入力'}
+"""
+        
+        # 認証済みユーザーの場合はユーザー情報を追加
+        if request.user.is_authenticated:
+            email_body += f"ユーザーID: {request.user.display_id or request.user.email or '不明'}\n"
+        else:
+            email_body += "ユーザーID: 未ログイン\n"
+        
+        email_body += f"""
+詳細内容:
+{detail}
+"""
+        
+        # Send email
+        try:
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@toybox.local')
+            to_email = 'contact@ayatori-inc.co.jp'
+            
+            # Check if email backend is configured
+            if hasattr(settings, 'EMAIL_HOST') and settings.EMAIL_HOST:
+                send_mail(
+                    subject,
+                    email_body,
+                    from_email,
+                    [to_email],
+                    fail_silently=False,
+                )
+            else:
+                # If email is not configured, log it instead
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f'Inquiry form submission (email not configured):\n{email_body}')
+            
+            return Response({
+                'ok': True,
+                'message': 'お問い合わせを送信しました。'
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Failed to send inquiry email: {str(e)}', exc_info=True)
             return Response(
                 {'ok': False, 'error': 'メール送信に失敗しました。しばらくしてから再度お試しください。'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

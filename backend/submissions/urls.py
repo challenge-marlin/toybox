@@ -18,6 +18,8 @@ urlpatterns = [
     path('submit/', views.SubmitView.as_view(), name='submit'),
     # Popular feed endpoint (ordered by likes count) - must be before feed/
     path('feed/popular/', views.PopularFeedView.as_view(), name='feed-popular'),
+    # Hashtags endpoint (ordered by usage count) - must be before feed/
+    path('feed/hashtags/', views.HashtagsView.as_view(), name='feed-hashtags'),
     # Feed endpoint (compatible with Next.js)
     path('feed/', views.FeedView.as_view(), name='feed'),
     # User submissions endpoint

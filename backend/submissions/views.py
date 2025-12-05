@@ -314,9 +314,16 @@ class SubmitView(APIView):
         """Handle submission and return rewards."""
         user = request.user
         
-        # Extract data from request
+        # Extract data from request (support both JSON and multipart/form-data)
         aim = request.data.get('aim', '画像提出')
         steps = request.data.get('steps', ['準備', '実行', '完了'])
+        # Handle steps: if it's a JSON string (from FormData), parse it
+        if isinstance(steps, str):
+            try:
+                import json
+                steps = json.loads(steps)
+            except (json.JSONDecodeError, ValueError):
+                pass  # Keep original value if parsing fails
         frame_type = request.data.get('frameType', 'none')
         image_url = request.data.get('imageUrl')
         video_url = request.data.get('videoUrl')
@@ -324,6 +331,32 @@ class SubmitView(APIView):
         title = request.data.get('title')
         caption = request.data.get('caption')
         hashtags = request.data.get('hashtags')
+        
+        # Handle hashtags: if it's a JSON string (from FormData), parse it
+        if hashtags is not None:
+            if isinstance(hashtags, str):
+                try:
+                    import json
+                    hashtags = json.loads(hashtags)
+                except (json.JSONDecodeError, ValueError):
+                    # If parsing fails, treat as single string and convert to list
+                    hashtags = [hashtags] if hashtags.strip() else []
+            elif not isinstance(hashtags, list):
+                # If it's neither string nor list, convert to list
+                hashtags = [hashtags] if hashtags else []
+        
+        # Handle thumbnail file upload (for games)
+        thumbnail_file = request.FILES.get('thumbnail')
+        thumbnail = None
+        if thumbnail_file:
+            # Validate thumbnail file type
+            allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+            if thumbnail_file.content_type not in allowed_image_types:
+                return Response(
+                    {'error': 'サムネイルは画像ファイル（JPEG/PNG/WebP）である必要があります。'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            thumbnail = thumbnail_file
         
         # Handle submission and lottery
         try:
@@ -337,7 +370,8 @@ class SubmitView(APIView):
                 game_url=game_url,
                 title=title,
                 caption=caption,
-                hashtags=hashtags
+                hashtags=hashtags,
+                thumbnail=thumbnail
             )
             return Response(result)
         except ValueError as e:
@@ -376,7 +410,8 @@ class FeedView(APIView):
             
             # Filter by hashtag if provided
             hashtag = request.query_params.get('hashtag')
-            if hashtag:
+            if hashtag and hashtag.strip():  # 空文字列や空白のみの場合はフィルタリングしない
+                hashtag = hashtag.strip()
                 # JSONFieldのhashtags配列に指定されたハッシュタグが含まれる投稿をフィルター
                 # PostgreSQLのJSONFieldではcontainsを使用（配列に要素が含まれるかチェック）
                 try:
@@ -413,43 +448,54 @@ class FeedView(APIView):
             # Order by created_at descending
             queryset = queryset.order_by('-created_at')
             
-            # Annotate with reactions count
-            queryset = queryset.annotate(
+            # Annotate with reactions count and select related for performance
+            queryset = queryset.select_related('author', 'author__meta').annotate(
                 reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
             )
             
             # Get items
-            items = queryset[:limit]
+            items = list(queryset[:limit])
             
-            # Serialize items
-            serializer = SubmissionSerializer(items, many=True, context={'request': request})
+            # Serialize items with error handling
+            feed_items = []
+            for item in items:
+                try:
+                    serializer = SubmissionSerializer(item, context={'request': request})
+                    item_data = serializer.data
+                    
+                    # Get image URL (シリアライザーのdisplay_image_urlを使用、サムネイル優先)
+                    image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
+                    
+                    # Get reactions_count from serializer (it will use annotated field if available)
+                    reactions_count = item_data.get('reactions_count', 0)
+                    
+                    feed_items.append({
+                        'id': str(item_data.get('id', '')),
+                        'anonId': item_data.get('author_display_id') or 'unknown',
+                        'displayName': item_data.get('author_display_id'),
+                        'createdAt': item_data.get('created_at', ''),
+                        'imageUrl': image_url,
+                        'videoUrl': item_data.get('video_url'),
+                        'displayImageUrl': image_url,  # サムネイルが含まれる
+                        'title': item_data.get('title') or item_data.get('caption'),
+                        'caption': item_data.get('caption'),
+                        'hashtags': item_data.get('hashtags', []),
+                        'gameUrl': item_data.get('game_url'),
+                        'likesCount': reactions_count or 0,
+                        'liked': item_data.get('user_reacted', False),
+                    })
+                except Exception as e:
+                    logger.error(f'Error serializing submission {getattr(item, "id", "unknown")}: {str(e)}', exc_info=True)
+                    # エラーが発生した場合はスキップして続行
+                    continue
             
             # Determine next cursor
             next_cursor = None
-            if len(items) == limit:
-                next_cursor = str(items[-1].id)
-            
-            # Transform to Next.js format
-            feed_items = []
-            for item_data in serializer.data:
-                # Get image URL (prefer display_image_url, then image, then image_url)
-                image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
-                
-                feed_items.append({
-                    'id': str(item_data['id']),
-                    'anonId': item_data.get('author_display_id') or 'unknown',
-                    'displayName': item_data.get('author_display_id'),
-                    'createdAt': item_data['created_at'],
-                    'imageUrl': image_url,
-                    'videoUrl': item_data.get('video_url'),
-                    'displayImageUrl': image_url,
-                    'title': item_data.get('title') or item_data.get('caption'),
-                    'caption': item_data.get('caption'),
-                    'hashtags': item_data.get('hashtags', []),
-                    'gameUrl': item_data.get('game_url'),
-                    'likesCount': item_data.get('reactions_count', 0),
-                    'liked': item_data.get('user_reacted', False),
-                })
+            if len(items) == limit and len(items) > 0:
+                try:
+                    next_cursor = str(items[-1].id)
+                except (AttributeError, IndexError):
+                    next_cursor = None
             
             return Response({
                 'items': feed_items,
@@ -462,6 +508,74 @@ class FeedView(APIView):
             logger.error(f'FeedView traceback: {error_detail}')
             return Response({
                 'error': 'フィードの読み込みに失敗しました',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class HashtagsView(APIView):
+    """Get popular hashtags ordered by usage count."""
+    permission_classes = [IsAuthenticated]  # Require authentication
+    
+    def get(self, request):
+        """Get hashtags ordered by usage count."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            # 一般ユーザー（FREE_USER）はアクセスできない
+            if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
+                return Response(
+                    {'error': 'この機能は課金ユーザー限定です。'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Get limit param (default 20)
+            try:
+                limit = int(request.query_params.get('limit', 20))
+                limit = max(1, min(50, limit))  # Clamp between 1 and 50
+            except (ValueError, TypeError):
+                limit = 20
+            
+            # Get all submissions with hashtags
+            submissions = Submission.objects.filter(
+                deleted_at__isnull=True
+            ).exclude(hashtags__isnull=True).exclude(hashtags=[])
+            
+            # Count hashtag usage
+            hashtag_counts = {}
+            for submission in submissions:
+                if submission.hashtags and isinstance(submission.hashtags, list):
+                    for tag in submission.hashtags:
+                        if tag and isinstance(tag, str) and tag.strip():
+                            tag = tag.strip()
+                            hashtag_counts[tag] = hashtag_counts.get(tag, 0) + 1
+            
+            # Sort by count descending and get top N
+            sorted_hashtags = sorted(
+                hashtag_counts.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:limit]
+            
+            # Format response
+            hashtags = [
+                {
+                    'tag': tag,
+                    'count': count
+                }
+                for tag, count in sorted_hashtags
+            ]
+            
+            return Response({
+                'hashtags': hashtags
+            })
+        except Exception as e:
+            logger.error(f'HashtagsView error: {str(e)}', exc_info=True)
+            import traceback
+            error_detail = traceback.format_exc()
+            logger.error(f'HashtagsView traceback: {error_detail}')
+            return Response({
+                'error': 'ハッシュタグの取得に失敗しました',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -504,7 +618,7 @@ class PopularFeedView(APIView):
         # Transform to Next.js format
         feed_items = []
         for item_data in serializer.data:
-            # Get image URL (prefer display_image_url, then image, then image_url)
+            # Get image URL (シリアライザーのdisplay_image_urlを使用、サムネイル優先)
             image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
             
             feed_items.append({
@@ -514,7 +628,7 @@ class PopularFeedView(APIView):
                 'createdAt': item_data['created_at'],
                 'imageUrl': image_url,
                 'videoUrl': item_data.get('video_url'),
-                'displayImageUrl': image_url,
+                'displayImageUrl': image_url,  # サムネイルが含まれる
                 'title': item_data.get('title') or item_data.get('caption'),
                 'caption': item_data.get('caption'),
                 'hashtags': item_data.get('hashtags', []),
@@ -534,80 +648,174 @@ class UserSubmissionsView(APIView):
     
     def get(self, request, display_id):
         """Get submissions for a specific user."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
-            user = User.objects.get(display_id=display_id)
+            try:
+                user = User.objects.get(display_id=display_id)
+            except User.DoesNotExist:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            queryset = Submission.objects.filter(
+                author=user,
+                deleted_at__isnull=True
+            ).select_related('author', 'author__meta').order_by('-created_at')
+            
+            # Pagination
+            page_size = int(request.query_params.get('limit', 12))
+            cursor = request.query_params.get('cursor')
+            
+            if cursor:
+                try:
+                    from datetime import datetime
+                    cursor_date = datetime.fromisoformat(cursor.replace('Z', '+00:00'))
+                    # Make timezone-aware if needed
+                    if timezone.is_naive(cursor_date):
+                        cursor_date = timezone.make_aware(cursor_date)
+                    queryset = queryset.filter(created_at__lt=cursor_date)
+                except (ValueError, AttributeError, TypeError):
+                    pass
+            
+            submissions = queryset[:page_size]
+            
+            # Check if current user has liked each submission
+            current_user = request.user if request.user.is_authenticated else None
+            
+            # Format response
+            items = []
+            for sub in submissions:
+                try:
+                    # Count likes
+                    likes_count = Reaction.objects.filter(
+                        submission=sub,
+                        type=Reaction.Type.SUBMIT_MEDAL
+                    ).count()
+                    
+                    # Check if current user liked
+                    liked = False
+                    if current_user:
+                        liked = Reaction.objects.filter(
+                            user=current_user,
+                            submission=sub,
+                            type=Reaction.Type.SUBMIT_MEDAL
+                        ).exists()
+                    
+                    # Get image/video/game URL (absolute URLs)
+                    # ゲームの場合はサムネイルを優先
+                    image_url = None
+                    display_image_url = None
+                    
+                    try:
+                        if sub.game_url:
+                            # ゲームの場合：サムネイルを優先
+                            if sub.thumbnail:
+                                try:
+                                    display_image_url = request.build_absolute_uri(sub.thumbnail.url)
+                                    image_url = display_image_url
+                                except (ValueError, AttributeError):
+                                    # thumbnail.urlが無効な場合のフォールバック
+                                    if sub.image_url:
+                                        display_image_url = sub.image_url
+                                        image_url = sub.image_url
+                                    elif sub.image:
+                                        try:
+                                            display_image_url = request.build_absolute_uri(sub.image.url)
+                                            image_url = display_image_url
+                                        except (ValueError, AttributeError):
+                                            pass
+                            elif sub.image_url:
+                                display_image_url = sub.image_url
+                                image_url = sub.image_url
+                            elif sub.image:
+                                try:
+                                    display_image_url = request.build_absolute_uri(sub.image.url)
+                                    image_url = display_image_url
+                                except (ValueError, AttributeError):
+                                    pass
+                        else:
+                            # 画像/動画の場合：従来通り
+                            if sub.image_url:
+                                image_url = sub.image_url
+                                display_image_url = sub.image_url
+                            elif sub.image:
+                                try:
+                                    image_url = request.build_absolute_uri(sub.image.url)
+                                    display_image_url = image_url
+                                except (ValueError, AttributeError):
+                                    pass
+                    except Exception as e:
+                        logger.warning(f'Error processing image URLs for submission {sub.id}: {str(e)}')
+                    
+                    video_url = getattr(sub, 'video_url', None) if getattr(sub, 'video_url', None) else None
+                    game_url = getattr(sub, 'game_url', None) if getattr(sub, 'game_url', None) else None
+                    
+                    # Safely get title and caption
+                    title = getattr(sub, 'title', None) or None
+                    caption = getattr(sub, 'caption', None) or None
+                    
+                    # Safely format created_at
+                    created_at_str = None
+                    try:
+                        created_at = getattr(sub, 'created_at', None)
+                        if created_at:
+                            created_at_str = created_at.isoformat()
+                    except (AttributeError, ValueError, TypeError):
+                        created_at_str = None
+                    
+                    items.append({
+                        'id': str(sub.id),
+                        'imageUrl': image_url,
+                        'displayImageUrl': display_image_url or image_url,
+                        'videoUrl': video_url,
+                        'gameUrl': game_url,
+                        'title': title,
+                        'caption': caption,
+                        'createdAt': created_at_str,
+                        'likesCount': likes_count,
+                        'liked': liked,
+                    })
+                except Exception as e:
+                    logger.error(f'Error processing submission {sub.id}: {str(e)}', exc_info=True)
+                    # エラーが発生しても次の提出物の処理を続行
+                    continue
+            
+            next_cursor = None
+            if len(submissions) == page_size:
+                try:
+                    last_submission = submissions[-1]
+                    if last_submission.created_at:
+                        next_cursor = last_submission.created_at.isoformat()
+                except (AttributeError, ValueError, IndexError):
+                    next_cursor = None
+            
+            return Response({
+                'items': items,
+                'nextCursor': next_cursor
+            })
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        
-        queryset = Submission.objects.filter(
-            author=user,
-            deleted_at__isnull=True
-        ).select_related('author', 'author__meta').order_by('-created_at')
-        
-        # Pagination
-        page_size = int(request.query_params.get('limit', 12))
-        cursor = request.query_params.get('cursor')
-        
-        if cursor:
-            try:
-                from datetime import datetime
-                cursor_date = timezone.datetime.fromisoformat(cursor.replace('Z', '+00:00'))
-                queryset = queryset.filter(created_at__lt=cursor_date)
-            except (ValueError, AttributeError):
-                pass
-        
-        submissions = queryset[:page_size]
-        
-        # Check if current user has liked each submission
-        current_user = request.user if request.user.is_authenticated else None
-        
-        # Format response
-        items = []
-        for sub in submissions:
-            # Count likes
-            likes_count = Reaction.objects.filter(
-                submission=sub,
-                type=Reaction.Type.SUBMIT_MEDAL
-            ).count()
-            
-            # Check if current user liked
-            liked = False
-            if current_user:
-                liked = Reaction.objects.filter(
-                    user=current_user,
-                    submission=sub,
-                    type=Reaction.Type.SUBMIT_MEDAL
-                ).exists()
-            
-            # Get image/video/game URL (absolute URLs)
-            image_url = None
-            if sub.image_url:
-                image_url = sub.image_url
-            elif sub.image:
-                image_url = request.build_absolute_uri(sub.image.url)
-            
-            video_url = sub.video_url if sub.video_url else None
-            game_url = sub.game_url if sub.game_url else None
-            
-            items.append({
-                'id': str(sub.id),
-                'imageUrl': image_url,
-                'displayImageUrl': image_url,
-                'videoUrl': video_url,
-                'gameUrl': game_url,
-                'createdAt': sub.created_at.isoformat(),
-                'likesCount': likes_count,
-                'liked': liked,
-            })
-        
-        next_cursor = None
-        if len(submissions) == page_size:
-            next_cursor = submissions[-1].created_at.isoformat()
-        
-        return Response({
-            'items': items,
-            'nextCursor': next_cursor
-        })
+        except Exception as e:
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f'UserSubmissionsView error for display_id={display_id}: {str(e)}', exc_info=True)
+            logger.error(f'UserSubmissionsView traceback: {error_traceback}')
+            # 開発環境では詳細なエラー情報を返す
+            import os
+            if os.environ.get('DEBUG', 'False').lower() == 'true':
+                return Response(
+                    {
+                        'error': '提出物の読み込みに失敗しました。',
+                        'details': str(e),
+                        'traceback': error_traceback
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            else:
+                return Response(
+                    {'error': '提出物の読み込みに失敗しました。', 'details': str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
 
 class SubmittersTodayView(APIView):

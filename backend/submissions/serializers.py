@@ -16,12 +16,15 @@ class SubmissionSerializer(serializers.ModelSerializer):
     user_reacted = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     display_image_url = serializers.SerializerMethodField()
+    thumbnail = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Submission
         fields = [
             'id', 'author', 'author_display_id', 'author_avatar_url',
-            'image', 'display_image_url', 'image_url', 'video_url', 'game_url',
+            'image', 'display_image_url', 'thumbnail', 'thumbnail_url',
+            'image_url', 'video_url', 'game_url',
             'title', 'caption', 'hashtags', 'comment_enabled', 'status',
             'active_title', 'title_color',
             'reactions_count', 'user_reacted',
@@ -40,7 +43,14 @@ class SubmissionSerializer(serializers.ModelSerializer):
         return obj.image_url or None
     
     def get_display_image_url(self, obj):
-        """Get display image URL (prefer image_url, then image field)."""
+        """Get display image URL (prefer thumbnail for games, then image_url, then image field)."""
+        # ゲームの場合はサムネイルを優先
+        if obj.game_url and obj.thumbnail:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.thumbnail.url)
+            return obj.thumbnail.url
+        
         if obj.image_url:
             return obj.image_url
         if obj.image:
@@ -49,6 +59,19 @@ class SubmissionSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return None
+    
+    def get_thumbnail(self, obj):
+        """Get absolute URL for thumbnail field."""
+        if obj.thumbnail:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.thumbnail.url)
+            return obj.thumbnail.url
+        return None
+    
+    def get_thumbnail_url(self, obj):
+        """Get thumbnail URL (alias for thumbnail)."""
+        return self.get_thumbnail(obj)
     
     def get_active_title(self, obj):
         """Get author's active title."""
@@ -74,6 +97,10 @@ class SubmissionSerializer(serializers.ModelSerializer):
     
     def get_reactions_count(self, obj):
         """Get reactions count."""
+        # annotateで追加されたreactions_countを優先的に使用
+        if hasattr(obj, 'reactions_count'):
+            return obj.reactions_count
+        # フォールバック: 直接カウント
         return obj.reactions.filter(type=Reaction.Type.SUBMIT_MEDAL).count()
     
     def get_user_reacted(self, obj):
@@ -89,7 +116,7 @@ class SubmissionCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Submission
-        fields = ['image', 'title', 'caption', 'hashtags', 'comment_enabled']
+        fields = ['image', 'thumbnail', 'title', 'caption', 'hashtags', 'comment_enabled']
     
     def validate_title(self, value):
         """Validate title length."""

@@ -174,11 +174,11 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
                 }
             )
             
-            # Create UserCard if not exists
-            UserCard.objects.get_or_create(
+            # Create UserCard (allow duplicates - same card can be owned multiple times)
+            UserCard.objects.create(
                 user=meta.user,
                 card=db_card,
-                defaults={'obtained_at': now}
+                obtained_at=now
             )
             
             # Map Django rarity to Next.js format

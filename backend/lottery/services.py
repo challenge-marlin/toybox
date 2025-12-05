@@ -28,7 +28,8 @@ def has_submitted_today(user: User) -> bool:
 
 def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type: str,
                                    image_url: str = None, video_url: str = None, game_url: str = None,
-                                   title: str = None, caption: str = None, hashtags: list = None) -> dict:
+                                   title: str = None, caption: str = None, hashtags: list = None,
+                                   thumbnail=None) -> dict:
     """Handle submission and lottery processing."""
     # Check for duplicate submissions (within 10 seconds)
     ten_seconds_ago = timezone.now() - timezone.timedelta(seconds=10)
@@ -99,6 +100,8 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         submission_data['title'] = title
     if caption is not None:
         submission_data['caption'] = caption
+    if thumbnail is not None:
+        submission_data['thumbnail'] = thumbnail
     submission_data['hashtags'] = processed_hashtags
     
     try:

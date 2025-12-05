@@ -99,7 +99,7 @@ class UserMetaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     
     def list(self, request):
-        """Override list to return single user's meta (for /api/users/me/meta/)."""
+        """Override list to return single user's meta (for GET /api/users/me/meta/)."""
         meta, _ = UserMeta.objects.get_or_create(user=request.user)
         
         # Check title expiration
@@ -111,6 +111,38 @@ class UserMetaViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(meta)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['patch', 'put'], url_name='update')
+    def update_meta(self, request):
+        """Update current user's meta (for PATCH/PUT /api/users/me/meta/update_meta/)."""
+        meta, _ = UserMeta.objects.get_or_create(user=request.user)
+        
+        partial = request.method == 'PATCH'
+        serializer = self.get_serializer(meta, data=request.data, partial=partial)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def partial_update(self, request, pk=None):
+        """Override partial_update to update current user's meta (for PATCH /api/users/me/meta/{pk}/)."""
+        meta, _ = UserMeta.objects.get_or_create(user=request.user)
+        
+        serializer = self.get_serializer(meta, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def update(self, request, pk=None):
+        """Override update to update current user's meta (for PUT /api/users/me/meta/{pk}/)."""
+        meta, _ = UserMeta.objects.get_or_create(user=request.user)
+        
+        serializer = self.get_serializer(meta, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProfileUpdateView(APIView):

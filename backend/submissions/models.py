@@ -21,6 +21,7 @@ class Submission(models.Model):
     
     # Content
     image = models.ImageField('画像', upload_to='submissions/', blank=True, null=True)
+    thumbnail = models.ImageField('サムネイル', upload_to='submissions/thumbnails/', blank=True, null=True, help_text='ゲーム提出時のサムネイル画像')
     title = models.CharField('題名', max_length=20, blank=True)
     caption = models.TextField('キャプション', max_length=140, blank=True)
     hashtags = models.JSONField('ハッシュタグ', default=list, blank=True)

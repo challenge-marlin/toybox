@@ -52,6 +52,10 @@ cd C:\github\toybox\backend
 .\make.ps1 up
 # または
 docker compose up -d
+
+再起動
+# backendディレクトリで実行
+docker compose restart
 ```
 
 **Linux/macOS:**
@@ -337,7 +341,7 @@ docker build -f Dockerfile.prod -t toybox:latest .
 ```bash
 make migrate
 # または
-docker compose -f docker-compose.prod.yml exec web python manage.py migrate
+docker compose exec web python manage.py migrate
 ```
 
 ### 4. 静的ファイルの収集
@@ -345,7 +349,7 @@ docker compose -f docker-compose.prod.yml exec web python manage.py migrate
 ```bash
 make collectstatic
 # または
-docker compose -f docker-compose.prod.yml exec web python manage.py collectstatic --noinput
+docker compose exec web python manage.py collectstatic --noinput
 ```
 
 ### 5. スーパーユーザーの作成
@@ -353,13 +357,13 @@ docker compose -f docker-compose.prod.yml exec web python manage.py collectstati
 ```bash
 make createadmin
 # または
-docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
+docker compose exec web python manage.py createsuperuser
 ```
 
 ### 6. サービスの起動
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+docker compose up -d
 ```
 
 ### 7. ヘルスチェック確認
@@ -367,7 +371,7 @@ docker compose -f docker-compose.prod.yml up -d
 ```bash
 curl http://localhost/api/health/
 # または
-docker compose -f docker-compose.prod.yml exec web python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/api/health/').read())"
+docker compose exec web python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/api/health/').read())"
 ```
 
 ### 8. Nginx設定のカスタマイズ
@@ -402,21 +406,21 @@ docker run -it --rm \
 
 ```bash
 # すべてのサービスのログ
-docker compose -f docker-compose.prod.yml logs -f
+docker compose logs -f
 
 # 特定のサービスのログ
-docker compose -f docker-compose.prod.yml logs -f web
-docker compose -f docker-compose.prod.yml logs -f nginx
+docker compose logs -f web
+docker compose logs -f worker
 ```
 
 ### 11. バックアップ
 
 ```bash
 # データベースのバックアップ
-docker compose -f docker-compose.prod.yml exec db pg_dump -U postgres toybox > backup_$(date +%Y%m%d_%H%M%S).sql
+docker compose exec db pg_dump -U postgres toybox > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # メディアファイルのバックアップ（S3未使用の場合）
-docker compose -f docker-compose.prod.yml exec web tar -czf /tmp/media_backup.tar.gz /app/media
+docker compose exec web tar -czf /tmp/media_backup.tar.gz /app/public/uploads
 ```
 
 ### トラブルシューティング
@@ -425,13 +429,13 @@ docker compose -f docker-compose.prod.yml exec web tar -czf /tmp/media_backup.ta
 
 ```bash
 # コンテナの状態を確認
-docker compose -f docker-compose.prod.yml ps
+docker compose ps
 
 # ログを確認
-docker compose -f docker-compose.prod.yml logs web
+docker compose logs web
 
 # 手動でヘルスチェック
-docker compose -f docker-compose.prod.yml exec web curl http://localhost:8000/api/health/
+docker compose exec web curl http://localhost:8000/api/health/
 ```
 
 #### 静的ファイルが表示されない場合
@@ -439,19 +443,16 @@ docker compose -f docker-compose.prod.yml exec web curl http://localhost:8000/ap
 ```bash
 # 静的ファイルを再収集
 make collectstatic
-
-# Nginxの設定を確認
-docker compose -f docker-compose.prod.yml exec nginx nginx -t
 ```
 
 #### データベース接続エラー
 
 ```bash
 # データベースの状態を確認
-docker compose -f docker-compose.prod.yml exec db pg_isready -U postgres
+docker compose exec db pg_isready -U postgres
 
 # 接続テスト
-docker compose -f docker-compose.prod.yml exec web python manage.py dbshell
+docker compose exec web python manage.py dbshell
 ```
 
 ## ライセンス

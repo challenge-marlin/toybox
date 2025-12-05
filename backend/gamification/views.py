@@ -33,25 +33,39 @@ class MyCardsView(views.APIView):
             'special': 'SSR'
         }
         
-        entries = []
+        # Group cards by card code and count quantity
+        card_groups = {}
         for uc in user_cards:
             card = uc.card
-            rarity_str = rarity_map.get(card.rarity, 'N')
+            card_code = card.code
             
-            # Determine card type from code
-            card_type = 'Effect' if card.code.startswith('E') else 'Character'
-            
-            entries.append({
-                'id': card.code,
-                'obtainedAt': uc.obtained_at.isoformat() if uc.obtained_at else None,
-                'meta': {
-                    'card_id': card.code,
-                    'card_type': card_type,
-                    'card_name': card.name,
-                    'rarity': rarity_str,
-                    'image_url': card.image_url or f'/uploads/cards/{card.code}.png'
+            if card_code not in card_groups:
+                rarity_str = rarity_map.get(card.rarity, 'N')
+                card_type = 'Effect' if card.code.startswith('E') else 'Character'
+                
+                card_groups[card_code] = {
+                    'id': card_code,
+                    'obtainedAt': uc.obtained_at.isoformat() if uc.obtained_at else None,
+                    'quantity': 0,
+                    'meta': {
+                        'card_id': card_code,
+                        'card_type': card_type,
+                        'card_name': card.name,
+                        'rarity': rarity_str,
+                        'image_url': card.image_url or f'/uploads/cards/{card.code}.png'
+                    }
                 }
-            })
+            
+            # Increment quantity
+            card_groups[card_code]['quantity'] += 1
+            
+            # Update obtainedAt to the most recent one
+            if uc.obtained_at:
+                current_obtained = card_groups[card_code]['obtainedAt']
+                if not current_obtained or uc.obtained_at.isoformat() > current_obtained:
+                    card_groups[card_code]['obtainedAt'] = uc.obtained_at.isoformat()
+        
+        entries = list(card_groups.values())
         
         return Response({'ok': True, 'entries': entries})
 

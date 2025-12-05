@@ -28,12 +28,13 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.django
+      dockerfile: Dockerfile
     command: gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 toybox.wsgi:application
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
-      - media_volume:/app/public/uploads
+      # Use host directory for media files in development to access card images
+      - ./public/uploads:/app/public/uploads
     ports:
       - "8000:8000"
     env_file:
@@ -49,31 +50,36 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.django
+      dockerfile: Dockerfile
     command: celery -A toybox worker --loglevel=info
     volumes:
       - .:/app
-      - media_volume:/app/public/uploads
+      # Use host directory for media files in development to access card images
+      - ./public/uploads:/app/public/uploads
     env_file:
       - .env
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - DJANGO_SETTINGS_MODULE=toybox.settings.dev
 
   beat:
     build:
       context: .
-      dockerfile: Dockerfile.django
+      dockerfile: Dockerfile
     command: celery -A toybox beat --loglevel=info
     volumes:
       - .:/app
     env_file:
       - .env
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - DJANGO_SETTINGS_MODULE=toybox.settings.dev
 

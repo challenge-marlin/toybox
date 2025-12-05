@@ -1,12 +1,25 @@
-FROM node:22-alpine AS base
+FROM python:3.11-slim
+
 WORKDIR /app
-COPY package*.json ./
-# 開発中はロックファイルと依存のズレが出やすいので npm install を使用
-RUN npm install
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy project files
 COPY . .
-RUN npm run build
-ENV NODE_ENV=production
-# healthcheck 用に curl を追加
-RUN apk add --no-cache curl
-EXPOSE 4000
-CMD ["node", "dist/src/server.js"]
+
+# Collect static files
+RUN python manage.py collectstatic --noinput || true
+
+# Expose port
+EXPOSE 8000
+
+# Run gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "toybox.wsgi:application"]
+

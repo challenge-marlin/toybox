@@ -340,7 +340,7 @@
         <div class="profile-view-name" id="profile-name">—</div>
         <div class="profile-view-id" id="profile-id">—</div>
         <div class="profile-view-title" id="profile-title"></div>
-        <div class="profile-view-total-likes" id="profile-total-likes" style="margin-top: 0.5rem; color: var(--steam-gold-300); font-size: 0.875rem;">
+        <div class="profile-view-total-likes" id="profile-total-likes-entry" style="margin-top: 0.5rem; color: var(--steam-gold-300); font-size: 0.875rem;">
             <span style="color: var(--steam-iron-300);">獲得したいいね:</span> <span id="total-likes-count">0</span>
         </div>
     </div>
@@ -364,11 +364,14 @@
             <img id="lightbox-image" class="lightbox-image" src="" alt="submission" style="display: none; max-width: 90vw; width: auto; height: auto; object-fit: contain;">
             <video id="lightbox-video" class="lightbox-video" controls style="display: none; max-width: 90vw; width: auto; height: auto; background: black;"></video>
             <div id="lightbox-game" style="display: none; max-width: 90vw; width: auto; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 1rem;">
-                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
-                </svg>
-                <div id="lightbox-game-label" style="font-size: 1.25rem; letter-spacing: 0.1em; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem;">GAME</div>
+                <img id="lightbox-game-thumbnail" src="" alt="ゲームサムネイル" style="display: none; max-width: 100%; max-height: 60vh; width: auto; height: auto; object-fit: contain; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--steam-iron-700);">
+                <div id="lightbox-game-icon" style="display: flex; flex-direction: column; align-items: center;">
+                    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 1rem;">
+                        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                    </svg>
+                    <div id="lightbox-game-label" style="font-size: 1.25rem; letter-spacing: 0.1em; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem;">GAME</div>
+                </div>
                 <a id="lightbox-game-link" href="" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: var(--steam-gold-500); color: black; font-size: 0.875rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-gold-400)'" onmouseout="this.style.background='var(--steam-gold-500)'">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -589,15 +592,20 @@
             
             let content = '';
             if (isGame) {
-                content = `
-                    <div class="game-icon">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
-                        </svg>
-                        <div class="game-icon-text">GAME</div>
-                    </div>
-                `;
+                // サムネイル画像があれば表示、なければアイコンを表示
+                if (imageUrl) {
+                    content = `<img src="${imageUrl}" alt="ゲームサムネイル" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" onclick="openLightbox('${gameUrl}', 'game', '${s.id}')">`;
+                } else {
+                    content = `
+                        <div class="game-icon">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                            </svg>
+                            <div class="game-icon-text">GAME</div>
+                        </div>
+                    `;
+                }
             } else if (isVideo) {
                 content = `
                     <video src="${videoUrl}" muted preload="metadata" onclick="openLightbox('${videoUrl}', 'video', '${s.id}')"></video>
@@ -740,6 +748,25 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    
+                    // ゲーム投稿の場合、サムネイルを表示
+                    if (type === 'game') {
+                        const thumbnailImg = document.getElementById('lightbox-game-thumbnail');
+                        const gameIcon = document.getElementById('lightbox-game-icon');
+                        const displayImageUrl = data.display_image_url || data.thumbnail_url || (data.thumbnail ? data.thumbnail : null);
+                        
+                        if (thumbnailImg && gameIcon) {
+                            if (displayImageUrl) {
+                                thumbnailImg.src = displayImageUrl;
+                                thumbnailImg.style.display = 'block';
+                                gameIcon.style.display = 'none';
+                            } else {
+                                thumbnailImg.style.display = 'none';
+                                gameIcon.style.display = 'flex';
+                            }
+                        }
+                    }
+                    
                     // タイトルを表示
                     if (data.title) {
                         lightboxTitle.textContent = data.title;

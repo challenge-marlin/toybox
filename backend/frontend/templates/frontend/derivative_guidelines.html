@@ -1,0 +1,293 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}TOYBOX 二次創作ガイドライン - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .guidelines-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .guidelines-header {
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--steam-iron-700);
+        padding-bottom: 1rem;
+    }
+    
+    .guidelines-header h1 {
+        color: var(--steam-gold-300);
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .guidelines-header .subtitle {
+        color: var(--steam-gold-200);
+        font-size: 1rem;
+        font-weight: 500;
+        margin-top: 0.5rem;
+    }
+    
+    .guidelines-content {
+        color: var(--steam-iron-100);
+        font-size: 0.875rem;
+        line-height: 1.8;
+    }
+    
+    .guidelines-content section {
+        margin-bottom: 2rem;
+    }
+    
+    .guidelines-content h2 {
+        color: var(--steam-gold-200);
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    
+    .guidelines-content h3 {
+        color: var(--steam-gold-300);
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .guidelines-content p {
+        margin-bottom: 1rem;
+    }
+    
+    .guidelines-content ol {
+        margin-left: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .guidelines-content ol ol {
+        margin-left: 1.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .guidelines-content li {
+        margin-bottom: 0.5rem;
+    }
+    
+    .guidelines-content .note {
+        background: var(--steam-iron-800);
+        border-left: 3px solid var(--steam-gold-400);
+        padding: 0.75rem 1rem;
+        margin: 1rem 0;
+        font-size: 0.8125rem;
+        color: var(--steam-iron-200);
+    }
+    
+    .guidelines-content .example {
+        background: var(--steam-iron-800);
+        border-radius: 4px;
+        padding: 0.75rem 1rem;
+        margin: 0.75rem 0;
+        font-size: 0.8125rem;
+        color: var(--steam-iron-200);
+    }
+    
+    .guidelines-footer {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--steam-iron-700);
+        text-align: center;
+    }
+    
+    .guidelines-footer a {
+        color: var(--steam-gold-400);
+        text-decoration: underline;
+    }
+    
+    .guidelines-footer a:hover {
+        color: var(--steam-gold-300);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="guidelines-container">
+    <div class="guidelines-header">
+        <h1>TOYBOX 二次創作ガイドライン</h1>
+        <p class="subtitle">節度を守った二次創作を歓迎します</p>
+    </div>
+    
+    <div class="guidelines-content">
+        <section>
+            <p>
+                TOYBOXでは、節度とマナーを守ったうえでの「二次創作」を歓迎します。
+            </p>
+            <p>
+                ここでいう二次創作とは、既存の作品・キャラクター・世界観などをもとにして新たな表現を行うことを指します。
+            </p>
+            <p>
+                本ガイドラインは、TOYBOX上で二次創作を行う際の考え方とルールをまとめたものです。
+                楽しく創作を続けるために、投稿前に一度目を通していただけると幸いです。
+            </p>
+        </section>
+
+        <section>
+            <h2>第1章　二次創作の基本方針</h2>
+            <ol>
+                <li>
+                    TOYBOXは、創作活動を通じた「学び」と「交流」を大切にするプラットフォームです。
+                </li>
+                <li>
+                    二次創作そのものは歓迎しますが、原作や原作者、関係する方々への敬意を忘れないことを大前提とします。
+                </li>
+                <li>
+                    二次創作は、元の作品を「貶める」のではなく、「リスペクトを込めて広げる」ものであることを意識してください。
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>第2章　許可される二次創作の例</h2>
+            <p>
+                節度を守り、原作への敬意が感じられる二次創作は、基本的に許可されます。たとえば次のようなものです。
+            </p>
+            <ol>
+                <li>原作キャラクターや世界観をもとにした、ファンイラスト・ファンゲーム・アレンジ作品</li>
+                <li>原作の雰囲気を大切にした、軽いパロディやオマージュ表現</li>
+                <li>
+                    原作名やキャラクター名を明示したうえで、
+                    「非公式ファン作品」であることがわかるようにした二次創作
+                </li>
+                <li>原作の作者や公式ガイドラインで、二次創作が許可されている範囲での作品</li>
+            </ol>
+            
+            <div class="note">
+                <strong>※</strong> ただし、各原作の公式な二次創作ガイドラインがある場合は、必ずそちらを優先してください。<br>
+                <strong>※</strong> 商用利用が禁止されている作品については、個人のファン活動の範囲を超える利用は行わないでください。
+            </div>
+        </section>
+
+        <section>
+            <h2>第3章　禁止される二次創作表現</h2>
+            <p>
+                以下のような二次創作は、TOYBOXでは認められません。
+                これらに該当する作品は、削除や非公開などの対象となる場合があります。
+            </p>
+
+            <div>
+                <h3>1. 原作や原作者を誹謗中傷する二次創作</h3>
+                <ul>
+                    <li>原作作品や原作者を侮辱・攻撃することを主な目的とした内容</li>
+                    <li>「原作がいかにつまらないか」を過度に貶めることだけを狙った表現</li>
+                    <li>原作ファンや関係者を傷つけることを意図した表現</li>
+                </ul>
+            </div>
+
+            <div>
+                <h3>2. 原作のイメージを著しく損なう二次創作</h3>
+                <ul>
+                    <li>原作では想定されていない、過激な性的・暴力的な方向への改変</li>
+                    <li>キャラクターの人格を大きく歪め、悪意ある消費だけを目的とした描写</li>
+                    <li>公序良俗に反し、原作のブランドイメージを明らかに傷つける内容</li>
+                </ul>
+            </div>
+
+            <div>
+                <h3>3. 権利侵害のおそれが高い二次創作</h3>
+                <ul>
+                    <li>公式素材や有料コンテンツをそのまま無断使用したもの</li>
+                    <li>公式と誤認させる表現（公式ロゴの無断使用、公式を名乗る表記など）</li>
+                    <li>原作の利用規約や二次創作ガイドラインに明確に反する内容</li>
+                </ul>
+            </div>
+
+            <div>
+                <h3>4. その他、TOYBOXの利用規約・コミュニティガイドラインに反すると運営が判断する内容</h3>
+            </div>
+        </section>
+
+        <section>
+            <h2>第4章　クレジットと注意表示</h2>
+            <ol>
+                <li>
+                    二次創作作品を投稿する場合は、可能な範囲で以下の情報を明記してください。
+                    <ul>
+                        <li>原作作品名</li>
+                        <li>原作の作者名または公式名義</li>
+                        <li>「これは非公式のファン作品であり、原作者・公式とは関係ありません」といった注意書き</li>
+                    </ul>
+                </li>
+                <li>
+                    投稿の例：
+                    <ul>
+                        <li>タイトルや説明文の中に「二次創作」「ファンアート」「ファンゲーム」などの文言を含める</li>
+                        <li>説明文の末尾に「※この作品は原作の二次創作（ファン作品）です。」と記載する</li>
+                    </ul>
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>第5章　迷ったときの判断と相談</h2>
+            <ol>
+                <li>
+                    「これはセーフかギリギリアウトか、判断が難しい」と感じた場合は、投稿をいったん保留し、運営に相談することをおすすめします。
+                </li>
+                <li>
+                    原作側で二次創作禁止が明示されている場合や、権利関係が不明な場合は、公開範囲を限定するか、投稿を控えてください。
+                </li>
+                <li>
+                    他のユーザーの二次創作について気になる点がある場合も、直接相手を攻撃するのではなく、運営への通報・相談窓口を利用してください。
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>第6章　運営による対応</h2>
+            <ol>
+                <li>
+                    本ガイドラインに反すると運営が判断した二次創作作品に対しては、以下のような対応を行うことがあります。
+                    <ul>
+                        <li>作品の非公開化または削除</li>
+                        <li>投稿者への注意・警告</li>
+                        <li>悪質な場合のアカウント制限や利用停止</li>
+                    </ul>
+                </li>
+                <li>
+                    具体的な対応内容は、違反の内容や意図、過去の経緯などを総合的に判断して決定します。
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>第7章　お問い合わせ・通報</h2>
+            <ol>
+                <li>
+                    本ガイドラインに関する質問や、「これは二次創作として問題ないか？」といったご相談がある場合は、所定のお問い合わせフォームからご連絡ください。
+                </li>
+                <li>
+                    原作や原作者への敬意を大切にしながら、TOYBOX全体として健全な二次創作文化を育てていければと考えています。
+                </li>
+            </ol>
+        </section>
+
+        <section style="text-align: center; margin-top: 2rem;">
+            <p style="color: var(--steam-gold-300); font-weight: 600;">以上</p>
+        </section>
+    </div>
+    
+    <div class="guidelines-footer">
+        <div style="margin-bottom: 1rem;">
+            <a href="/inquiry/">お問い合わせ・通報フォームはこちら</a>
+        </div>
+        <div style="font-size: 0.875rem; color: var(--steam-iron-300);">
+            <a href="/terms/">利用規約はこちら</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+

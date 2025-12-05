@@ -9,7 +9,12 @@
     <link rel="icon" type="image/png" href="{% static 'frontend/favicon.png' %}">
     <link rel="apple-touch-icon" href="{% static 'frontend/favicon.png' %}">
     <link rel="stylesheet" href="{% static 'frontend/css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'frontend/css/onboarding.css' %}">
+    <!-- Common JavaScript utilities -->
     <script src="{% static 'frontend/js/auth.js' %}"></script>
+    <script src="{% static 'frontend/js/common/api.js' %}"></script>
+    <script src="{% static 'frontend/js/common/errors.js' %}"></script>
+    <script src="{% static 'frontend/js/common/utils.js' %}"></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -21,7 +26,8 @@
                 </a>
                 <a href="/me/" id="nav-me" style="color: var(--steam-gold-400); text-decoration: none; display: none;">マイページ</a>
                 <a href="/collection/" id="nav-collection" style="color: var(--steam-gold-400); text-decoration: none; display: none;">コレクション</a>
-                <a href="/profile/view/" id="nav-profile" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール</a>
+                <a href="/profile/view/" id="profile-view-entry" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール</a>
+                <a href="/profile/" id="profile-entry" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール設定</a>
                 <a href="/feed/" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
                 <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
             </nav>
@@ -55,6 +61,7 @@
     </main>
     
     {% block extra_js %}{% endblock %}
+    <script src="{% static 'frontend/js/onboarding.js' %}"></script>
     <script>
         // 通知機能の変数（グローバルスコープ）
         let notificationItems = [];
@@ -204,7 +211,8 @@
             const logoLink = document.getElementById('logo-link');
             const navMe = document.getElementById('nav-me');
             const navCollection = document.getElementById('nav-collection');
-            const navProfile = document.getElementById('nav-profile');
+            const navProfile = document.getElementById('profile-view-entry');
+            const navProfileEntry = document.getElementById('profile-entry');
             const navLogin = document.getElementById('nav-login');
             const userInfo = document.getElementById('user-info');
             const userDisplayId = document.getElementById('user-display-id');
@@ -215,6 +223,7 @@
                 if (navMe) navMe.style.display = 'inline';
                 if (navCollection) navCollection.style.display = 'inline';
                 if (navProfile) navProfile.style.display = 'inline';
+                if (navProfileEntry) navProfileEntry.style.display = 'inline';
                 if (navLogin) navLogin.style.display = 'none';
                 if (userInfo) userInfo.style.display = 'flex';
                 
@@ -252,6 +261,7 @@
                 if (navMe) navMe.style.display = 'none';
                 if (navCollection) navCollection.style.display = 'none';
                 if (navProfile) navProfile.style.display = 'none';
+                if (navProfileEntry) navProfileEntry.style.display = 'none';
                 if (navLogin) navLogin.style.display = 'inline';
                 if (userInfo) userInfo.style.display = 'none';
                 
@@ -272,6 +282,13 @@
                     }
                 }
             });
+            
+            // 認証状態の更新後にオンボーディングを開始
+            setTimeout(async () => {
+                if (window.initOnboarding) {
+                    await window.initOnboarding();
+                }
+            }, 500);
         });
     </script>
 </body>

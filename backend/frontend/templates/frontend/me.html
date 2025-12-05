@@ -294,6 +294,20 @@
             </a>
         </section>
         
+        <!-- 利用規約 -->
+        <section class="me-section" style="border: 2px solid var(--steam-gold-500);">
+            <h2 style="color: var(--steam-gold-300);">重要</h2>
+            <a href="/terms/" style="display: block; width: 100%; padding: 0.75rem 1rem; background: var(--steam-brown-500); color: white; border-radius: 9999px; text-align: center; text-decoration: none; font-weight: 600; font-size: 0.875rem; transition: background 0.2s; margin-top: 0.5rem;" onmouseover="this.style.background='var(--steam-brown-600)'" onmouseout="this.style.background='var(--steam-brown-500)'">
+                利用規約を確認
+            </a>
+            <a href="/derivative-guidelines/" style="display: block; width: 100%; padding: 0.75rem 1rem; background: var(--steam-iron-700); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-600); border-radius: 9999px; text-align: center; text-decoration: none; font-weight: 600; font-size: 0.875rem; transition: background 0.2s; margin-top: 0.5rem;" onmouseover="this.style.background='var(--steam-iron-600)'" onmouseout="this.style.background='var(--steam-iron-700)'">
+                二次創作ガイドライン
+            </a>
+            <p style="font-size: 0.75rem; color: var(--steam-iron-300); margin-top: 0.5rem; text-align: center;">
+                ゲームの利用前に、必ず利用規約をご確認ください。
+            </p>
+        </section>
+        
         <!-- タイムライン -->
         <section class="me-section">
             <h2>タイムライン</h2>
@@ -310,14 +324,14 @@
         <!-- お知らせ表示エリア -->
         <div style="margin-bottom: 1.5rem;">
             <h2 style="color: var(--steam-gold-300); font-weight: 600; margin-bottom: 0.75rem; font-size: 1.25rem;">お知らせ</h2>
-            <div id="announcements-container">
-                <!-- お知らせがここに表示されます -->
+            <div id="announcements-container" style="background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); border-radius: 8px; padding: 1rem;">
+                <!-- お知らせがここにリスト形式で表示されます -->
             </div>
         </div>
         
         <div style="margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
             <h2 style="color: var(--steam-gold-300); font-weight: 600;">自分の提出物</h2>
-            <a href="/profile/" style="font-size: 0.75rem; color: var(--steam-gold-400); text-decoration: underline;">プロフィール設定</a>
+            <a href="/profile/" id="profile-entry" style="font-size: 0.75rem; color: var(--steam-gold-400); text-decoration: underline;">プロフィール設定</a>
         </div>
         <div class="submissions-grid" id="submissions-grid">
             <!-- 提出物がここに表示されます -->
@@ -327,7 +341,7 @@
     <!-- 右カラム -->
     <aside>
         <!-- お題をジェネレート -->
-        <section class="me-section">
+        <section class="me-section" id="random-prompt-entry">
             <h2>お題をジェネレート</h2>
             <div id="topic-display" style="color: var(--steam-iron-100); font-size: 0.875rem; margin-bottom: 0.75rem; padding: 0.75rem; background: var(--steam-iron-800); border-radius: 4px; border: 1px solid var(--steam-iron-700); display: none;">
                 <div id="topic-content" style="line-height: 1.6;"></div>
@@ -343,7 +357,7 @@
             <h2>本日の課題提出</h2>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <input id="upload-input" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/ogg" style="display: none;">
-                <div id="upload-area" class="upload-area" onclick="document.getElementById('upload-input').click()">
+                <div id="media-upload-entry" class="upload-area" onclick="document.getElementById('upload-input').click()">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--steam-gold-400); margin-bottom: 0.5rem;">
                         <path d="M12 16V4" />
                         <path d="M8 8l4-4 4 4" />
@@ -363,7 +377,7 @@
             <h2>ゲームをアップロード（ZIP）</h2>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <input id="upload-game-input" type="file" accept=".zip,application/zip" style="display: none;">
-                <div id="upload-game-area" class="upload-area" onclick="document.getElementById('upload-game-input').click()" style="border-color: #a855f7; cursor: pointer;">
+                <div id="game-upload-entry" class="upload-area" onclick="document.getElementById('upload-game-input').click()" style="border-color: #a855f7; cursor: pointer;">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: #a855f7; margin-bottom: 0.5rem;">
                         <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
@@ -402,6 +416,9 @@
     </div>
 </div>
 
+<!-- Toast通知 -->
+<div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;"></div>
+
 <!-- 投稿情報入力モーダル -->
 <div id="submit-modal" class="upload-overlay" style="background: rgba(0, 0, 0, 0.6); z-index: 2001; display: none;" onclick="closeSubmitModal()">
     <div style="border-radius: 8px; border: 1px solid var(--steam-iron-700); background: var(--steam-iron-800); color: var(--steam-gold-200); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3); padding: 1.5rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
@@ -431,6 +448,24 @@
                 <label style="display: block; font-size: 0.875rem; color: var(--steam-gold-300); margin-bottom: 0.25rem;">キャプション（140文字まで）</label>
                 <textarea id="submit-caption" maxlength="140" placeholder="キャプションを入力（任意）" rows="4" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--steam-iron-700); background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem; resize: vertical;"></textarea>
                 <div style="font-size: 0.75rem; color: var(--steam-iron-400); margin-top: 0.25rem;"><span id="submit-caption-count">0</span>/140</div>
+            </div>
+            
+            <!-- サムネイルアップロード（ゲームの場合のみ表示） -->
+            <div id="submit-thumbnail-section" style="display: none;">
+                <label style="display: block; font-size: 0.875rem; color: var(--steam-gold-300); margin-bottom: 0.25rem;">サムネイル画像 <span style="color: var(--steam-iron-400); font-weight: normal;">（任意）</span></label>
+                <input type="file" id="submit-thumbnail-input" accept="image/jpeg,image/jpg,image/png,image/webp" style="display: none;" onchange="handleThumbnailSelect(event)">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button type="button" onclick="document.getElementById('submit-thumbnail-input').click()" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-iron-700); color: var(--steam-iron-100); border: 1px solid var(--steam-iron-600); cursor: pointer; font-size: 0.875rem;">
+                        画像を選択
+                    </button>
+                    <button type="button" id="submit-thumbnail-remove-btn" onclick="removeThumbnail()" style="display: none; padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-iron-800); color: var(--steam-iron-300); border: 1px solid var(--steam-iron-700); cursor: pointer; font-size: 0.875rem;">
+                        削除
+                    </button>
+                </div>
+                <div id="submit-thumbnail-preview" style="margin-top: 0.5rem; display: none;">
+                    <img id="submit-thumbnail-preview-img" src="" alt="サムネイルプレビュー" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid var(--steam-iron-700); object-fit: contain;">
+                </div>
+                <p style="font-size: 0.75rem; color: var(--steam-iron-400); margin-top: 0.25rem;">提出物一覧やみんなの投稿に表示されるサムネイル画像を設定できます（JPEG/PNG/WebP）</p>
             </div>
             
             <div>
@@ -495,6 +530,78 @@
 <script>
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     const token = getAccessToken();
+    
+    // Toast通知機能
+    function showToast(type, message) {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            // コンテナが存在しない場合は作成
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;';
+            document.body.appendChild(container);
+        }
+        
+        const toast = document.createElement('div');
+        const bgColor = type === 'success' ? 'var(--steam-brown-500)' : 
+                       type === 'error' ? '#dc2626' : 
+                       'var(--steam-iron-700)';
+        const textColor = 'white';
+        
+        toast.style.cssText = `
+            background: ${bgColor};
+            color: ${textColor};
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            font-size: 0.875rem;
+            max-width: 300px;
+            pointer-events: auto;
+            animation: toastSlideIn 0.3s ease-out;
+        `;
+        toast.textContent = message;
+        
+        container.appendChild(toast);
+        
+        // 3秒後に自動削除
+        setTimeout(() => {
+            toast.style.animation = 'toastSlideOut 0.3s ease-out';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 3000);
+    }
+    
+    // Toastアニメーション用のCSS（既に存在しない場合のみ追加）
+    if (!document.getElementById('toast-animations')) {
+        const style = document.createElement('style');
+        style.id = 'toast-animations';
+        style.textContent = `
+            @keyframes toastSlideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes toastSlideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
     
     // 認証チェック
     if (!requireAuth()) {
@@ -734,18 +841,32 @@
             }
             
             if (data.announcements && data.announcements.length > 0) {
-                container.innerHTML = data.announcements.map(announcement => {
-                    const date = new Date(announcement.created_at);
-                    const dateStr = date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
-                    return `
-                        <div style="background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;">
-                            <a href="/announcement/${announcement.id}/" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none; color: inherit;">
-                                <h3 style="color: var(--steam-gold-300); font-size: 1rem; font-weight: 600; margin: 0; text-decoration: underline;">${announcement.title}</h3>
-                                <span style="font-size: 0.75rem; color: var(--steam-iron-300);">${dateStr}</span>
-                            </a>
-                        </div>
-                    `;
-                }).join('');
+                // 現在の日時を取得
+                const now = new Date();
+                const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+                
+                // リスト形式で表示
+                container.innerHTML = `
+                    <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                        ${data.announcements.map(announcement => {
+                            const date = new Date(announcement.created_at);
+                            const dateStr = date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+                            const isNew = date >= threeDaysAgo;
+                            
+                            return `
+                                <li style="border-bottom: 1px solid var(--steam-iron-700); padding-bottom: 0.5rem;">
+                                    <a href="/announcement/${announcement.id}/" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none; color: inherit; padding: 0.5rem 0;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                                            ${isNew ? '<span style="background: #dc2626; color: white; font-size: 0.625rem; font-weight: 600; padding: 0.125rem 0.375rem; border-radius: 4px; letter-spacing: 0.05em;">NEW</span>' : ''}
+                                            <h3 style="color: var(--steam-gold-300); font-size: 0.875rem; font-weight: 600; margin: 0; text-decoration: underline;">${announcement.title}</h3>
+                                        </div>
+                                        <span style="font-size: 0.75rem; color: var(--steam-iron-300); white-space: nowrap; margin-left: 0.75rem;">${dateStr}</span>
+                                    </a>
+                                </li>
+                            `;
+                        }).join('')}
+                    </ul>
+                `;
             } else {
                 container.innerHTML = '<div style="color: var(--steam-iron-300); font-size: 0.875rem; padding: 1rem; text-align: center;">お知らせはありません</div>';
             }
@@ -754,7 +875,7 @@
             console.error('Failed to load announcements:', err);
             const container = document.getElementById('announcements-container');
             if (container) {
-                container.innerHTML = '';
+                container.innerHTML = '<div style="color: var(--steam-iron-300); font-size: 0.875rem; padding: 1rem; text-align: center;">お知らせの読み込みに失敗しました</div>';
             }
         });
     }
@@ -766,7 +887,12 @@
                 'Authorization': `Bearer ${token}`,
             }
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            return res.json();
+        })
         .then(metaData => {
             if (!metaData.display_id) {
                 document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物がありません</div>';
@@ -781,12 +907,20 @@
             });
         })
         .then(res => {
-            if (!res) return;
+            if (!res) return null;
+            if (!res.ok) {
+                console.error('Failed to load submissions:', res.status, res.statusText);
+                throw new Error(`HTTP ${res.status}`);
+            }
             return res.json();
         })
         .then(data => {
             if (!data) return;
             const grid = document.getElementById('submissions-grid');
+            if (!grid) {
+                console.error('submissions-grid element not found');
+                return;
+            }
             if (data.items && data.items.length > 0) {
                 // ゲーム名を取得する関数
                 function getGameName(item) {
@@ -824,7 +958,12 @@
                         assetType = 'game';
                         assetUrl = item.gameUrl || '';
                         onClickHandler = `onclick="openLightbox('${assetUrl}', 'game', '${item.id}')"`;
-                        content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; user-select: none;" ${onClickHandler}><div style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--steam-iron-200);"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 0.25rem;"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/></svg><div style="font-size: 0.75rem; letter-spacing: 0.1em; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 0.25rem;">${gameName}</div></div></div>`;
+                        // サムネイル画像があれば表示、なければアイコンを表示
+                        if (imageUrl) {
+                            content = `<img src="${imageUrl}" alt="ゲームサムネイル" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" ${onClickHandler}>`;
+                        } else {
+                            content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; user-select: none;" ${onClickHandler}><div style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--steam-iron-200);"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 0.25rem;"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/></svg><div style="font-size: 0.75rem; letter-spacing: 0.1em; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 0.25rem;">${gameName}</div></div></div>`;
+                        }
                     } else if (isVideo) {
                         assetUrl = item.videoUrl || '';
                         assetType = 'video';
@@ -1060,7 +1199,7 @@
     
     function setupUpload() {
         const uploadInput = document.getElementById('upload-input');
-        const uploadArea = document.getElementById('upload-area');
+        const uploadArea = document.getElementById('media-upload-entry');
         let isDragging = false;
         
         uploadArea.addEventListener('dragover', function(e) {
@@ -1197,7 +1336,7 @@
     
     function setupGameUpload() {
         const uploadGameInput = document.getElementById('upload-game-input');
-        const uploadGameArea = document.getElementById('upload-game-area');
+        const uploadGameArea = document.getElementById('game-upload-entry');
         
         if (!uploadGameInput || !uploadGameArea) return;
         
@@ -1254,13 +1393,14 @@
             }
             
             // 2. ファイルアップロード成功後、投稿情報入力モーダルを表示
-            pendingUploadData = {
-                gameUrl: gameUrl,
-                isGame: true
-            };
             document.getElementById('upload-overlay').classList.remove('show');
             document.getElementById('upload-status').style.display = 'none';
-            showSubmitModal(); // Show the new modal
+            
+            // モーダルを表示（isGameとgameUrlを設定）
+            showSubmitModal({
+                gameUrl: gameUrl,
+                isGame: true
+            });
             showToast('success', 'アップロードが完了しました。投稿情報を入力してください。');
         } catch (err) {
             document.getElementById('upload-overlay').classList.remove('show');
@@ -1351,14 +1491,8 @@
                 // image_urlが設定されている場合
                 imageUrl = card.image_url.startsWith('http') ? card.image_url : card.image_url;
             } else {
-                // image_urlがない場合はデフォルトパスを使用
+                // image_urlがない場合はデフォルトパスを使用（card_idをそのまま使用）
                 imageUrl = `/uploads/cards/${card.card_id || 'C001'}.png`;
-            }
-            
-            // Effectカードの画像が存在しない場合はCharacterカードのデフォルト画像を使用
-            if (card.card_id && card.card_id.startsWith('E')) {
-                // Effectカードの場合は、Characterカードのデフォルト画像を試す
-                imageUrl = `/uploads/cards/C001.png`; // プレースホルダー
             }
             
             document.getElementById('card-image').src = imageUrl;
@@ -1401,6 +1535,15 @@
         const previewImage = document.getElementById('submit-preview-image');
         const previewVideo = document.getElementById('submit-preview-video');
         
+        // サムネイルセクションの表示/非表示（ゲームの場合のみ）
+        const thumbnailSection = document.getElementById('submit-thumbnail-section');
+        if (data && data.isGame) {
+            if (thumbnailSection) thumbnailSection.style.display = 'block';
+        } else {
+            if (thumbnailSection) thumbnailSection.style.display = 'none';
+            removeThumbnail(); // サムネイルをクリア
+        }
+        
         // プレビューを設定
         const previewGame = document.getElementById('submit-preview-game');
         if (data && data.isGame) {
@@ -1436,6 +1579,7 @@
         document.getElementById('submit-caption').value = '';
         document.getElementById('submit-title-count').textContent = '0';
         document.getElementById('submit-caption-count').textContent = '0';
+        removeThumbnail(); // サムネイルもリセット
         document.getElementById('submit-hashtags-count').textContent = '0';
         
         // ハッシュタグ入力フィールドをリセット
@@ -1458,6 +1602,58 @@
         const modal = document.getElementById('submit-modal');
         modal.style.display = 'none';
         pendingUploadData = null;
+        removeThumbnail(); // サムネイルをクリア
+        
+        // ボタンの状態をリセット（念のため）
+        const submitBtn = document.getElementById('submit-post-btn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '投稿する';
+        }
+    }
+    
+    // サムネイル関連の関数
+    function handleThumbnailSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // ファイルタイプの検証
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('サムネイルは画像ファイル（JPEG/PNG/WebP）である必要があります。');
+            event.target.value = '';
+            return;
+        }
+        
+        // ファイルサイズの検証（5MBまで）
+        if (file.size > 5 * 1024 * 1024) {
+            alert('サムネイル画像のサイズは5MB以下である必要があります。');
+            event.target.value = '';
+            return;
+        }
+        
+        // プレビューを表示
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('submit-thumbnail-preview');
+            const previewImg = document.getElementById('submit-thumbnail-preview-img');
+            const removeBtn = document.getElementById('submit-thumbnail-remove-btn');
+            
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+            removeBtn.style.display = 'inline-block';
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    function removeThumbnail() {
+        const input = document.getElementById('submit-thumbnail-input');
+        const preview = document.getElementById('submit-thumbnail-preview');
+        const removeBtn = document.getElementById('submit-thumbnail-remove-btn');
+        
+        if (input) input.value = '';
+        if (preview) preview.style.display = 'none';
+        if (removeBtn) removeBtn.style.display = 'none';
     }
     
     function addHashtagInput() {
@@ -1473,7 +1669,22 @@
         input.maxLength = 50;
         input.placeholder = `ハッシュタグ ${hashtagCount + 1}（任意）`;
         input.style.cssText = 'width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--steam-iron-700); background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem;';
-        input.addEventListener('input', updateHashtagsCount);
+        
+        // ハッシュタグ入力の検証: #が含まれている場合は警告を表示して入力をクリア
+        input.addEventListener('input', function(e) {
+            const value = e.target.value;
+            // #が含まれているかチェック
+            if (value.includes('#')) {
+                // 警告メッセージを表示
+                showToast('error', '#は不要です。ハッシュタグ名のみを入力してください。');
+                // 入力をクリア
+                e.target.value = value.replace(/#/g, '');
+                // フォーカスを維持して再入力を促す
+                e.target.focus();
+            }
+            updateHashtagsCount();
+        });
+        
         container.appendChild(input);
         
         if (hashtagCount + 1 >= 3) {
@@ -1496,7 +1707,11 @@
     }
     
     async function submitPost() {
-        if (!pendingUploadData) return;
+        if (!pendingUploadData) {
+            console.error('pendingUploadData is null');
+            alert('投稿データが見つかりません。ページをリロードしてください。');
+            return;
+        }
         
         const title = document.getElementById('submit-title').value.trim();
         const caption = document.getElementById('submit-caption').value.trim();
@@ -1505,31 +1720,67 @@
             .map(input => input.value.trim())
             .filter(tag => tag);
         
+        const thumbnailFile = document.getElementById('submit-thumbnail-input')?.files[0];
+        
         const submitBtn = document.getElementById('submit-post-btn');
+        if (!submitBtn) {
+            console.error('submit-post-btn not found');
+            return;
+        }
+        
         submitBtn.disabled = true;
         submitBtn.textContent = '投稿中…';
         
         try {
-        const payload = {
-            aim: pendingUploadData.isGame ? 'ゲーム提出' : (pendingUploadData.isVideo ? '動画提出' : '画像提出'),
-            steps: ['準備', '実行', '完了'],
-            frameType: 'none',
-            ...(pendingUploadData.imageUrl ? { imageUrl: pendingUploadData.imageUrl } : {}),
-            ...(pendingUploadData.videoUrl ? { videoUrl: pendingUploadData.videoUrl } : {}),
-            ...(pendingUploadData.gameUrl ? { gameUrl: pendingUploadData.gameUrl } : {}),
-            ...(title ? { title: title } : {}),
-            ...(caption ? { caption: caption } : {}),
-            ...(hashtags.length > 0 ? { hashtags: hashtags } : {})
-        };
+            // サムネイルファイルがある場合はFormDataを使用、ない場合はJSON
+            const hasThumbnail = pendingUploadData.isGame && thumbnailFile;
             
-            const submitRes = await fetch('/api/submit/', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+            let submitRes;
+            if (hasThumbnail) {
+                // FormDataで送信（サムネイルファイルを含む）
+                const formData = new FormData();
+                formData.append('aim', pendingUploadData.isGame ? 'ゲーム提出' : (pendingUploadData.isVideo ? '動画提出' : '画像提出'));
+                formData.append('steps', JSON.stringify(['準備', '実行', '完了']));
+                formData.append('frameType', 'none');
+                if (pendingUploadData.imageUrl) formData.append('imageUrl', pendingUploadData.imageUrl);
+                if (pendingUploadData.videoUrl) formData.append('videoUrl', pendingUploadData.videoUrl);
+                if (pendingUploadData.gameUrl) formData.append('gameUrl', pendingUploadData.gameUrl);
+                if (title) formData.append('title', title);
+                if (caption) formData.append('caption', caption);
+                if (hashtags.length > 0) formData.append('hashtags', JSON.stringify(hashtags));
+                formData.append('thumbnail', thumbnailFile);
+                
+                submitRes = await fetch('/api/submit/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                        // FormDataの場合はContent-Typeを設定しない（ブラウザが自動設定）
+                    },
+                    body: formData
+                });
+            } else {
+                // JSONで送信（従来通り）
+                const payload = {
+                    aim: pendingUploadData.isGame ? 'ゲーム提出' : (pendingUploadData.isVideo ? '動画提出' : '画像提出'),
+                    steps: ['準備', '実行', '完了'],
+                    frameType: 'none',
+                    ...(pendingUploadData.imageUrl ? { imageUrl: pendingUploadData.imageUrl } : {}),
+                    ...(pendingUploadData.videoUrl ? { videoUrl: pendingUploadData.videoUrl } : {}),
+                    ...(pendingUploadData.gameUrl ? { gameUrl: pendingUploadData.gameUrl } : {}),
+                    ...(title ? { title: title } : {}),
+                    ...(caption ? { caption: caption } : {}),
+                    ...(hashtags.length > 0 ? { hashtags: hashtags } : {})
+                };
+                
+                submitRes = await fetch('/api/submit/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+            }
             
             if (!submitRes.ok) {
                 let errorMsg = '提出に失敗しました';
@@ -1542,6 +1793,10 @@
             
             const submitData = await submitRes.json();
             
+            // ボタンの状態をリセット（成功時）
+            submitBtn.disabled = false;
+            submitBtn.textContent = '投稿する';
+            
             // モーダルを閉じる
             closeSubmitModal();
             
@@ -1550,15 +1805,19 @@
                 showRewardFlow(submitData);
             } else {
                 // 報酬がない場合も提出物をリロード
-                loadSubmissions();
-                loadProfile();
-                loadSubmitters();
-                loadRanking();
+                // 少し待ってからリロード（サーバー側の処理が完了するのを待つ）
+                setTimeout(() => {
+                    loadSubmissions();
+                    loadProfile();
+                    loadSubmitters();
+                    loadRanking();
+                }, 500);
             }
         } catch (err) {
-            alert(err.message || '投稿に失敗しました');
+            // エラー時もボタンの状態をリセット
             submitBtn.disabled = false;
             submitBtn.textContent = '投稿する';
+            alert(err.message || '投稿に失敗しました');
             console.error('Submit error:', err);
         }
     }
@@ -1568,10 +1827,13 @@
         overlay.style.display = 'none';
         
         // 最新のデータを再読み込み（ページリロードではなく）
-        loadProfile();
-        loadSubmissions();
-        loadSubmitters();
-        loadRanking();
+        // 少し待ってからリロード（サーバー側の処理が完了するのを待つ）
+        setTimeout(() => {
+            loadProfile();
+            loadSubmissions();
+            loadSubmitters();
+            loadRanking();
+        }, 500);
     }
     
     // ライトボックス機能
@@ -1629,6 +1891,25 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    
+                    // ゲーム投稿の場合、サムネイルを表示
+                    if (type === 'game') {
+                        const thumbnailImg = document.getElementById('lightbox-game-thumbnail');
+                        const gameIcon = document.getElementById('lightbox-game-icon');
+                        const displayImageUrl = data.display_image_url || data.thumbnail_url || (data.thumbnail ? data.thumbnail : null);
+                        
+                        if (thumbnailImg && gameIcon) {
+                            if (displayImageUrl) {
+                                thumbnailImg.src = displayImageUrl;
+                                thumbnailImg.style.display = 'block';
+                                gameIcon.style.display = 'none';
+                            } else {
+                                thumbnailImg.style.display = 'none';
+                                gameIcon.style.display = 'flex';
+                            }
+                        }
+                    }
+                    
                     // タイトルを表示
                     if (data.title) {
                         lightboxTitle.textContent = data.title;
@@ -1767,11 +2048,14 @@
             <img id="lightbox-image" src="" alt="" style="display: none; max-width: 90vw; width: auto; height: auto; object-fit: contain; border-radius: 8px;">
             <video id="lightbox-video" controls style="display: none; max-width: 90vw; width: auto; height: auto; background: black; border-radius: 8px;"></video>
             <div id="lightbox-game" style="display: none; max-width: 90vw; width: auto; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 1rem;">
-                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
-                </svg>
-                <div id="lightbox-game-label" style="font-size: 1.25rem; letter-spacing: 0.1em; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem;">GAME</div>
+                <img id="lightbox-game-thumbnail" src="" alt="ゲームサムネイル" style="display: none; max-width: 100%; max-height: 60vh; width: auto; height: auto; object-fit: contain; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--steam-iron-700);">
+                <div id="lightbox-game-icon" style="display: flex; flex-direction: column; align-items: center;">
+                    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 1rem;">
+                        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                    </svg>
+                    <div id="lightbox-game-label" style="font-size: 1.25rem; letter-spacing: 0.1em; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem;">GAME</div>
+                </div>
                 <a id="lightbox-game-link" href="" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: var(--steam-gold-500); color: black; font-size: 0.875rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-gold-400)'" onmouseout="this.style.background='var(--steam-gold-500)'">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>

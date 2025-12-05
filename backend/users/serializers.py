@@ -108,7 +108,7 @@ class UserMetaSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserMeta
-        fields = ['display_id', 'display_name', 'avatar_url', 'active_title', 'title_color', 'expires_at', 'bio', 'header_url', 'lottery_bonus_count']
+        fields = ['display_id', 'display_name', 'avatar_url', 'active_title', 'title_color', 'expires_at', 'bio', 'header_url', 'lottery_bonus_count', 'onboarding_completed']
         read_only_fields = ['display_id', 'avatar_url', 'lottery_bonus_count']
 
 

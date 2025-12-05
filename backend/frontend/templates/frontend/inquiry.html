@@ -1,0 +1,440 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}お問い合わせ・通報 - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .inquiry-container {
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .inquiry-header {
+        margin-bottom: 2rem;
+    }
+    
+    .inquiry-header h1 {
+        color: var(--steam-gold-300);
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .inquiry-header p {
+        color: var(--steam-iron-200);
+        font-size: 0.875rem;
+    }
+    
+    .inquiry-notice {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        font-size: 0.875rem;
+        color: var(--steam-iron-200);
+    }
+    
+    .inquiry-notice h3 {
+        color: var(--steam-gold-300);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.9375rem;
+    }
+    
+    .inquiry-notice ul {
+        margin-left: 1.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .inquiry-notice li {
+        margin-bottom: 0.25rem;
+    }
+    
+    .inquiry-form {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        color: var(--steam-iron-200);
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-group label .required {
+        color: #ef4444;
+    }
+    
+    .form-group label .optional {
+        color: var(--steam-iron-400);
+        font-weight: normal;
+    }
+    
+    .form-group select,
+    .form-group input[type="text"],
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 4px;
+        background: var(--steam-iron-900);
+        color: var(--steam-iron-100);
+        font-size: 0.875rem;
+        font-family: inherit;
+    }
+    
+    .form-group select:focus,
+    .form-group input[type="text"]:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--steam-gold-400);
+        box-shadow: 0 0 0 3px rgba(245, 213, 101, 0.1);
+    }
+    
+    .form-group textarea {
+        min-height: 160px;
+        resize: vertical;
+    }
+    
+    .form-group .error-message {
+        color: #ef4444;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        display: none;
+    }
+    
+    .form-group.has-error .error-message {
+        display: block;
+    }
+    
+    .form-group.has-error select,
+    .form-group.has-error input[type="text"],
+    .form-group.has-error textarea {
+        border-color: #ef4444;
+    }
+    
+    .form-actions {
+        margin-top: 2rem;
+        text-align: right;
+    }
+    
+    .btn-submit {
+        background: var(--steam-brown-500);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.75rem 2rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .btn-submit:hover:not(:disabled) {
+        background: var(--steam-brown-600);
+    }
+    
+    .btn-submit:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .alert {
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        display: none;
+    }
+    
+    .alert-success {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #86efac;
+    }
+    
+    .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+    }
+    
+    .alert.show {
+        display: block;
+    }
+    
+    .inquiry-footer {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--steam-iron-700);
+        text-align: center;
+    }
+    
+    .inquiry-footer a {
+        color: var(--steam-gold-400);
+        text-decoration: underline;
+    }
+    
+    .inquiry-footer a:hover {
+        color: var(--steam-gold-300);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inquiry-container">
+    <div class="inquiry-header">
+        <h1>お問い合わせ・通報</h1>
+        <p>
+            本ゲームに関する質問や不具合報告、規約違反と思われるコンテンツ・ユーザーを発見した場合、こちらからご連絡ください。
+        </p>
+    </div>
+
+    <div class="alert alert-success" id="success-alert">
+        送信が完了しました。ご連絡ありがとうございました。
+    </div>
+
+    <div class="alert alert-error" id="error-alert">
+        <span id="error-message">送信に失敗しました。時間をおいて再度お試しください。</span>
+    </div>
+
+    <div class="inquiry-notice">
+        <h3>お問い合わせ・通報の際の注意事項</h3>
+        <ul>
+            <li>規約違反の通報の場合は、どの条文に関係しそうかを具体的に記載してください</li>
+            <li>問題が発生したゲーム名やコンテンツの名称がある場合は、可能な範囲で記載してください</li>
+            <li>運営は、すべてのお問い合わせ・通報に個別の回答や対応を約束するものではありません</li>
+        </ul>
+    </div>
+
+    <form id="inquiry-form" class="inquiry-form">
+        <div class="form-group">
+            <label for="inquiry-type">
+                種別 <span class="required">（必須）</span>
+            </label>
+            <select id="inquiry-type" name="type" required>
+                <option value="">選択してください</option>
+                <option value="bug_report">不具合報告</option>
+                <option value="violation_report">規約違反の通報</option>
+                <option value="other">その他お問い合わせ</option>
+            </select>
+            <div class="error-message" id="type-error"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="inquiry-game-title">
+                対象ゲーム名 <span class="optional">（任意）</span>
+            </label>
+            <input type="text" id="inquiry-game-title" name="gameTitle" placeholder="問題が発生したゲーム名を入力してください">
+            <div class="error-message" id="game-title-error"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="inquiry-detail">
+                詳細内容 <span class="required">（必須）</span>
+            </label>
+            <textarea id="inquiry-detail" name="detail" placeholder="規約違反の場合は、どの条文に関係しそうか、具体的な状況や理由を詳しく記載してください。&#10;例：「第3条の1に該当すると思われる性的表現が含まれています」" required></textarea>
+            <div class="error-message" id="detail-error"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="inquiry-contact">
+                任意連絡先 <span class="optional">（任意）</span>
+            </label>
+            <input type="text" id="inquiry-contact" name="contact" placeholder="メールアドレスやDiscord IDなど（空でも送信可能）">
+            <div class="error-message" id="contact-error"></div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-submit" id="submit-btn">送信</button>
+        </div>
+    </form>
+
+    <div class="inquiry-footer">
+        <p style="font-size: 0.875rem; color: var(--steam-iron-300);">
+            利用規約については
+            <a href="/terms/">こちら</a>
+            をご確認ください。
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'frontend/js/auth.js' %}"></script>
+<script>
+(function() {
+    const form = document.getElementById('inquiry-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const successAlert = document.getElementById('success-alert');
+    const errorAlert = document.getElementById('error-alert');
+    const errorMessage = document.getElementById('error-message');
+    
+    // メールアドレス形式チェック（簡易版）
+    function isValidEmail(email) {
+        if (!email.trim()) return true; // 空の場合はOK（任意項目）
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+    
+    // バリデーション
+    function validate() {
+        let isValid = true;
+        const type = document.getElementById('inquiry-type').value;
+        const detail = document.getElementById('inquiry-detail').value.trim();
+        const contact = document.getElementById('inquiry-contact').value.trim();
+        
+        // 種別チェック
+        const typeGroup = document.getElementById('inquiry-type').closest('.form-group');
+        const typeError = document.getElementById('type-error');
+        if (!type) {
+            typeGroup.classList.add('has-error');
+            typeError.textContent = '種別は必須です';
+            isValid = false;
+        } else {
+            typeGroup.classList.remove('has-error');
+            typeError.textContent = '';
+        }
+        
+        // 詳細内容チェック
+        const detailGroup = document.getElementById('inquiry-detail').closest('.form-group');
+        const detailError = document.getElementById('detail-error');
+        if (!detail) {
+            detailGroup.classList.add('has-error');
+            detailError.textContent = '詳細内容は必須です';
+            isValid = false;
+        } else if (detail.length < 10) {
+            detailGroup.classList.add('has-error');
+            detailError.textContent = '詳細内容は10文字以上で入力してください';
+            isValid = false;
+        } else {
+            detailGroup.classList.remove('has-error');
+            detailError.textContent = '';
+        }
+        
+        // 連絡先チェック（メールアドレス形式）
+        const contactGroup = document.getElementById('inquiry-contact').closest('.form-group');
+        const contactError = document.getElementById('contact-error');
+        if (contact && !isValidEmail(contact)) {
+            contactGroup.classList.add('has-error');
+            contactError.textContent = 'メールアドレスの形式が正しくありません';
+            isValid = false;
+        } else {
+            contactGroup.classList.remove('has-error');
+            contactError.textContent = '';
+        }
+        
+        return isValid;
+    }
+    
+    // フォーム送信
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (!validate()) {
+            return;
+        }
+        
+        const formData = {
+            type: document.getElementById('inquiry-type').value,
+            gameTitle: document.getElementById('inquiry-game-title').value.trim() || undefined,
+            detail: document.getElementById('inquiry-detail').value.trim(),
+            contact: document.getElementById('inquiry-contact').value.trim() || undefined,
+        };
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = '送信中…';
+        successAlert.classList.remove('show');
+        errorAlert.classList.remove('show');
+        
+        try {
+            const token = getAccessToken();
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch('/api/inquiry/', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(formData),
+                credentials: 'include',
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || data.detail || '送信に失敗しました');
+            }
+            
+            // 成功
+            successAlert.classList.add('show');
+            form.reset();
+            
+            // アラートをスクロールして表示
+            successAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+        } catch (error) {
+            errorMessage.textContent = error.message || '送信に失敗しました。時間をおいて再度お試しください。';
+            errorAlert.classList.add('show');
+            
+            // エラーアラートをスクロールして表示
+            errorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '送信';
+        }
+    });
+    
+    // リアルタイムバリデーション
+    document.getElementById('inquiry-type').addEventListener('change', validate);
+    document.getElementById('inquiry-detail').addEventListener('input', function() {
+        const detailGroup = this.closest('.form-group');
+        const detailError = document.getElementById('detail-error');
+        const detail = this.value.trim();
+        
+        if (detail && detail.length >= 10) {
+            detailGroup.classList.remove('has-error');
+            detailError.textContent = '';
+        }
+    });
+    document.getElementById('inquiry-contact').addEventListener('input', function() {
+        const contactGroup = this.closest('.form-group');
+        const contactError = document.getElementById('contact-error');
+        const contact = this.value.trim();
+        
+        if (!contact || isValidEmail(contact)) {
+            contactGroup.classList.remove('has-error');
+            contactError.textContent = '';
+        }
+    });
+    
+    // プレースホルダーの動的変更
+    document.getElementById('inquiry-type').addEventListener('change', function() {
+        const detailTextarea = document.getElementById('inquiry-detail');
+        if (this.value === 'violation_report') {
+            detailTextarea.placeholder = 'どの条文に関係しそうか、具体的な状況や理由を詳しく記載してください。\n例：「第3条の1に該当すると思われる性的表現が含まれています」';
+        } else {
+            detailTextarea.placeholder = 'お問い合わせ内容を詳しく記載してください。';
+        }
+    });
+})();
+</script>
+{% endblock %}
+
+
+
+

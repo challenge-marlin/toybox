@@ -161,7 +161,7 @@ DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
 
 # Email (SMTP)
-EMAIL_HOST=mail1006.conoha.ne.jp
+EMAIL_HOST=CONOHAのSMTP
 EMAIL_PORT=587
 EMAIL_USE_TLS=true
 EMAIL_HOST_USER=your-email@ayatori-inc.co.jp

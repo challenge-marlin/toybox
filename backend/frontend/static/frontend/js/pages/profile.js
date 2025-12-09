@@ -45,8 +45,16 @@
             
             // アバター画像
             const avatarPreview = document.getElementById('avatar-preview');
-            if (avatarPreview && data.avatar_url) {
-                avatarPreview.innerHTML = `<img src="${data.avatar_url}" alt="avatar">`;
+            if (avatarPreview) {
+                if (data.avatar_url) {
+                    const displayName = data.display_name || data.display_id || 'U';
+                    const firstChar = displayName.charAt(0).toUpperCase();
+                    avatarPreview.innerHTML = `<img src="${data.avatar_url}" alt="avatar" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;\\'>${firstChar}</span>';">`;
+                } else {
+                    const displayName = data.display_name || data.display_id || 'U';
+                    const firstChar = displayName.charAt(0).toUpperCase();
+                    avatarPreview.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;">${firstChar}</span>`;
+                }
             }
         } catch (error) {
             console.error('Failed to load profile:', error);
@@ -222,4 +230,6 @@
     window.handleAvatarChange = handleAvatarChange;
     window.saveProfile = saveProfile;
 })();
+
+
 

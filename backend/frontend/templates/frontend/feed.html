@@ -513,7 +513,7 @@
                 </div>
             `;
         } else {
-            content = `<img src="${item.imageUrl || item.displayImageUrl || ''}" alt="submission" class="feed-item-image" onclick="openLightbox('${item.imageUrl || item.displayImageUrl || ''}', 'image', '${item.id}')">`;
+            content = `<img src="${item.imageUrl || item.displayImageUrl || ''}" alt="投稿画像" class="feed-item-image" onclick="openLightbox('${item.imageUrl || item.displayImageUrl || ''}', 'image', '${item.id}')" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; color: var(--steam-iron-300); font-size: 0.875rem;\\'>画像を読み込めませんでした</div>';">`;
         }
         
         return `
@@ -807,7 +807,8 @@
                     console.log('Discord message ID:', data.discordMessageId);
                 }
             } else {
-                const errorMsg = data.error || 'Discordへのシェアに失敗しました';
+                const errorMsg = data.message || data.error || 'Discordへのシェアに失敗しました';
+                
                 if (errorMsg.includes('25MB') || errorMsg.includes('20MB')) {
                     alert('ファイルサイズが大きすぎます（25MB以下）');
                 } else {

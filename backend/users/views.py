@@ -4,6 +4,7 @@ Users app views for DRF.
 import json
 import random
 import os
+import logging
 from pathlib import Path
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
@@ -19,6 +20,18 @@ from django.conf import settings
 from .serializers import UserMetaSerializer, CustomTokenObtainPairSerializer, RegisterSerializer, UserSerializer
 from .models import UserMeta, UserCard, UserRegistration
 from django.contrib.auth import get_user_model
+from .discord_oauth import (
+    get_discord_oauth_url,
+    exchange_discord_code,
+    get_discord_user_info,
+    get_discord_guild_member,
+    get_valid_discord_access_token,
+)
+from django.shortcuts import redirect
+from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -200,16 +213,24 @@ class ProfileUploadView(APIView):
         filename = f'{upload_type}_{request.user.id}_{uuid.uuid4().hex[:8]}{file_ext}'
         filepath = default_storage.save(f'profiles/{filename}', file)
         
-        # Get absolute URL
-        file_url = default_storage.url(filepath)
-        # Build absolute URL if needed
-        if not file_url.startswith('http'):
-            from django.http import HttpRequest
-            if hasattr(request, 'build_absolute_uri'):
-                file_url = request.build_absolute_uri(file_url)
-            else:
-                # Fallback: construct URL manually
-                file_url = f"{request.scheme}://{request.get_host()}{file_url}"
+        # Verify file was saved
+        full_path = default_storage.path(filepath)
+        if not os.path.exists(full_path):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'File was not saved correctly: {full_path}')
+            return Response({'error': 'ファイルの保存に失敗しました'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Build URL using MEDIA_URL setting to ensure consistency
+        # Use /uploads/profiles/ path directly
+        relative_url = f'/uploads/profiles/{filename}'
+        
+        # Build absolute URL
+        if hasattr(request, 'build_absolute_uri'):
+            file_url = request.build_absolute_uri(relative_url)
+        else:
+            # Fallback: construct URL manually
+            file_url = f"{request.scheme}://{request.get_host()}{relative_url}"
         
         # Update user or meta
         if upload_type == 'avatar':
@@ -259,6 +280,78 @@ class ProfileGetView(APIView):
         # Get display_name from display_name field, fallback to bio, then display_id
         display_name = meta.display_name or meta.bio or user.display_id
         
+        # アバターURLの存在確認
+        avatar_url = user.avatar_url
+        if avatar_url:
+            try:
+                # URLからファイルパスを抽出
+                if avatar_url.startswith('http'):
+                    # 絶対URLの場合、パス部分を抽出
+                    from urllib.parse import urlparse
+                    parsed = urlparse(avatar_url)
+                    file_path = parsed.path
+                else:
+                    # 相対パスの場合
+                    file_path = avatar_url
+                
+                # /uploads/profiles/ から始まる場合、ファイルの存在確認
+                if file_path.startswith('/uploads/profiles/'):
+                    filename = file_path.replace('/uploads/profiles/', '')
+                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
+                    if not full_path.exists():
+                        # ファイルが存在しない場合はNoneを返す
+                        avatar_url = None
+                        # データベースも更新（オプション）
+                        user.avatar_url = None
+                        user.save(update_fields=['avatar_url'])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to verify avatar URL for user {user.id}: {e}')
+        
+        # ヘッダーURLの存在確認
+        header_url = meta.header_url
+        if header_url:
+            try:
+                # URLからファイルパスを抽出
+                if header_url.startswith('http'):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(header_url)
+                    file_path = parsed.path
+                else:
+                    file_path = header_url
+                
+                # /uploads/profiles/ から始まる場合、ファイルの存在確認
+                if file_path.startswith('/uploads/profiles/'):
+                    filename = file_path.replace('/uploads/profiles/', '')
+                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
+                    if not full_path.exists():
+                        # ファイルが存在しない場合はNoneを返す
+                        header_url = None
+                        # データベースも更新（オプション）
+                        meta.header_url = None
+                        meta.save(update_fields=['header_url'])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to verify header URL for user {user.id}: {e}')
+        
+        # 称号のバナー画像URLを取得
+        active_title_image_url = None
+        if active_title:
+            try:
+                from gamification.models import Title
+                title_obj = Title.objects.filter(name=active_title).first()
+                if title_obj:
+                    if title_obj.image:
+                        active_title_image_url = request.build_absolute_uri(title_obj.image.url)
+                    elif title_obj.image_url:
+                        active_title_image_url = title_obj.image_url
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to get title image for {active_title}: {e}')
+        
         # 獲得したいいねの合計を計算
         from submissions.models import Reaction
         total_likes = Reaction.objects.filter(
@@ -270,10 +363,11 @@ class ProfileGetView(APIView):
         return Response({
             'anonId': user.display_id,
             'displayName': display_name,
-            'avatarUrl': user.avatar_url,
-            'headerUrl': meta.header_url,
+            'avatarUrl': avatar_url,
+            'headerUrl': header_url,
             'bio': meta.bio,
             'activeTitle': active_title,
+            'activeTitleImageUrl': active_title_image_url,
             'activeTitleUntil': active_title_until.isoformat() if active_title_until else None,
             'updatedAt': meta.updated_at.isoformat() if meta.updated_at else None,
             'totalLikes': total_likes
@@ -460,3 +554,187 @@ class TopicGenerateView(APIView):
                 'title': selected_idea.get('title', ''),
                 'shortIdea': selected_idea.get('shortIdea', ''),
             })
+
+
+class DiscordOAuthLoginView(APIView):
+    """Discord OAuth2 login initiation."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Redirect to Discord OAuth2 authorization page."""
+        try:
+            # Store user ID in session for callback to retrieve
+            request.session['discord_oauth_user_id'] = request.user.id
+            request.session.modified = True
+            logger.info(f'DiscordOAuthLoginView: Stored user {request.user.id} in session, session_key={request.session.session_key}')
+            
+            # Also include user ID in state parameter as backup
+            import base64
+            import json
+            state_data = {'user_id': request.user.id}
+            state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
+            
+            oauth_url = get_discord_oauth_url(request=request, state=state)
+            logger.info(f'DiscordOAuthLoginView: Generated OAuth URL with state parameter')
+            return redirect(oauth_url)
+        except ValueError as e:
+            logger.error(f'Discord OAuth URL generation failed: {str(e)}')
+            return Response({
+                'ok': False,
+                'error': 'Discord認証が設定されていません。管理者にお問い合わせください。'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class DiscordOAuthCallbackView(APIView):
+    """Discord OAuth2 callback handler."""
+    permission_classes = [AllowAny]  # Allow unauthenticated for callback
+    
+    def get(self, request):
+        """Handle Discord OAuth2 callback."""
+        logger.info(f'DiscordOAuthCallbackView: Callback received - code={bool(request.GET.get("code"))}, error={request.GET.get("error")}, state={request.GET.get("state")}, session_keys={list(request.session.keys())}')
+        
+        code = request.GET.get('code')
+        error = request.GET.get('error')
+        state = request.GET.get('state')
+        
+        if error:
+            logger.error(f'Discord OAuth error: {error}')
+            return redirect('/me/?discord_auth_error=1')
+        
+        if not code:
+            logger.error('Discord OAuth callback missing code')
+            return redirect('/me/?discord_auth_error=1')
+        
+        try:
+            # Exchange code for tokens
+            token_data = exchange_discord_code(code, request=request)
+            access_token = token_data['access_token']
+            refresh_token = token_data.get('refresh_token')
+            expires_in = token_data.get('expires_in', 3600)
+            
+            # Get user info
+            user_info = get_discord_user_info(access_token)
+            discord_user_id = user_info['id']
+            discord_username = f"{user_info.get('username', '')}#{user_info.get('discriminator', '0000')}"
+            
+            # Check if user is authenticated (via session or token)
+            user = request.user if request.user.is_authenticated else None
+            logger.info(f'DiscordOAuthCallbackView: request.user.is_authenticated={request.user.is_authenticated}, user={user.id if user else None}')
+            
+            # Try to get user ID from state parameter
+            user_id = None
+            if state:
+                try:
+                    import base64
+                    import json
+                    state_data = json.loads(base64.urlsafe_b64decode(state.encode()).decode())
+                    user_id = state_data.get('user_id')
+                    logger.info(f'DiscordOAuthCallbackView: Extracted user_id={user_id} from state parameter')
+                except Exception as e:
+                    logger.warning(f'DiscordOAuthCallbackView: Failed to decode state parameter: {str(e)}')
+            
+            # If not authenticated via request.user, try to get from session
+            if not user:
+                if not user_id:
+                    user_id = request.session.get('discord_oauth_user_id')
+                    logger.info(f'DiscordOAuthCallbackView: Checking session for user_id, found={user_id}')
+                
+                if user_id:
+                    try:
+                        user = User.objects.get(id=user_id)
+                        logger.info(f'DiscordOAuthCallbackView: Retrieved user {user.id} from session/state')
+                    except User.DoesNotExist:
+                        logger.warning(f'DiscordOAuthCallbackView: User {user_id} does not exist')
+                        user = None
+            
+            if not user:
+                # Store tokens in session for later association
+                request.session['discord_access_token'] = access_token
+                request.session['discord_refresh_token'] = refresh_token
+                request.session['discord_user_id'] = discord_user_id
+                request.session['discord_username'] = discord_username
+                request.session['discord_expires_in'] = expires_in
+                logger.warning('DiscordOAuthCallbackView: No authenticated user found, storing tokens in session')
+                return redirect('/login/?discord_connected=1')
+            
+            # Associate Discord account with authenticated user
+            meta, created = UserMeta.objects.get_or_create(user=user)
+            meta.discord_access_token = access_token
+            if refresh_token:
+                meta.discord_refresh_token = refresh_token
+            meta.discord_token_expires_at = timezone.now() + timedelta(seconds=expires_in)
+            meta.discord_user_id = discord_user_id
+            meta.discord_username = discord_username
+            meta.save(update_fields=[
+                'discord_access_token',
+                'discord_refresh_token',
+                'discord_token_expires_at',
+                'discord_user_id',
+                'discord_username',
+            ])
+            
+            # Verify token was saved
+            meta.refresh_from_db()
+            logger.info(f'DiscordOAuthCallbackView: After save - has_access_token={bool(meta.discord_access_token)}, has_refresh_token={bool(meta.discord_refresh_token)}, expires_at={meta.discord_token_expires_at}, discord_user_id={meta.discord_user_id}')
+            
+            if not meta.discord_access_token:
+                logger.error(f'Discord token not saved for user {user.id}')
+                return redirect('/me/?discord_auth_error=1')
+            
+            # Verify token can be retrieved
+            test_token = get_valid_discord_access_token(user)
+            logger.info(f'DiscordOAuthCallbackView: Token verification - can_retrieve={bool(test_token)}')
+            
+            logger.info(f'Discord account linked for user {user.id}, discord_user_id={discord_user_id}, token_expires_at={meta.discord_token_expires_at}')
+            return redirect('/me/?discord_connected=1')
+            
+        except Exception as e:
+            logger.error(f'Discord OAuth callback error: {str(e)}', exc_info=True)
+            return redirect('/me/?discord_auth_error=1')
+
+
+class DiscordStatusView(APIView):
+    """Check Discord authentication and guild membership status."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get Discord authentication and guild membership status."""
+        try:
+            meta = request.user.meta
+        except UserMeta.DoesNotExist:
+            return Response({
+                'ok': True,
+                'discord_connected': False,
+                'guild_member': False,
+            })
+        
+        # Check if Discord is connected
+        # Debug: Check token fields before calling get_valid_discord_access_token
+        logger.info(f'DiscordStatusView: User {request.user.id} - has_access_token={bool(meta.discord_access_token)}, has_refresh_token={bool(meta.discord_refresh_token)}, expires_at={meta.discord_token_expires_at}, discord_user_id={meta.discord_user_id}')
+        
+        access_token = get_valid_discord_access_token(request.user)
+        discord_connected = bool(access_token)
+        
+        logger.info(f'DiscordStatusView: User {request.user.id} - access_token={bool(access_token)}, discord_connected={discord_connected}')
+        
+        guild_member = False
+        if discord_connected:
+            # Check guild membership
+            server_id = getattr(settings, 'DISCORD_SERVER_ID', '')
+            if server_id and meta.discord_user_id:
+                try:
+                    member_info = get_discord_guild_member(
+                        access_token,
+                        server_id,
+                        meta.discord_user_id
+                    )
+                    guild_member = member_info is not None
+                except Exception as e:
+                    logger.warning(f'Failed to check guild membership for user {request.user.id}: {str(e)}')
+        
+        return Response({
+            'ok': True,
+            'discord_connected': discord_connected,
+            'guild_member': guild_member,
+            'discord_username': meta.discord_username if discord_connected else None,
+        })

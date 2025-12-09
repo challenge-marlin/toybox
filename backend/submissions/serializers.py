@@ -1,6 +1,7 @@
 """
 Submissions app serializers for DRF.
 """
+import os
 from rest_framework import serializers
 from .models import Submission, Reaction
 from users.models import UserMeta
@@ -35,42 +36,141 @@ class SubmissionSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         """Get absolute URL for image field."""
         if obj.image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
+            try:
+                # ファイルの存在確認
+                from django.conf import settings
+                if hasattr(obj.image, 'path'):
+                    if not os.path.exists(obj.image.path):
+                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
+                        obj.image = None
+                        obj.save(update_fields=['image'])
+                        return None
+                
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.image.url)
+                return obj.image.url
+            except (ValueError, AttributeError, OSError) as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to get image URL for submission {obj.id}: {str(e)}')
+                return None
+        
         # Fallback to image_url if image field is empty
+        if obj.image_url:
+            # image_urlの存在確認
+            try:
+                from django.conf import settings
+                from urllib.parse import urlparse
+                # URLからファイルパスを抽出
+                if obj.image_url.startswith('http'):
+                    parsed = urlparse(obj.image_url)
+                    file_path = parsed.path
+                else:
+                    file_path = obj.image_url
+                
+                # /uploads/submissions/ から始まる場合、ファイルの存在確認
+                if file_path.startswith('/uploads/submissions/'):
+                    filename = file_path.replace('/uploads/submissions/', '')
+                    full_path = settings.MEDIA_ROOT / 'submissions' / filename
+                    if not full_path.exists():
+                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
+                        obj.image_url = None
+                        obj.save(update_fields=['image_url'])
+                        return None
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to verify image_url for submission {obj.id}: {str(e)}')
+        
         return obj.image_url or None
     
     def get_display_image_url(self, obj):
         """Get display image URL (prefer thumbnail for games, then image_url, then image field)."""
+        import os
+        from django.conf import settings
+        from urllib.parse import urlparse
         request = self.context.get('request')
         
         # ゲームの場合はサムネイルを優先
         if obj.game_url and obj.thumbnail:
             try:
-                if request:
-                    return request.build_absolute_uri(obj.thumbnail.url)
-                return obj.thumbnail.url
-            except (ValueError, AttributeError) as e:
+                # サムネイルファイルの存在確認
+                if hasattr(obj.thumbnail, 'path'):
+                    if not os.path.exists(obj.thumbnail.path):
+                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
+                        obj.thumbnail = None
+                        obj.save(update_fields=['thumbnail'])
+                    else:
+                        if request:
+                            return request.build_absolute_uri(obj.thumbnail.url)
+                        return obj.thumbnail.url
+            except (ValueError, AttributeError, OSError) as e:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.warning(f'Failed to get thumbnail URL for submission {obj.id}: {str(e)}')
                 # フォールバック: image_urlを使用
                 if obj.image_url:
-                    return obj.image_url
+                    # image_urlの存在確認
+                    try:
+                        if obj.image_url.startswith('http'):
+                            parsed = urlparse(obj.image_url)
+                            file_path = parsed.path
+                        else:
+                            file_path = obj.image_url
+                        
+                        if file_path.startswith('/uploads/submissions/'):
+                            filename = file_path.replace('/uploads/submissions/', '')
+                            full_path = settings.MEDIA_ROOT / 'submissions' / filename
+                            if full_path.exists():
+                                return obj.image_url
+                            else:
+                                obj.image_url = None
+                                obj.save(update_fields=['image_url'])
+                    except Exception:
+                        pass
         
         # image_urlを優先（レガシーまたは外部URL）
         if obj.image_url:
-            return obj.image_url
+            try:
+                # image_urlの存在確認
+                if obj.image_url.startswith('http'):
+                    parsed = urlparse(obj.image_url)
+                    file_path = parsed.path
+                else:
+                    file_path = obj.image_url
+                
+                # /uploads/submissions/ から始まる場合、ファイルの存在確認
+                if file_path.startswith('/uploads/submissions/'):
+                    filename = file_path.replace('/uploads/submissions/', '')
+                    full_path = settings.MEDIA_ROOT / 'submissions' / filename
+                    if not full_path.exists():
+                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
+                        obj.image_url = None
+                        obj.save(update_fields=['image_url'])
+                        return None
+                # 外部URLの場合はそのまま返す
+                return obj.image_url
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to verify image_url for submission {obj.id}: {str(e)}')
         
         # imageフィールドを使用
         if obj.image:
             try:
+                # ファイルの存在確認
+                if hasattr(obj.image, 'path'):
+                    if not os.path.exists(obj.image.path):
+                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
+                        obj.image = None
+                        obj.save(update_fields=['image'])
+                        return None
+                
                 if request:
                     return request.build_absolute_uri(obj.image.url)
                 return obj.image.url
-            except (ValueError, AttributeError) as e:
+            except (ValueError, AttributeError, OSError) as e:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.warning(f'Failed to get image URL for submission {obj.id}: {str(e)}')

@@ -71,12 +71,18 @@ def load_card_master():
 
 def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
     """Grant immediate rewards (title + card)."""
+    from gamification.models import Title
+    
     titles = [
         '蒸気の旅人',
         '真鍮の探究者',
         '歯車の達人',
         '工房の匠',
-        '鉄と蒸気の詩人'
+        '鉄と蒸気の詩人',
+        '火花をまとう見習い',
+        '真夜中の機巧設計士',
+        '歯車仕掛けの物語紡ぎ',
+        '蒸気都市の工房守'
     ]
     
     chosen_title = random.choice(titles)
@@ -85,6 +91,18 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
     
     meta.active_title = chosen_title
     meta.expires_at = until
+    
+    # 称号のバナー画像URLを取得
+    title_image_url = None
+    try:
+        title_obj = Title.objects.filter(name=chosen_title).first()
+        if title_obj:
+            if title_obj.image:
+                title_image_url = title_obj.image.url
+            elif title_obj.image_url:
+                title_image_url = title_obj.image_url
+    except Exception as e:
+        logger.warning(f'Failed to get title image for {chosen_title}: {e}')
     
     # Draw card from card master
     card_meta = None
@@ -226,6 +244,7 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
     
     return {
         'title': chosen_title,
+        'title_image_url': title_image_url,
         'card_id': card_id,
         'card_meta': card_meta
     }

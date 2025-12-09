@@ -10,19 +10,53 @@ from .models import Title, Card
 @admin.register(Title)
 class TitleAdmin(admin.ModelAdmin):
     """称号管理 - ユーザーに付与できる称号のマスタデータを管理します。"""
-    list_display = ['name', 'color', 'duration_days']
+    list_display = ['name', 'banner_preview', 'color', 'duration_days']
     search_fields = ['name']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at', 'banner_preview_detail']
     fieldsets = (
         ('称号情報', {
             'fields': ('name', 'color', 'duration_days'),
             'description': '称号の名前、表示色、有効期間（日数）を設定します。'
+        }),
+        ('バナー画像設定', {
+            'fields': ('image', 'banner_preview_detail', 'image_url'),
+            'description': '称号のバナー画像（321×115px推奨）を設定します。画像ファイルをアップロードするか、外部URLを指定できます。画像ファイルが優先されます。'
         }),
         ('日時情報', {
             'fields': ('created_at', 'updated_at'),
             'description': '称号の作成日時と最終更新日時です。'
         }),
     )
+    
+    def banner_preview(self, obj):
+        """一覧画面でバナー画像を表示します。"""
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="max-width: 120px; max-height: 24px; object-fit: contain; border-radius: 4px;" />',
+                obj.image.url
+            )
+        elif obj.image_url:
+            return format_html(
+                '<img src="{}" style="max-width: 120px; max-height: 24px; object-fit: contain; border-radius: 4px;" />',
+                obj.image_url
+            )
+        return '-'
+    banner_preview.short_description = 'バナー'
+    
+    def banner_preview_detail(self, obj):
+        """詳細画面でバナー画像を表示します。"""
+        if obj.image:
+            return format_html(
+                '<div style="margin-bottom: 1rem;"><img src="{}" style="max-width: 321px; max-height: 115px; object-fit: contain; border-radius: 8px; border: 1px solid #ddd;" /></div>',
+                obj.image.url
+            )
+        elif obj.image_url:
+            return format_html(
+                '<div style="margin-bottom: 1rem;"><img src="{}" style="max-width: 321px; max-height: 115px; object-fit: contain; border-radius: 8px; border: 1px solid #ddd;" /></div>',
+                obj.image_url
+            )
+        return format_html('<p style="color: #999;">バナー画像が設定されていません。</p>')
+    banner_preview_detail.short_description = 'バナー画像プレビュー'
 
 
 @admin.register(Card)

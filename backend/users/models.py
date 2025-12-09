@@ -103,6 +103,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):
         return f'{self.display_id} ({self.email})'
+    
+    def get_full_name(self):
+        """Return the full name for the user."""
+        return self.display_name if hasattr(self, 'meta') and self.meta.display_name else self.display_id
+    
+    def get_short_name(self):
+        """Return the short name for the user."""
+        return self.display_id
 
 
 class UserRegistration(models.Model):
@@ -147,6 +155,13 @@ class UserMeta(models.Model):
     
     # Onboarding (page-specific completion status)
     onboarding_completed = models.JSONField('オンボーディング完了状態', default=dict, blank=True, help_text='各ページごとのオンボーディング完了状態 {"me": false, "collection": false, "profile": false, "feed": false}')
+    
+    # Discord OAuth integration
+    discord_access_token = models.TextField('Discordアクセストークン', blank=True, null=True, help_text='Discord OAuth2アクセストークン（暗号化推奨）')
+    discord_refresh_token = models.TextField('Discordリフレッシュトークン', blank=True, null=True, help_text='Discord OAuth2リフレッシュトークン（暗号化推奨）')
+    discord_token_expires_at = models.DateTimeField('Discordトークン有効期限', blank=True, null=True, help_text='Discordアクセストークンの有効期限')
+    discord_user_id = models.CharField('DiscordユーザーID', max_length=100, blank=True, null=True, db_index=True, help_text='DiscordユーザーID')
+    discord_username = models.CharField('Discordユーザー名', max_length=255, blank=True, null=True, help_text='Discordユーザー名（例: username#1234）')
     
     # ETL tracking
     old_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)

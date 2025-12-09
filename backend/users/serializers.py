@@ -93,8 +93,64 @@ class UserMetaSerializer(serializers.ModelSerializer):
         return obj.display_name or obj.bio or obj.user.display_id
     
     def to_representation(self, instance):
-        """Override to check title expiry."""
+        """Override to check title expiry and add title image URL."""
         data = super().to_representation(instance)
+        
+        # アバターURLの存在確認
+        avatar_url = data.get('avatar_url')
+        if avatar_url:
+            try:
+                from django.conf import settings
+                # URLからファイルパスを抽出
+                if avatar_url.startswith('http'):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(avatar_url)
+                    file_path = parsed.path
+                else:
+                    file_path = avatar_url
+                
+                # /uploads/profiles/ から始まる場合、ファイルの存在確認
+                if file_path.startswith('/uploads/profiles/'):
+                    filename = file_path.replace('/uploads/profiles/', '')
+                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
+                    if not full_path.exists():
+                        # ファイルが存在しない場合はNoneを返す
+                        data['avatar_url'] = None
+                        # データベースも更新（オプション）
+                        instance.user.avatar_url = None
+                        instance.user.save(update_fields=['avatar_url'])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to verify avatar URL for user {instance.user.id}: {e}')
+        
+        # ヘッダーURLの存在確認
+        header_url = data.get('header_url')
+        if header_url:
+            try:
+                from django.conf import settings
+                # URLからファイルパスを抽出
+                if header_url.startswith('http'):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(header_url)
+                    file_path = parsed.path
+                else:
+                    file_path = header_url
+                
+                # /uploads/profiles/ から始まる場合、ファイルの存在確認
+                if file_path.startswith('/uploads/profiles/'):
+                    filename = file_path.replace('/uploads/profiles/', '')
+                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
+                    if not full_path.exists():
+                        # ファイルが存在しない場合はNoneを返す
+                        data['header_url'] = None
+                        # データベースも更新（オプション）
+                        instance.header_url = None
+                        instance.save(update_fields=['header_url'])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to verify header URL for user {instance.user.id}: {e}')
         
         # Check if title is expired
         if instance.active_title and instance.expires_at:
@@ -103,6 +159,33 @@ class UserMetaSerializer(serializers.ModelSerializer):
                 # Title expired, clear it
                 data['active_title'] = None
                 data['expires_at'] = None
+        
+        # 称号のバナー画像URLを取得
+        active_title = data.get('active_title')
+        if active_title:
+            try:
+                from gamification.models import Title
+                title_obj = Title.objects.filter(name=active_title).first()
+                if title_obj:
+                    request = self.context.get('request')
+                    if title_obj.image:
+                        if request:
+                            data['active_title_image_url'] = request.build_absolute_uri(title_obj.image.url)
+                        else:
+                            data['active_title_image_url'] = title_obj.image.url
+                    elif title_obj.image_url:
+                        data['active_title_image_url'] = title_obj.image_url
+                    else:
+                        data['active_title_image_url'] = None
+                else:
+                    data['active_title_image_url'] = None
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to get title image for {active_title}: {e}')
+                data['active_title_image_url'] = None
+        else:
+            data['active_title_image_url'] = None
         
         return data
     

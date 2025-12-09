@@ -99,7 +99,19 @@
     }
     
     .profile-view-title {
-        margin-top: 0.75rem;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+    
+    .profile-view-title img {
+        max-width: 321px;
+        max-height: 115px;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 8px;
     }
     
     .profile-view-bio {
@@ -503,9 +515,11 @@
                 }
                 
                 if (avatarUrl) {
-                    document.getElementById('avatar-image').innerHTML = `<img src="${avatarUrl}" alt="avatar">`;
+                    const firstChar = (displayName || anonId || 'U').charAt(0).toUpperCase();
+                    document.getElementById('avatar-image').innerHTML = `<img src="${avatarUrl}" alt="avatar" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 2rem; font-weight: 600;\\'>${firstChar}</span>';">`;
                 } else {
-                    document.getElementById('avatar-image').innerHTML = '<div class="no-image">アバターなし</div>';
+                    const firstChar = (displayName || anonId || 'U').charAt(0).toUpperCase();
+                    document.getElementById('avatar-image').innerHTML = `<span style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 2rem; font-weight: 600;">${firstChar}</span>`;
                 }
                 
                 if (displayName) {
@@ -518,8 +532,13 @@
                     document.getElementById('profile-id').textContent = anonId;
                 }
                 
+                const activeTitleImageUrl = metaData.activeTitleImageUrl || metaData.active_title_image_url;
                 if (activeTitle) {
-                    document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${activeTitle}</span>`;
+                    if (activeTitleImageUrl) {
+                        document.getElementById('profile-title').innerHTML = `<img src="${activeTitleImageUrl}" alt="${activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300);\\'>称号: ${activeTitle}</span>';">`;
+                    } else {
+                        document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${activeTitle}</span>`;
+                    }
                 } else {
                     document.getElementById('profile-title').innerHTML = '';
                 }
@@ -878,7 +897,8 @@
                     console.log('Discord message ID:', data.discordMessageId);
                 }
             } else {
-                const errorMsg = data.error || 'Discordへのシェアに失敗しました';
+                const errorMsg = data.message || data.error || 'Discordへのシェアに失敗しました';
+                
                 if (errorMsg.includes('25MB') || errorMsg.includes('20MB')) {
                     alert('ファイルサイズが大きすぎます（25MB以下）');
                 } else {

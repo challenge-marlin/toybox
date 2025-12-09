@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class DiscordShareView(views.APIView):
-    """Share to Discord."""
+    """Share to Discord using bot token."""
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -23,13 +23,9 @@ class DiscordShareView(views.APIView):
         if not asset_id:
             return Response({'ok': False, 'error': 'assetId required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Discord bot configuration
-        try:
-            bot_token = getattr(settings, 'DISCORD_BOT_TOKEN', '')
-            channel_id = getattr(settings, 'DISCORD_CHANNEL_ID', '')
-        except Exception as e:
-            logger.error(f'Failed to get Discord settings: {str(e)}', exc_info=True)
-            return Response({'ok': False, 'error': 'Discord configuration error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Get bot token and channel ID from settings
+        bot_token = getattr(settings, 'DISCORD_BOT_TOKEN', '')
+        channel_id = getattr(settings, 'DISCORD_CHANNEL_ID', '')
         
         if not bot_token or not channel_id:
             logger.warning('Discord not configured: DISCORD_BOT_TOKEN or DISCORD_CHANNEL_ID is missing')
@@ -161,7 +157,7 @@ class DiscordShareView(views.APIView):
             else:
                 message_content = f"**{sharer_display_name}**さんが**{author_display_name}**さんの作品をシェアしました。"
             
-            # Prepare Discord API request
+            # Prepare Discord API request using bot token
             discord_api_url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
             headers = {
                 'Authorization': f'Bot {bot_token}'
@@ -291,12 +287,12 @@ class DiscordShareView(views.APIView):
                 if response.status_code == 401:
                     return Response({
                         'ok': False,
-                        'error': 'Discord認証エラー: Bot Tokenが無効か、Botがサーバーに追加されていません'
+                        'error': 'Discord認証エラー: Botトークンが無効です。管理者にお問い合わせください。'
                     }, status=status.HTTP_401_UNAUTHORIZED)
                 elif response.status_code == 403:
                     return Response({
                         'ok': False,
-                        'error': 'Discord権限エラー: Botに必要な権限がありません'
+                        'error': 'Discord権限エラー: Botにチャンネルへの投稿権限がありません。管理者にお問い合わせください。'
                     }, status=status.HTTP_403_FORBIDDEN)
                 elif response.status_code == 404:
                     return Response({
@@ -330,4 +326,24 @@ class DiscordShareView(views.APIView):
                 'ok': False,
                 'error': f'Internal error: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DiscordStatusView(views.APIView):
+    """Check Discord bot configuration status."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get Discord bot configuration status."""
+        bot_token = getattr(settings, 'DISCORD_BOT_TOKEN', '')
+        channel_id = getattr(settings, 'DISCORD_CHANNEL_ID', '')
+        
+        # Bot is always "connected" if configured
+        discord_configured = bool(bot_token and channel_id)
+        
+        return Response({
+            'ok': True,
+            'discord_connected': discord_configured,
+            'guild_member': discord_configured,  # Always true if bot is configured
+            'discord_username': None,  # Not applicable for bot
+        })
 

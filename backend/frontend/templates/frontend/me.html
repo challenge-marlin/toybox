@@ -293,20 +293,22 @@
                         <a href="/profile/view/" style="color: var(--steam-gold-400); text-decoration: underline; font-size: 0.6875rem;">続きを見る</a>
                     </span>
                 </div>
-                <div style="font-size: 0.875rem; color: var(--steam-gold-300);" id="profile-title">称号: —</div>
-                <div style="font-size: 0.75rem; color: var(--steam-iron-300);" id="profile-title-until"></div>
+                <div id="profile-title" style="display: flex; justify-content: center; margin-top: 0.5rem;"></div>
+                <div style="font-size: 0.75rem; color: var(--steam-iron-300); margin-top: 0.25rem;" id="profile-title-until"></div>
             </div>
         </section>
         
         <!-- Discord参加 -->
         <section class="me-section">
             <h2>Discord</h2>
-            <a href="https://discord.gg/{{ DISCORD_INVITE_CODE|default:'' }}" target="_blank" rel="noreferrer" class="discord-join-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; width: 100%; justify-content: center; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; margin-top: 0.5rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-                </svg>
-                <span>TOYBOXサーバーに参加</span>
-            </a>
+            <div id="discord-section-buttons" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                <a href="https://discord.gg/{{ DISCORD_INVITE_CODE|default:'xSP8p44H' }}" target="_blank" rel="noreferrer" class="discord-join-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; width: 100%; justify-content: center; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                    </svg>
+                    <span>TOYBOXサーバーに参加</span>
+                </a>
+            </div>
         </section>
         
         <!-- 利用規約 -->
@@ -519,9 +521,9 @@
         <div id="title-reveal" style="display: none; text-align: center;">
             <div style="color: var(--steam-gold-300); font-weight: 600; font-size: 1.25rem; margin-bottom: 0.5rem;">称号を取得しました！</div>
             <div style="margin-top: 0.5rem; display: flex; justify-content: center;">
-                <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="title" style="height: 6rem; width: auto; opacity: 0.8;">
+                <img id="title-banner-image" src="{% static 'frontend/hero/toybox-title.png' %}" alt="title" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px; opacity: 0.9;" onerror="this.style.display='none';">
             </div>
-            <div style="margin-top: 0.25rem; font-size: 1.5rem; font-weight: bold; color: var(--steam-gold-300);" id="title-name">—</div>
+            <div style="margin-top: 0.5rem; font-size: 1.5rem; font-weight: bold; color: var(--steam-gold-300);" id="title-name">—</div>
             <div style="margin-top: 1rem;">
                 <button onclick="closeRewardFlow()" style="border-radius: 9999px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; cursor: pointer; font-size: 1rem;">OK</button>
             </div>
@@ -777,9 +779,13 @@
             // アバター画像を表示
             const avatarDiv = document.getElementById('profile-avatar');
             if (data.avatarUrl) {
-                avatarDiv.innerHTML = `<img src="${data.avatarUrl}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;">`;
+                const displayName = data.displayName || data.anonId || 'U';
+                const firstChar = displayName.charAt(0).toUpperCase();
+                avatarDiv.innerHTML = `<img src="${data.avatarUrl}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;\\'>${firstChar}</span>';">`;
             } else {
-                avatarDiv.innerHTML = '<span>未設定</span>';
+                const displayName = data.displayName || data.anonId || 'U';
+                const firstChar = displayName.charAt(0).toUpperCase();
+                avatarDiv.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;">${firstChar}</span>`;
             }
             
             // 称号を表示（期限切れチェック）
@@ -793,8 +799,13 @@
                 if (expiresAt > now) {
                     // 有効期限内
                     if (titleElement) {
-                        titleElement.textContent = `称号: ${data.activeTitle}`;
-                        titleElement.style.display = 'block';
+                        if (data.activeTitleImageUrl || data.active_title_image_url) {
+                            const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
+                            titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300); font-size: 0.875rem;\\'>称号: ${data.activeTitle}</span>';">`;
+                        } else {
+                            titleElement.innerHTML = `<span style="color: var(--steam-gold-300); font-size: 0.875rem;">称号: ${data.activeTitle}</span>`;
+                        }
+                        titleElement.style.display = 'flex';
                     }
                     if (titleUntilElement) {
                         titleUntilElement.textContent = `有効期限: ${expiresAt.toLocaleDateString()}`;
@@ -803,8 +814,8 @@
                 } else {
                     // 期限切れ
                     if (titleElement) {
-                        titleElement.textContent = '称号: —';
-                        titleElement.style.display = 'block';
+                        titleElement.innerHTML = '';
+                        titleElement.style.display = 'none';
                     }
                     if (titleUntilElement) {
                         titleUntilElement.textContent = '';
@@ -814,8 +825,13 @@
             } else if (data.activeTitle) {
                 // expires_atがない場合は表示
                 if (titleElement) {
-                    titleElement.textContent = `称号: ${data.activeTitle}`;
-                    titleElement.style.display = 'block';
+                    if (data.activeTitleImageUrl || data.active_title_image_url) {
+                        const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
+                        titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300); font-size: 0.875rem;\\'>称号: ${data.activeTitle}</span>';">`;
+                    } else {
+                        titleElement.innerHTML = `<span style="color: var(--steam-gold-300); font-size: 0.875rem;">称号: ${data.activeTitle}</span>`;
+                    }
+                    titleElement.style.display = 'flex';
                 }
                 if (titleUntilElement) {
                     titleUntilElement.textContent = '';
@@ -824,8 +840,8 @@
             } else {
                 // 称号がない場合
                 if (titleElement) {
-                    titleElement.textContent = '称号: —';
-                    titleElement.style.display = 'block';
+                    titleElement.innerHTML = '';
+                    titleElement.style.display = 'none';
                 }
                 if (titleUntilElement) {
                     titleUntilElement.textContent = '';
@@ -1486,6 +1502,9 @@
     
     // 報酬演出フロー
     function showRewardFlow(submitData) {
+        // submitDataをグローバルに保存（nextToTitle関数で使用）
+        window.pendingRewardData = submitData;
+        
         const overlay = document.getElementById('reward-overlay');
         const cardReveal = document.getElementById('card-reveal');
         const titleReveal = document.getElementById('title-reveal');
@@ -1535,6 +1554,21 @@
             cardReveal.style.display = 'none';
             if (submitData.rewardTitle) {
                 document.getElementById('title-name').textContent = submitData.rewardTitle;
+                
+                // 称号バナー画像を表示
+                const titleBannerImage = document.getElementById('title-banner-image');
+                if (submitData.rewardTitleImageUrl) {
+                    titleBannerImage.src = submitData.rewardTitleImageUrl;
+                    titleBannerImage.style.display = 'block';
+                    titleBannerImage.onerror = function() {
+                        console.warn('Failed to load title banner image:', submitData.rewardTitleImageUrl);
+                        this.style.display = 'none';
+                    };
+                } else {
+                    // 画像URLがない場合はデフォルト画像を表示
+                    titleBannerImage.style.display = 'block';
+                }
+                
                 titleReveal.style.display = 'block';
             }
         }
@@ -1547,6 +1581,30 @@
         const titleReveal = document.getElementById('title-reveal');
         
         cardReveal.style.display = 'none';
+        
+        // 称号バナー画像と称号名を表示（submitDataから取得）
+        const submitData = window.pendingRewardData || {};
+        
+        // 称号名を設定
+        if (submitData.rewardTitle) {
+            document.getElementById('title-name').textContent = submitData.rewardTitle;
+        } else {
+            document.getElementById('title-name').textContent = '—';
+        }
+        
+        // 称号バナー画像を表示
+        const titleBannerImage = document.getElementById('title-banner-image');
+        if (submitData.rewardTitleImageUrl) {
+            titleBannerImage.src = submitData.rewardTitleImageUrl;
+            titleBannerImage.style.display = 'block';
+            titleBannerImage.onerror = function() {
+                console.warn('Failed to load title banner image:', submitData.rewardTitleImageUrl);
+                this.style.display = 'none';
+            };
+        } else {
+            titleBannerImage.style.display = 'block';
+        }
+        
         titleReveal.style.display = 'block';
     }
     
@@ -1901,6 +1959,10 @@
         // Discordシェアボタンを表示（画像と動画のみ）
         if (type === 'image' || type === 'video') {
             lightboxActions.style.display = 'flex';
+            // Discord認証状態を確認してボタンを更新
+            if (token) {
+                checkDiscordStatus();
+            }
         } else {
             lightboxActions.style.display = 'none';
         }
@@ -2014,6 +2076,127 @@
         }
     });
     
+    // Discord認証状態を確認
+    let discordStatus = { discord_connected: false, guild_member: false };
+    
+    async function checkDiscordStatus() {
+        try {
+            const response = await fetch('/api/share/discord/status/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+            
+            if (!response.ok) {
+                console.error('Discord status check HTTP error:', response.status);
+                return;
+            }
+            
+            const data = await response.json();
+            console.log('Discord status response:', data);
+            
+            if (data.ok) {
+                discordStatus = {
+                    discord_connected: data.discord_connected || false,
+                    guild_member: data.guild_member || false
+                };
+                console.log('Discord status updated:', discordStatus);
+                updateDiscordShareButton();
+                updateDiscordSectionButton();
+            } else {
+                console.error('Discord status check failed:', data);
+                // エラーの場合でも、デフォルト値で更新
+                discordStatus = { discord_connected: false, guild_member: false };
+                updateDiscordShareButton();
+                updateDiscordSectionButton();
+            }
+        } catch (err) {
+            console.error('Discord status check error:', err);
+            // エラーの場合でも、デフォルト値で更新
+            discordStatus = { discord_connected: false, guild_member: false };
+            updateDiscordShareButton();
+            updateDiscordSectionButton();
+        }
+    }
+    
+    // Discordシェアボタンの表示を更新（ライトボックス用）
+    function updateDiscordShareButton() {
+        const btn = document.getElementById('discord-share-btn');
+        if (!btn) return;
+        
+        if (!discordStatus.discord_connected) {
+            btn.innerHTML = '<span>Discordにログイン</span>';
+            btn.onclick = () => {
+                window.location.href = '/api/auth/discord/login/';
+            };
+        } else if (!discordStatus.guild_member) {
+            btn.innerHTML = '<span>Discordサーバーに参加</span>';
+            btn.onclick = () => {
+                const inviteCode = 'xSP8p44H'; // DISCORD_INVITE_CODEから取得可能
+                window.open(`https://discord.gg/${inviteCode}`, '_blank');
+                setTimeout(() => {
+                    checkDiscordStatus();
+                }, 2000);
+            };
+        } else {
+            btn.innerHTML = `
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
+                </svg>
+                <span>Discordにシェア</span>
+            `;
+            btn.onclick = shareToDiscord;
+        }
+    }
+    
+    // マイページのDiscordセクションボタンの表示を更新（discord-main-btnは削除済み）
+    function updateDiscordSectionButton() {
+        // discord-main-btnは削除されたため、この関数は何もしない
+        return;
+    }
+    
+    // アセットIDを指定してDiscordにシェア（discord-main-btnは削除済みのため未使用）
+    async function shareToDiscordWithAssetId(assetId) {
+        // discord-main-btnは削除されたため、この関数は使用されない
+        return;
+        
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '<span>送信中…</span>';
+            
+            const response = await fetch('/api/share/discord/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    assetId: assetId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.ok) {
+                alert('Discordにシェアしました');
+            } else {
+                const errorMsg = data.message || data.error || 'Discordへのシェアに失敗しました';
+                
+                if (errorMsg.includes('25MB') || errorMsg.includes('20MB')) {
+                    alert('ファイルサイズが大きすぎます（25MB以下）');
+                } else {
+                    alert(errorMsg);
+                }
+            }
+        } catch (err) {
+            console.error('Discord share error:', err);
+            alert('Discordへのシェアに失敗しました');
+        } finally {
+            btn.disabled = false;
+            updateDiscordSectionButton();
+        }
+    }
+    
     // Discordシェア機能
     async function shareToDiscord() {
         if (!currentLightboxAssetId) {
@@ -2048,7 +2231,8 @@
                     console.log('Discord message ID:', data.discordMessageId);
                 }
             } else {
-                const errorMsg = data.error || 'Discordへのシェアに失敗しました';
+                const errorMsg = data.message || data.error || 'Discordへのシェアに失敗しました';
+                
                 if (errorMsg.includes('25MB') || errorMsg.includes('20MB')) {
                     alert('ファイルサイズが大きすぎます（25MB以下）');
                 } else {
@@ -2060,8 +2244,43 @@
             alert('Discordへのシェアに失敗しました');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = originalText;
+            updateDiscordShareButton();
         }
+    }
+    
+    // ページ読み込み時にDiscord認証状態を確認
+    if (token) {
+        checkDiscordStatus();
+    }
+    
+    // URLパラメータでDiscord認証完了を検知
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('discord_connected') === '1') {
+        // URLからパラメータを削除
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+        
+        // 即座に状態を確認してボタンを更新
+        checkDiscordStatus();
+        showToast('success', 'Discordにログインしました');
+        
+        // 少し待ってから再度確認（確実に更新するため）
+        setTimeout(() => {
+            checkDiscordStatus();
+        }, 1000);
+        
+        // さらに少し待ってから再度確認（確実に更新するため）
+        setTimeout(() => {
+            checkDiscordStatus();
+        }, 3000);
+    }
+    
+    // URLパラメータでDiscord認証エラーを検知
+    if (urlParams.get('discord_auth_error') === '1') {
+        showToast('error', 'Discord認証に失敗しました。もう一度お試しください。');
+        // URLからエラーパラメータを削除
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
     }
 </script>
 

@@ -1,0 +1,23 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a>
+    {% if custom_admin_console_url %}
+    <span style="margin-left: 1rem; font-size: 0.875rem;">
+        <a href="{{ custom_admin_console_url }}" style="color: #2563eb; text-decoration: none; font-weight: 600;">カスタム管理画面</a>
+    </span>
+    {% endif %}
+    {% if toybox_home_url %}
+    <span style="margin-left: 1rem; font-size: 0.875rem;">
+        <a href="{{ toybox_home_url }}" style="color: #059669; text-decoration: none; font-weight: 600;">TOYBOXホーム</a>
+    </span>
+    {% endif %}
+</div>
+{% endblock %}
+
+
+
+
+

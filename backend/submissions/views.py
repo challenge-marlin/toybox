@@ -522,15 +522,37 @@ class FeedView(APIView):
                     # Get reactions_count from serializer (it will use annotated field if available)
                     reactions_count = item_data.get('reactions_count', 0)
                     
+                    # Get display name from UserMeta if available
+                    display_name = item_data.get('author_display_id') or 'unknown'
+                    try:
+                        author = item.author
+                        if hasattr(author, 'meta'):
+                            meta = author.meta
+                            if meta and meta.display_name:
+                                display_name = meta.display_name
+                            elif meta and meta.bio:
+                                display_name = meta.bio
+                    except (AttributeError, Exception):
+                        pass
+                    
+                    # Get avatar URL
+                    avatar_url = item_data.get('author_avatar_url') or None
+                    
+                    # Get title - use title field, fallback to caption, but never use "submission"
+                    title = item_data.get('title') or None
+                    if not title:
+                        title = item_data.get('caption') or None
+                    
                     feed_items.append({
                         'id': str(item_data.get('id', '')),
                         'anonId': item_data.get('author_display_id') or 'unknown',
-                        'displayName': item_data.get('author_display_id'),
+                        'displayName': display_name,
+                        'avatarUrl': avatar_url,
                         'createdAt': item_data.get('created_at', ''),
                         'imageUrl': image_url,
                         'videoUrl': item_data.get('video_url'),
                         'displayImageUrl': image_url,  # サムネイルが含まれる
-                        'title': item_data.get('title') or item_data.get('caption'),
+                        'title': title,
                         'caption': item_data.get('caption'),
                         'hashtags': item_data.get('hashtags', []),
                         'gameUrl': item_data.get('game_url'),
@@ -663,26 +685,51 @@ class PopularFeedView(APIView):
         queryset = queryset.order_by('-reactions_count', '-created_at')
         
         # Get items
-        items = queryset[:limit]
+        items = list(queryset[:limit])
         
         # Serialize items
         serializer = SubmissionSerializer(items, many=True, context={'request': request})
         
         # Transform to Next.js format
         feed_items = []
-        for item_data in serializer.data:
+        for idx, item_data in enumerate(serializer.data):
             # Get image URL (シリアライザーのdisplay_image_urlを使用、サムネイル優先)
             image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
+            
+            # Get display name from UserMeta if available
+            display_name = item_data.get('author_display_id') or 'unknown'
+            try:
+                # Get the actual item object from the queryset
+                if idx < len(items):
+                    item_obj = items[idx]
+                    author = item_obj.author
+                    if hasattr(author, 'meta'):
+                        meta = author.meta
+                        if meta and meta.display_name:
+                            display_name = meta.display_name
+                        elif meta and meta.bio:
+                            display_name = meta.bio
+            except (AttributeError, Exception, IndexError):
+                pass
+            
+            # Get avatar URL
+            avatar_url = item_data.get('author_avatar_url') or None
+            
+            # Get title - use title field, fallback to caption, but never use "submission"
+            title = item_data.get('title') or None
+            if not title:
+                title = item_data.get('caption') or None
             
             feed_items.append({
                 'id': str(item_data['id']),
                 'anonId': item_data.get('author_display_id') or 'unknown',
-                'displayName': item_data.get('author_display_id'),
+                'displayName': display_name,
+                'avatarUrl': avatar_url,
                 'createdAt': item_data['created_at'],
                 'imageUrl': image_url,
                 'videoUrl': item_data.get('video_url'),
                 'displayImageUrl': image_url,  # サムネイルが含まれる
-                'title': item_data.get('title') or item_data.get('caption'),
+                'title': title,
                 'caption': item_data.get('caption'),
                 'hashtags': item_data.get('hashtags', []),
                 'gameUrl': item_data.get('game_url'),

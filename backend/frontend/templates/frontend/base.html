@@ -6,8 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ToyBox{% endblock %}</title>
     <link rel="icon" type="image/x-icon" href="{% static 'frontend/favicon.ico' %}">
-    <link rel="icon" type="image/png" href="{% static 'frontend/favicon.png' %}">
-    <link rel="apple-touch-icon" href="{% static 'frontend/favicon.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'frontend/favicon.ico' %}">
     <link rel="stylesheet" href="{% static 'frontend/css/base.css' %}">
     <link rel="stylesheet" href="{% static 'frontend/css/onboarding.css' %}">
     <!-- Common JavaScript utilities -->
@@ -30,6 +29,8 @@
                 <a href="/profile/" id="profile-entry" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール設定</a>
                 <a href="/feed/" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
                 <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
+                <a href="/admin/console/" id="nav-admin-console" style="color: var(--steam-gold-400); text-decoration: none; display: none;">管理画面</a>
+                <a href="/admin/" id="nav-admin-django" style="color: var(--steam-gold-400); text-decoration: none; display: none;">Django管理</a>
             </nav>
             <div id="user-info" style="display: flex; align-items: center; gap: 0.75rem; color: var(--steam-iron-200); display: none;">
                 <div id="notification-container" style="position: relative; display: none;">
@@ -214,6 +215,8 @@
             const navProfile = document.getElementById('profile-view-entry');
             const navProfileEntry = document.getElementById('profile-entry');
             const navLogin = document.getElementById('nav-login');
+            const navAdminConsole = document.getElementById('nav-admin-console');
+            const navAdminDjango = document.getElementById('nav-admin-django');
             const userInfo = document.getElementById('user-info');
             const userDisplayId = document.getElementById('user-display-id');
             
@@ -230,11 +233,26 @@
                 const notificationContainer = document.getElementById('notification-container');
                 if (notificationContainer) notificationContainer.style.display = 'block';
                 
-                // ユーザー情報を取得して表示
-                fetch('/api/users/me/meta/', {
+                // ユーザー情報を取得して表示（スーパーユーザーチェック含む）
+                fetch('/api/users/me/', {
                     headers: {
                         'Authorization': `Bearer ${getAccessToken()}`,
                     }
+                })
+                .then(res => res.json())
+                .then(userData => {
+                    // スーパーユーザーまたはスタッフの場合、管理画面リンクを表示
+                    if (userData.is_superuser || userData.is_staff) {
+                        if (navAdminConsole) navAdminConsole.style.display = 'inline';
+                        if (navAdminDjango) navAdminDjango.style.display = 'inline';
+                    }
+                    
+                    // メタ情報を取得して表示名を設定
+                    return fetch('/api/users/me/meta/', {
+                        headers: {
+                            'Authorization': `Bearer ${getAccessToken()}`,
+                        }
+                    });
                 })
                 .then(res => res.json())
                 .then(data => {

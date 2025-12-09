@@ -13,6 +13,9 @@ from .models import UserRegistration, UserMeta, UserCard
 
 User = get_user_model()
 
+# CustomAdminSiteを使用（toybox.urlsで設定済み）
+# admin.siteは既にCustomAdminSiteに置き換えられている
+
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):

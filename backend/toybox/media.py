@@ -36,6 +36,12 @@ def get_media_urlpatterns():
                 serve,
                 {'document_root': str(settings.MEDIA_ROOT / 'cards')}
             ),
+            # 称号バナー画像
+            re_path(
+                r'^uploads/titles/(?P<path>.*)$',
+                serve,
+                {'document_root': str(settings.MEDIA_ROOT / 'titles')}
+            ),
             # 提出物（画像・動画・サムネイル）
             re_path(
                 r'^uploads/submissions/(?P<path>.*)$',
@@ -72,4 +78,6 @@ def get_media_urlpatterns():
         pass
     
     return patterns
+
+
 

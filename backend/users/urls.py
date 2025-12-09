@@ -14,6 +14,11 @@ urlpatterns = [
     path('refresh/', views.RefreshTokenView.as_view(), name='refresh'),
     path('register/', views.RegisterView.as_view(), name='register'),
     
+    # Discord OAuth endpoints
+    path('discord/login/', views.DiscordOAuthLoginView.as_view(), name='discord-login'),
+    path('discord/callback/', views.DiscordOAuthCallbackView.as_view(), name='discord-callback'),
+    path('discord/status/', views.DiscordStatusView.as_view(), name='discord-status'),
+    
     # Current user endpoint
     path('me/', views.CurrentUserView.as_view(), name='current-user'),
     

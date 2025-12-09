@@ -137,6 +137,7 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         'probability': 0,
         'bonusCount': meta.lottery_bonus_count,
         'rewardTitle': reward.get('title'),
+        'rewardTitleImageUrl': reward.get('title_image_url'),
         'rewardCardId': reward.get('card_id'),
         'rewardCard': reward.get('card_meta'),
         'jackpotRecordedAt': None,

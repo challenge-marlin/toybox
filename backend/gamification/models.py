@@ -9,6 +9,8 @@ class Title(models.Model):
     name = models.CharField('称号名', max_length=100, unique=True)
     color = models.CharField('色', max_length=50, blank=True, null=True)
     duration_days = models.IntegerField('有効期間（日）', default=7)
+    image = models.ImageField('バナー画像', upload_to='titles/', blank=True, null=True, help_text='称号のバナー画像（321×115px推奨）をアップロードします。')
+    image_url = models.URLField('画像URL', max_length=500, blank=True, null=True, help_text='外部URLから画像を指定する場合に使用します。')
     
     created_at = models.DateTimeField('作成日時', auto_now_add=True)
     updated_at = models.DateTimeField('更新日時', auto_now=True)

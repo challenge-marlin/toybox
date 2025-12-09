@@ -8,11 +8,33 @@ from django.conf.urls.static import static
 from users import views as user_views
 from frontend.views import AnnouncementsView
 import frontend.views as frontend_views
+# まず、すべてのadmin.pyファイルをインポートしてモデルを登録
+# これにより、admin.siteにすべてのモデルが登録されます
+import users.admin  # noqa: F401
+# 他のadmin.pyファイルも必要に応じてインポート
+# import gamification.admin  # noqa: F401
+# import submissions.admin  # noqa: F401
 
-# Django管理サイトの日本語化
-admin.site.site_header = 'ToyBox 管理サイト'
-admin.site.site_title = 'ToyBox 管理'
-admin.site.index_title = 'サイト管理'
+from .admin_site import CustomAdminSite
+
+# カスタム管理サイトを作成
+# 注意: 上記のインポートにより、admin.siteにすべてのモデルが登録されています
+custom_admin_site = CustomAdminSite(name='admin')
+
+# 既存のadmin.siteからすべてのモデル登録をカスタムサイトにコピー
+for model, admin_class in admin.site._registry.items():
+    # 既存のAdminクラスのインスタンスをそのまま使用
+    custom_admin_site._registry[model] = admin_class
+    # Adminクラスのadmin_site属性を更新
+    admin_class.admin_site = custom_admin_site
+
+# 既存のadmin.siteをカスタムサイトに置き換え
+admin.site = custom_admin_site
+
+# Django管理サイトの日本語化（CustomAdminSiteで既に設定済み）
+# admin.site.site_header = 'ToyBox 管理サイト'
+# admin.site.site_title = 'ToyBox 管理'
+# admin.site.index_title = 'サイト管理'
 try:
     from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
     SPECTACULAR_AVAILABLE = True
@@ -23,8 +45,8 @@ urlpatterns = [
     # Admin panel (custom admin UI) - Must be before admin.site.urls
     path('admin/console/', include('adminpanel.urls')),
     
-    # Django admin site
-    path('admin/', admin.site.urls),
+    # Django admin site (custom admin site)
+    path('admin/', custom_admin_site.urls),
 ]
 
 # API Schema (if drf-spectacular is installed)

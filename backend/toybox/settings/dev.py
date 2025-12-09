@@ -31,9 +31,12 @@ if EMAIL_HOST and EMAIL_HOST != 'localhost':
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER') or os.environ.get('SMTP_USER', '')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD') or os.environ.get('SMTP_PASS', '')
     DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or os.environ.get('MAIL_FROM', 'noreply@toybox.local')
+    # Contact email address for form submissions
+    CONTACT_EMAIL = os.environ.get('CONTACT_EMAIL', 'maki@ayatori-inc.co.jp')
 else:
     # Use console backend for development if EMAIL_HOST is not configured
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    CONTACT_EMAIL = os.environ.get('CONTACT_EMAIL', 'maki@ayatori-inc.co.jp')
 
 # Logging (more verbose in development)
 LOGGING['loggers']['django']['level'] = 'DEBUG'

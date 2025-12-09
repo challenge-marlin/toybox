@@ -111,14 +111,23 @@ LOGGING = {
     },
 }
 
-# Email (if needed)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@toybox.example.com')
+# Email backend (use SMTP if EMAIL_HOST is configured, otherwise console for development)
+# Support both EMAIL_* and SMTP_* environment variable names for compatibility
+EMAIL_HOST = os.environ.get('EMAIL_HOST') or os.environ.get('SMTP_HOST', 'localhost')
+if EMAIL_HOST and EMAIL_HOST != 'localhost':
+    # Use SMTP if EMAIL_HOST is configured
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT') or os.environ.get('SMTP_PORT', '587'))
+    EMAIL_USE_TLS = (os.environ.get('EMAIL_USE_TLS') or os.environ.get('SMTP_USE_TLS', 'true')).lower() == 'true'
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER') or os.environ.get('SMTP_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD') or os.environ.get('SMTP_PASS', '')
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or os.environ.get('MAIL_FROM', 'noreply@toybox.example.com')
+    # Contact email address for form submissions
+    CONTACT_EMAIL = os.environ.get('CONTACT_EMAIL', 'maki@ayatori-inc.co.jp')
+else:
+    # Use console backend for development if EMAIL_HOST is not configured
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    CONTACT_EMAIL = os.environ.get('CONTACT_EMAIL', 'maki@ayatori-inc.co.jp')
 
 # CORS
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', '').split(',') if os.environ.get('CORS_ORIGINS') else []

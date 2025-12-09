@@ -1,14 +1,16 @@
 """
 Frontend app views - Template views and API views.
 """
+import logging
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
-from django.core.mail import send_mail
-from django.conf import settings
 from .models import Announcement
+from .email_utils import send_form_email, validate_email_config
+
+logger = logging.getLogger(__name__)
 
 
 # Template views
@@ -169,60 +171,31 @@ class ContactView(APIView):
 {message}
 """
         
+        # Validate email configuration
+        is_valid, config_error = validate_email_config()
+        if not is_valid:
+            logger.warning(f'Email configuration error: {config_error}')
+            # Continue anyway - email will be logged if console backend
+        
         # Send email
-        try:
-            import logging
-            logger = logging.getLogger(__name__)
-            
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@toybox.local')
-            to_email = 'maki@ayatori-inc.co.jp'
-            
-            # Log email configuration for debugging
-            email_host = getattr(settings, 'EMAIL_HOST', None)
-            email_port = getattr(settings, 'EMAIL_PORT', None)
-            email_user = getattr(settings, 'EMAIL_HOST_USER', None)
-            email_backend = getattr(settings, 'EMAIL_BACKEND', None)
-            
-            logger.info(f'Contact form submission - EMAIL_HOST={email_host}, EMAIL_PORT={email_port}, EMAIL_HOST_USER={email_user}, EMAIL_BACKEND={email_backend}, FROM={from_email}, TO={to_email}')
-            
-            # Check if email backend is configured
-            # Try to send email - if EMAIL_BACKEND is console, it will just log to console
-            # If EMAIL_BACKEND is SMTP but not configured properly, it will raise an exception
-            try:
-                if email_backend == 'django.core.mail.backends.console.EmailBackend':
-                    logger.warning(f'Email backend is console - email will be logged to console, not sent')
-                else:
-                    logger.info(f'Attempting to send email via SMTP: {email_host}:{email_port}')
-                
-                send_mail(
-                    subject,
-                    email_body,
-                    from_email,
-                    [to_email],
-                    fail_silently=False,
-                )
-                
-                if email_backend != 'django.core.mail.backends.console.EmailBackend':
-                    logger.info(f'Email sent successfully to {to_email}')
-                else:
-                    logger.info(f'Email logged to console (development mode)')
-            except Exception as send_error:
-                # If email sending fails, log the error but don't fail the request
-                logger.error(f'Failed to send email (will log instead): {str(send_error)}', exc_info=True)
-                logger.warning(f'Contact form submission (email sending failed, logged instead):\n{email_body}')
-            
+        success, error_msg = send_form_email(
+            subject=subject,
+            body=email_body,
+        )
+        
+        if success:
             return Response({
                 'ok': True,
                 'message': '問い合わせを送信しました。'
             })
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f'Failed to send contact email: {str(e)}', exc_info=True)
-            return Response(
-                {'ok': False, 'error': 'メール送信に失敗しました。しばらくしてから再度お試しください。'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        else:
+            # Log error but still return success to user
+            # Email content is already logged in send_form_email
+            logger.error(f'Contact form email sending failed: {error_msg}')
+            return Response({
+                'ok': True,
+                'message': '問い合わせを送信しました。'
+            })
 
 
 class InquiryView(APIView):
@@ -275,57 +248,28 @@ class InquiryView(APIView):
 {detail}
 """
         
+        # Validate email configuration
+        is_valid, config_error = validate_email_config()
+        if not is_valid:
+            logger.warning(f'Email configuration error: {config_error}')
+            # Continue anyway - email will be logged if console backend
+        
         # Send email
-        try:
-            import logging
-            logger = logging.getLogger(__name__)
-            
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@toybox.local')
-            to_email = 'maki@ayatori-inc.co.jp'
-            
-            # Log email configuration for debugging
-            email_host = getattr(settings, 'EMAIL_HOST', None)
-            email_port = getattr(settings, 'EMAIL_PORT', None)
-            email_user = getattr(settings, 'EMAIL_HOST_USER', None)
-            email_backend = getattr(settings, 'EMAIL_BACKEND', None)
-            
-            logger.info(f'Inquiry form submission - EMAIL_HOST={email_host}, EMAIL_PORT={email_port}, EMAIL_HOST_USER={email_user}, EMAIL_BACKEND={email_backend}, FROM={from_email}, TO={to_email}')
-            
-            # Check if email backend is configured
-            # Try to send email - if EMAIL_BACKEND is console, it will just log to console
-            # If EMAIL_BACKEND is SMTP but not configured properly, it will raise an exception
-            try:
-                if email_backend == 'django.core.mail.backends.console.EmailBackend':
-                    logger.warning(f'Email backend is console - email will be logged to console, not sent')
-                else:
-                    logger.info(f'Attempting to send email via SMTP: {email_host}:{email_port}')
-                
-                send_mail(
-                    subject,
-                    email_body,
-                    from_email,
-                    [to_email],
-                    fail_silently=False,
-                )
-                
-                if email_backend != 'django.core.mail.backends.console.EmailBackend':
-                    logger.info(f'Email sent successfully to {to_email}')
-                else:
-                    logger.info(f'Email logged to console (development mode)')
-            except Exception as send_error:
-                # If email sending fails, log the error but don't fail the request
-                logger.error(f'Failed to send email (will log instead): {str(send_error)}', exc_info=True)
-                logger.warning(f'Inquiry form submission (email sending failed, logged instead):\n{email_body}')
-            
+        success, error_msg = send_form_email(
+            subject=subject,
+            body=email_body,
+        )
+        
+        if success:
             return Response({
                 'ok': True,
                 'message': 'お問い合わせを送信しました。'
             })
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f'Failed to send inquiry email: {str(e)}', exc_info=True)
-            return Response(
-                {'ok': False, 'error': 'メール送信に失敗しました。しばらくしてから再度お試しください。'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        else:
+            # Log error but still return success to user
+            # Email content is already logged in send_form_email
+            logger.error(f'Inquiry form email sending failed: {error_msg}')
+            return Response({
+                'ok': True,
+                'message': 'お問い合わせを送信しました。'
+            })

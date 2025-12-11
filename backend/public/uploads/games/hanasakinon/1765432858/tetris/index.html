@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>テトリス</title>
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>テトリス</h1>
+    </header>
+
+    <main class="app-main">
+      <section class="hud" aria-label="ゲーム情報">
+        <div class="stat"><span>スコア</span><strong id="score">0</strong></div>
+        <div class="stat"><span>レベル</span><strong id="level">1</strong></div>
+        <div class="stat"><span>消去ライン</span><strong id="lines">0</strong></div>
+      </section>
+
+      <section class="controls">
+        <button id="startBtn" class="btn primary">開始</button>
+        <button id="pauseBtn" class="btn">一時停止</button>
+        <button id="resumeBtn" class="btn">再開</button>
+        <button id="resetBtn" class="btn danger">リセット</button>
+      </section>
+
+      <div class="game-wrap">
+        <div class="board">
+          <canvas id="boardCanvas" width="300" height="600" aria-label="テトリスボード"></canvas>
+          <div id="overlay" class="overlay hidden" aria-live="polite"></div>
+        </div>
+        <aside class="side">
+          <div class="panel">
+            <div class="panel-title">NEXT</div>
+            <canvas id="nextCanvas" width="120" height="120"></canvas>
+          </div>
+          <div class="panel">
+            <div class="panel-title">HOLD</div>
+            <canvas id="holdCanvas" width="120" height="120"></canvas>
+          </div>
+          <div class="panel help">
+            <div class="panel-title">操作方法</div>
+            <ul>
+              <li>←/→ または A/D: 横移動</li>
+              <li>↓ または S: ソフトドロップ</li>
+              <li>↑ または X: 右回転</li>
+              <li>Z: 左回転</li>
+              <li>スペース: ハードドロップ</li>
+              <li>C: ホールド</li>
+              <li>P: 一時停止 / R: リセット</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+    </main>
+
+    <script defer src="./js/main.js"></script>
+  </body>
+  </html>
+
+
+

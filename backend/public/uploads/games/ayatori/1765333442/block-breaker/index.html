@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ブロック崩し</title>
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>ブロック崩し</h1>
+    </header>
+
+    <main class="app-main">
+      <section class="hud" aria-label="ゲーム情報">
+        <div class="hud-item"><span>スコア</span><strong id="score">0</strong></div>
+        <div class="hud-item"><span>ライフ</span><strong id="lives">3</strong></div>
+        <div class="hud-item"><span>レベル</span><strong id="level">1</strong></div>
+      </section>
+
+      <section class="controls" aria-label="操作">
+        <button id="startBtn" class="btn primary">開始</button>
+        <button id="pauseBtn" class="btn">一時停止</button>
+        <button id="resumeBtn" class="btn">再開</button>
+        <button id="restartBtn" class="btn danger">リスタート</button>
+      </section>
+
+      <div class="canvas-wrap">
+        <canvas id="gameCanvas" width="800" height="600" aria-label="ブロック崩しのキャンバス"></canvas>
+        <div id="overlay" class="overlay hidden" aria-live="polite"></div>
+      </div>
+
+      <section class="help">
+        <p>
+          操作: ←/→ または A/D で移動、スペースで一時停止/再開、エンターで開始。
+        </p>
+      </section>
+    </main>
+
+    <script defer src="./js/main.js"></script>
+  </body>
+  </html>
+
+

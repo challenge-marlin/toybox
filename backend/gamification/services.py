@@ -125,33 +125,57 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
             # Filter by card type (50% Character, 50% Effect)
             pick_effect = random.random() < 0.5
             
+            # Weighted random by rarity (same as Next.js)
+            rarity_weights = {
+                'SSR': 0.01,
+                'SR': 0.04,
+                'R': 0.20,
+                'N': 0.75
+            }
+            
+            # Map Django rarity to Next.js format
+            rarity_map_reverse = {
+                'common': 'N',
+                'rare': 'R',
+                'seasonal': 'SR',
+                'special': 'SSR'
+            }
+            
             if pick_effect:
                 # Effect cards: E101-E136 range
                 effect_cards = [c for c in master_cards if c.code.startswith('E')]
                 if effect_cards:
-                    card_row = random.choice(effect_cards)
+                    # Group by rarity
+                    by_rarity = {}
+                    for c in effect_cards:
+                        js_rarity = rarity_map_reverse.get(c.rarity, 'N')
+                        if js_rarity not in by_rarity:
+                            by_rarity[js_rarity] = []
+                        by_rarity[js_rarity].append(c)
+                    
+                    # Weighted pick
+                    total_weight = sum(rarity_weights.values())
+                    r = random.random() * total_weight
+                    acc = 0
+                    selected_rarity = 'N'
+                    for rarity, weight in rarity_weights.items():
+                        acc += weight
+                        if r <= acc:
+                            selected_rarity = rarity
+                            break
+                    
+                    # Pick from selected rarity pool
+                    pool = by_rarity.get(selected_rarity, [])
+                    if pool:
+                        card_row = random.choice(pool)
+                    else:
+                        card_row = random.choice(effect_cards)
                 else:
                     card_row = random.choice(master_cards)
             else:
                 # Character cards: C001-C020
                 char_cards = [c for c in master_cards if c.code.startswith('C')]
                 if char_cards:
-                    # Weighted random by rarity (same as Next.js)
-                    rarity_weights = {
-                        'SSR': 0.01,
-                        'SR': 0.04,
-                        'R': 0.20,
-                        'N': 0.75
-                    }
-                    
-                    # Map Django rarity to Next.js format
-                    rarity_map_reverse = {
-                        'common': 'N',
-                        'rare': 'R',
-                        'seasonal': 'SR',
-                        'special': 'SSR'
-                    }
-                    
                     # Group by rarity
                     by_rarity = {}
                     for c in char_cards:

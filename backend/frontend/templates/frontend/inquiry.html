@@ -399,6 +399,21 @@
         }
     });
     
+    // URL検証を設定
+    const gameTitleInput = document.getElementById('inquiry-game-title');
+    const detailTextarea = document.getElementById('inquiry-detail');
+    const contactInput = document.getElementById('inquiry-contact');
+    
+    if (gameTitleInput) {
+        setupURLValidation(gameTitleInput);
+    }
+    if (detailTextarea) {
+        setupURLValidation(detailTextarea);
+    }
+    if (contactInput) {
+        setupURLValidation(contactInput);
+    }
+    
     // リアルタイムバリデーション
     document.getElementById('inquiry-type').addEventListener('change', validate);
     document.getElementById('inquiry-detail').addEventListener('input', function() {
@@ -434,6 +449,7 @@
 })();
 </script>
 {% endblock %}
+
 
 
 

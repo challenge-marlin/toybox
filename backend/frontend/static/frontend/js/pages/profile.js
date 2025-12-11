@@ -175,6 +175,16 @@
             setupCharCounter(bioInput, bioCount, 1000);
         }
         
+        // URL検証を設定
+        const displayNameInput = document.getElementById('display-name-input');
+        if (displayNameInput) {
+            setupURLValidation(displayNameInput);
+        }
+        
+        if (bioInput) {
+            setupURLValidation(bioInput);
+        }
+        
         // イベントリスナーの設定
         const headerInput = document.getElementById('header-input');
         const avatarInput = document.getElementById('avatar-input');

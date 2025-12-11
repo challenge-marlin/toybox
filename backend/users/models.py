@@ -147,7 +147,7 @@ class UserMeta(models.Model):
     # Profile fields
     display_name = models.CharField(max_length=50, blank=True)
     bio = models.TextField(max_length=1000, blank=True)
-    header_url = models.URLField(max_length=500, blank=True)
+    header_url = models.URLField(max_length=500, blank=True, null=True)
     lottery_bonus_count = models.IntegerField(default=0)
     
     # Notifications (JSON array of notification objects)
@@ -155,6 +155,9 @@ class UserMeta(models.Model):
     
     # Onboarding (page-specific completion status)
     onboarding_completed = models.JSONField('オンボーディング完了状態', default=dict, blank=True, help_text='各ページごとのオンボーディング完了状態 {"me": false, "collection": false, "profile": false, "feed": false}')
+    
+    # Terms agreement (for paid users)
+    terms_agreed_at = models.DateTimeField('利用規約同意日時', null=True, blank=True, help_text='課金ユーザーが利用規約に同意した日時')
     
     # Discord OAuth integration
     discord_access_token = models.TextField('Discordアクセストークン', blank=True, null=True, help_text='Discord OAuth2アクセストークン（暗号化推奨）')

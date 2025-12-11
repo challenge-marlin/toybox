@@ -61,3 +61,4 @@ CONTACT_EMAIL=maki@ayatori-inc.co.jp
 - 認証情報はConoHaのコントロールパネルで確認できます
 - 送信元メールアドレス（`DEFAULT_FROM_EMAIL`）は、ConoHaのドメイン（`ayatori-inc.co.jp`）である必要があります
 
+

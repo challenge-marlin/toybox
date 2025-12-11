@@ -21,6 +21,26 @@ def index(request):
 
 def feed(request):
     """Feed page."""
+    from django.contrib.auth import get_user_model
+    from django.shortcuts import redirect
+    from users.models import UserMeta
+    
+    User = get_user_model()
+    
+    # ログインしているかチェック
+    if not request.user.is_authenticated:
+        return redirect('/login/')
+    
+    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
+    if request.user.role == User.Role.PAID_USER:
+        try:
+            meta = request.user.meta
+            if not meta.terms_agreed_at:
+                return redirect('/terms/agree/')
+        except UserMeta.DoesNotExist:
+            # UserMetaが存在しない場合も利用規約未同意とみなす
+            return redirect('/terms/agree/')
+    
     return render(request, 'frontend/feed.html')
 
 
@@ -38,18 +58,28 @@ def me(request):
     """My page."""
     from django.conf import settings
     from django.contrib.auth import get_user_model
+    from django.shortcuts import redirect
+    from users.models import UserMeta
     
     User = get_user_model()
     
     # ログインしているかチェック
     if not request.user.is_authenticated:
-        from django.shortcuts import redirect
         return redirect('/login/')
     
     # 一般ユーザー（FREE_USER）はマイページにアクセスできない
     if request.user.role == User.Role.FREE_USER:
-        from django.shortcuts import redirect
         return redirect('/upgrade/')
+    
+    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
+    if request.user.role == User.Role.PAID_USER:
+        try:
+            meta = request.user.meta
+            if not meta.terms_agreed_at:
+                return redirect('/terms/agree/')
+        except UserMeta.DoesNotExist:
+            # UserMetaが存在しない場合も利用規約未同意とみなす
+            return redirect('/terms/agree/')
     
     discord_invite_code = getattr(settings, 'DISCORD_INVITE_CODE', '')
     return render(request, 'frontend/me.html', {
@@ -66,16 +96,76 @@ def upgrade(request):
 
 def lottery(request):
     """Lottery page."""
+    from django.contrib.auth import get_user_model
+    from django.shortcuts import redirect
+    from users.models import UserMeta
+    
+    User = get_user_model()
+    
+    # ログインしているかチェック
+    if not request.user.is_authenticated:
+        return redirect('/login/')
+    
+    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
+    if request.user.role == User.Role.PAID_USER:
+        try:
+            meta = request.user.meta
+            if not meta.terms_agreed_at:
+                return redirect('/terms/agree/')
+        except UserMeta.DoesNotExist:
+            # UserMetaが存在しない場合も利用規約未同意とみなす
+            return redirect('/terms/agree/')
+    
     return render(request, 'frontend/lottery.html')
 
 
 def collection(request):
     """Collection page."""
+    from django.contrib.auth import get_user_model
+    from django.shortcuts import redirect
+    from users.models import UserMeta
+    
+    User = get_user_model()
+    
+    # ログインしているかチェック
+    if not request.user.is_authenticated:
+        return redirect('/login/')
+    
+    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
+    if request.user.role == User.Role.PAID_USER:
+        try:
+            meta = request.user.meta
+            if not meta.terms_agreed_at:
+                return redirect('/terms/agree/')
+        except UserMeta.DoesNotExist:
+            # UserMetaが存在しない場合も利用規約未同意とみなす
+            return redirect('/terms/agree/')
+    
     return render(request, 'frontend/collection.html')
 
 
 def profile(request):
     """Profile page."""
+    from django.contrib.auth import get_user_model
+    from django.shortcuts import redirect
+    from users.models import UserMeta
+    
+    User = get_user_model()
+    
+    # ログインしているかチェック
+    if not request.user.is_authenticated:
+        return redirect('/login/')
+    
+    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
+    if request.user.role == User.Role.PAID_USER:
+        try:
+            meta = request.user.meta
+            if not meta.terms_agreed_at:
+                return redirect('/terms/agree/')
+        except UserMeta.DoesNotExist:
+            # UserMetaが存在しない場合も利用規約未同意とみなす
+            return redirect('/terms/agree/')
+    
     return render(request, 'frontend/profile.html')
 
 
@@ -103,6 +193,34 @@ def terms(request):
     return render(request, 'frontend/terms.html')
 
 
+def terms_agree(request):
+    """Terms agreement page for paid users (first time only)."""
+    from django.contrib.auth import get_user_model
+    from django.shortcuts import redirect
+    from users.models import UserMeta
+    
+    User = get_user_model()
+    
+    # ログインしているかチェック
+    if not request.user.is_authenticated:
+        return redirect('/login/')
+    
+    # 課金ユーザー以外は通常の利用規約ページにリダイレクト
+    if request.user.role != User.Role.PAID_USER:
+        return redirect('/terms/')
+    
+    # 既に同意済みの場合は通常の利用規約ページにリダイレクト
+    try:
+        meta = request.user.meta
+        if meta.terms_agreed_at:
+            return redirect('/terms/')
+    except UserMeta.DoesNotExist:
+        # UserMetaが存在しない場合は同意ページを表示
+        pass
+    
+    return render(request, 'frontend/terms_agree.html')
+
+
 def inquiry(request):
     """Inquiry/Report form page."""
     return render(request, 'frontend/inquiry.html')
@@ -111,6 +229,11 @@ def inquiry(request):
 def derivative_guidelines(request):
     """Derivative works guidelines page."""
     return render(request, 'frontend/derivative_guidelines.html')
+
+
+def privacy(request):
+    """Privacy policy page."""
+    return render(request, 'frontend/privacy.html')
 
 
 # API views

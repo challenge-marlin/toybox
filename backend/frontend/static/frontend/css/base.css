@@ -37,6 +37,31 @@
   --fg: #eae6df;
 }
 
+/* ライトモード用のカラーパレット */
+[data-theme="light"] {
+  --steam-gold-300: #8C5C2E;
+  --steam-gold-400: #6F4622;
+  --steam-gold-500: #58371B;
+  --steam-gold-200: #A87945;
+  --steam-gold-100: #C09A6B;
+  
+  --steam-iron-900: #F2F3F5;
+  --steam-iron-800: #E2E6EA;
+  --steam-iron-700: #C8CED6;
+  --steam-iron-600: #A6AFBD;
+  --steam-iron-500: #8591A2;
+  --steam-iron-400: #697483;
+  --steam-iron-300: #515A66;
+  --steam-iron-200: #3E4550;
+  --steam-iron-100: #2C3139;
+  
+  --steam-brown-500: #8C5C2E;
+  --steam-brown-600: #6F4622;
+  
+  --bg: #F2F3F5;
+  --fg: #1F232A;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -49,6 +74,7 @@ html, body {
   background: var(--bg);
   color: var(--fg);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* アクセシビリティ: focus-visible の視認性を向上 */

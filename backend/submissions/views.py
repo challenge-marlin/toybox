@@ -299,6 +299,37 @@ class SubmitGameUploadView(APIView):
                     'error': 'ZIPファイルの保存に失敗しました'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
+            # Audit ZIP file before extraction
+            from submissions.utils import audit_zip_file
+            audit_result = audit_zip_file(zip_path)
+            
+            # 監査結果に基づいてエラーまたは警告を返す
+            if not audit_result['is_safe']:
+                # Clean up on error
+                shutil.rmtree(base_path, ignore_errors=True)
+                
+                error_messages = []
+                if audit_result['errors']:
+                    error_messages.extend(audit_result['errors'])
+                if audit_result['warnings']:
+                    error_messages.extend(audit_result['warnings'])
+                
+                # エラーメッセージを構築
+                main_error = 'ZIPファイルの監査に失敗しました'
+                if audit_result['errors']:
+                    main_error = audit_result['errors'][0]  # 最初のエラーをメインメッセージに
+                
+                return Response({
+                    'error': main_error,
+                    'message': main_error,
+                    'details': error_messages,
+                    'audit_result': {
+                        'has_index_html': audit_result['has_index_html'],
+                        'suspicious_files': audit_result['suspicious_files'][:10],  # 最初の10個のみ
+                        'web_files_count': len(audit_result['web_files'])
+                    }
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
             # Extract ZIP file
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(base_path)

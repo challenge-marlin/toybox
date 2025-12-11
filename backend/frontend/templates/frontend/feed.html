@@ -253,6 +253,19 @@
         font-size: 0.75rem;
         color: var(--steam-iron-400);
     }
+    
+    .lightbox-like-btn {
+        transition: all 0.2s;
+    }
+    
+    .lightbox-like-btn:hover {
+        background: rgba(0, 0, 0, 0.8) !important;
+    }
+    
+    .lightbox-like-btn.liked svg {
+        fill: #fb7185;
+        color: #fb7185;
+    }
 </style>
 {% endblock %}
 
@@ -327,7 +340,13 @@
             <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
             <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
         </div>
-        <div id="lightbox-actions" style="display: none; gap: 0.5rem; align-items: center;">
+        <div id="lightbox-actions" style="display: none; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button id="lightbox-like-btn" class="lightbox-like-btn" onclick="toggleLightboxLike(event)" style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+                <span id="lightbox-like-count">0</span>
+            </button>
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer;">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
@@ -520,7 +539,7 @@
             <div class="feed-item ${itemClass}">
                 <div class="feed-item-ring"></div>
                 <div class="feed-item-header">
-                    <a href="/users/${item.anonId || 'unknown'}/">${item.displayName || item.anonId || 'Unknown'}</a>
+                    <a href="/profile/view/?user=${encodeURIComponent(item.anonId || 'unknown')}">${item.displayName || item.anonId || 'Unknown'}</a>
                 </div>
                 ${content}
                 <button class="feed-like-btn ${item.liked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${item.liked || false})">
@@ -565,13 +584,46 @@
             return;
         }
         
-        const item = items.find(x => x.id === submissionId);
-        if (!item) return;
+        // itemsとpopularItemsの両方を検索
+        const itemInFeed = items.find(x => x.id === submissionId);
+        const itemInPopular = popularItems.find(x => x.id === submissionId);
+        
+        // どちらにも存在しない場合は終了
+        if (!itemInFeed && !itemInPopular) return;
         
         // 楽観的更新（即座にカウントを更新）
-        item.liked = !currentLiked;
-        item.likesCount = Math.max(0, (item.likesCount || 0) + (currentLiked ? -1 : 1));
+        // 両方の配列に存在する場合は、両方とも更新
+        const newLiked = !currentLiked;
+        const likesCountDelta = currentLiked ? -1 : 1;
+        
+        if (itemInFeed) {
+            itemInFeed.liked = newLiked;
+            itemInFeed.likesCount = Math.max(0, (itemInFeed.likesCount || 0) + likesCountDelta);
+        }
+        if (itemInPopular) {
+            itemInPopular.liked = newLiked;
+            itemInPopular.likesCount = Math.max(0, (itemInPopular.likesCount || 0) + likesCountDelta);
+        }
+        
+        // ライトボックスが開いていて、同じ提出物の場合はライトボックス内のいいねも更新
+        if (currentLightboxAssetId === submissionId) {
+            const likeBtn = document.getElementById('lightbox-like-btn');
+            const likeCount = document.getElementById('lightbox-like-count');
+            if (likeBtn && likeCount) {
+                likeCount.textContent = itemInFeed ? itemInFeed.likesCount : (itemInPopular ? itemInPopular.likesCount : 0);
+                if (newLiked) {
+                    likeBtn.classList.add('liked');
+                    likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+                } else {
+                    likeBtn.classList.remove('liked');
+                    likeBtn.querySelector('svg').setAttribute('fill', 'none');
+                }
+            }
+        }
+        
+        // 両方のレンダリングを更新
         renderFeed();
+        renderPopularFeed();
         
         const method = currentLiked ? 'DELETE' : 'POST';
         fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
@@ -585,17 +637,71 @@
         .then(res => res.json())
         .then(data => {
             if (data.ok !== undefined && data.likesCount !== undefined) {
-                // サーバーからの結果で更新
-                item.liked = data.liked || false;
-                item.likesCount = data.likesCount || 0;
+                // サーバーからの結果で両方の配列を更新
+                const newLikedState = data.liked || false;
+                const newLikesCount = data.likesCount || 0;
+                
+                if (itemInFeed) {
+                    itemInFeed.liked = newLikedState;
+                    itemInFeed.likesCount = newLikesCount;
+                }
+                if (itemInPopular) {
+                    itemInPopular.liked = newLikedState;
+                    itemInPopular.likesCount = newLikesCount;
+                }
+                
+                // ライトボックスが開いていて、同じ提出物の場合はライトボックス内のいいねも更新
+                if (currentLightboxAssetId === submissionId) {
+                    const likeBtn = document.getElementById('lightbox-like-btn');
+                    const likeCount = document.getElementById('lightbox-like-count');
+                    if (likeBtn && likeCount) {
+                        likeCount.textContent = newLikesCount;
+                        if (newLikedState) {
+                            likeBtn.classList.add('liked');
+                            likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+                        } else {
+                            likeBtn.classList.remove('liked');
+                            likeBtn.querySelector('svg').setAttribute('fill', 'none');
+                        }
+                    }
+                }
+                
+                // 両方のレンダリングを更新
                 renderFeed();
+                renderPopularFeed();
             }
         })
         .catch(err => {
-            // エラー時はロールバック
-            item.liked = currentLiked;
-            item.likesCount = Math.max(0, (item.likesCount || 0) + (currentLiked ? 1 : -1));
+            // エラー時はロールバック（両方の配列を元に戻す）
+            if (itemInFeed) {
+                itemInFeed.liked = currentLiked;
+                itemInFeed.likesCount = Math.max(0, (itemInFeed.likesCount || 0) + (currentLiked ? 1 : -1));
+            }
+            if (itemInPopular) {
+                itemInPopular.liked = currentLiked;
+                itemInPopular.likesCount = Math.max(0, (itemInPopular.likesCount || 0) + (currentLiked ? 1 : -1));
+            }
+            
+            // ライトボックスが開いていて、同じ提出物の場合はライトボックス内のいいねもロールバック
+            if (currentLightboxAssetId === submissionId) {
+                const likeBtn = document.getElementById('lightbox-like-btn');
+                const likeCount = document.getElementById('lightbox-like-count');
+                if (likeBtn && likeCount) {
+                    const rollbackCount = itemInFeed ? itemInFeed.likesCount : (itemInPopular ? itemInPopular.likesCount : 0);
+                    likeCount.textContent = rollbackCount;
+                    if (currentLiked) {
+                        likeBtn.classList.add('liked');
+                        likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+                    } else {
+                        likeBtn.classList.remove('liked');
+                        likeBtn.querySelector('svg').setAttribute('fill', 'none');
+                    }
+                }
+            }
+            
+            // 両方のレンダリングを更新
             renderFeed();
+            renderPopularFeed();
             console.error('Failed to toggle like:', err);
         });
     }
@@ -640,15 +746,43 @@
             lightboxImage.src = src;
         }
         
-        // Discordシェアボタンを表示（画像と動画のみ）
-        if (type === 'image' || type === 'video') {
-            lightboxActions.style.display = 'flex';
-        } else {
-            lightboxActions.style.display = 'none';
+        // いいねボタンとDiscordシェアボタンを表示（すべてのタイプでいいねボタンを表示）
+        lightboxActions.style.display = 'flex';
+        
+        // Discordシェアボタンは画像と動画のみ表示
+        const discordShareBtn = document.getElementById('discord-share-btn');
+        if (discordShareBtn) {
+            if (type === 'image' || type === 'video') {
+                discordShareBtn.style.display = 'inline-flex';
+            } else {
+                discordShareBtn.style.display = 'none';
+            }
         }
         
         // 投稿詳細情報を取得
         if (assetId) {
+            // まず、カード上のデータからいいね状態を取得（優先）
+            const itemInFeed = items.find(x => x.id === assetId);
+            const itemInPopular = popularItems.find(x => x.id === assetId);
+            const cardItem = itemInFeed || itemInPopular;
+            
+            // カード上のいいね状態をライトボックスに反映
+            const likeBtn = document.getElementById('lightbox-like-btn');
+            const likeCount = document.getElementById('lightbox-like-count');
+            if (likeBtn && likeCount && cardItem) {
+                const isLiked = cardItem.liked || false;
+                const likesCount = cardItem.likesCount || cardItem.likes_count || 0;
+                
+                likeCount.textContent = likesCount;
+                if (isLiked) {
+                    likeBtn.classList.add('liked');
+                    likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+                } else {
+                    likeBtn.classList.remove('liked');
+                    likeBtn.querySelector('svg').setAttribute('fill', 'none');
+                }
+            }
+            
             try {
                 const token = localStorage.getItem('access_token');
                 const res = await fetch(`/api/submissions/${assetId}/`, {
@@ -658,6 +792,21 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    
+                    // カード上のデータがない場合のみ、APIから取得したデータを使用
+                    if (!cardItem && likeBtn && likeCount) {
+                        const isLiked = data.liked || false;
+                        const likesCount = data.likes_count || data.likesCount || 0;
+                        
+                        likeCount.textContent = likesCount;
+                        if (isLiked) {
+                            likeBtn.classList.add('liked');
+                            likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+                        } else {
+                            likeBtn.classList.remove('liked');
+                            likeBtn.querySelector('svg').setAttribute('fill', 'none');
+                        }
+                    }
                     
                     // ゲーム投稿の場合、サムネイルを表示
                     if (type === 'game') {
@@ -767,6 +916,121 @@
             }
         }
     });
+    
+    // ライトボックス内のいいね機能
+    async function toggleLightboxLike(event) {
+        event.stopPropagation();
+        
+        if (!currentLightboxAssetId) return;
+        
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            alert('ログインが必要です');
+            return;
+        }
+        
+        const likeBtn = document.getElementById('lightbox-like-btn');
+        const likeCount = document.getElementById('lightbox-like-count');
+        if (!likeBtn || !likeCount) return;
+        
+        const isCurrentlyLiked = likeBtn.classList.contains('liked');
+        const currentCount = parseInt(likeCount.textContent) || 0;
+        
+        // 楽観的更新
+        const newLiked = !isCurrentlyLiked;
+        const newCount = Math.max(0, currentCount + (isCurrentlyLiked ? -1 : 1));
+        
+        likeCount.textContent = newCount;
+        if (newLiked) {
+            likeBtn.classList.add('liked');
+            likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+        } else {
+            likeBtn.classList.remove('liked');
+            likeBtn.querySelector('svg').setAttribute('fill', 'none');
+        }
+        
+        // フィード内のアイテムも更新
+        const itemInFeed = items.find(x => x.id === currentLightboxAssetId);
+        const itemInPopular = popularItems.find(x => x.id === currentLightboxAssetId);
+        
+        if (itemInFeed) {
+            itemInFeed.liked = newLiked;
+            itemInFeed.likesCount = newCount;
+        }
+        if (itemInPopular) {
+            itemInPopular.liked = newLiked;
+            itemInPopular.likesCount = newCount;
+        }
+        
+        // レンダリングを更新
+        renderFeed();
+        renderPopularFeed();
+        
+        // API呼び出し
+        try {
+            const method = isCurrentlyLiked ? 'DELETE' : 'POST';
+            const response = await fetch(`/api/submissions/${encodeURIComponent(currentLightboxAssetId)}/like/`, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: method === 'POST' ? JSON.stringify({}) : undefined
+            });
+            
+            const data = await response.json();
+            if (data.ok !== undefined && data.likesCount !== undefined) {
+                // サーバーからの結果で更新
+                const serverLiked = data.liked || false;
+                const serverCount = data.likesCount || 0;
+                
+                likeCount.textContent = serverCount;
+                if (serverLiked) {
+                    likeBtn.classList.add('liked');
+                    likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+                } else {
+                    likeBtn.classList.remove('liked');
+                    likeBtn.querySelector('svg').setAttribute('fill', 'none');
+                }
+                
+                // フィード内のアイテムも更新
+                if (itemInFeed) {
+                    itemInFeed.liked = serverLiked;
+                    itemInFeed.likesCount = serverCount;
+                }
+                if (itemInPopular) {
+                    itemInPopular.liked = serverLiked;
+                    itemInPopular.likesCount = serverCount;
+                }
+                
+                renderFeed();
+                renderPopularFeed();
+            }
+        } catch (err) {
+            console.error('Failed to toggle like:', err);
+            // エラー時はロールバック
+            likeCount.textContent = currentCount;
+            if (isCurrentlyLiked) {
+                likeBtn.classList.add('liked');
+                likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+            } else {
+                likeBtn.classList.remove('liked');
+                likeBtn.querySelector('svg').setAttribute('fill', 'none');
+            }
+            
+            if (itemInFeed) {
+                itemInFeed.liked = isCurrentlyLiked;
+                itemInFeed.likesCount = currentCount;
+            }
+            if (itemInPopular) {
+                itemInPopular.liked = isCurrentlyLiked;
+                itemInPopular.likesCount = currentCount;
+            }
+            
+            renderFeed();
+            renderPopularFeed();
+        }
+    }
     
     // Discordシェア機能
     async function shareToDiscord() {

@@ -29,6 +29,9 @@ urlpatterns = [
     # Topic endpoints
     path('topic/generate/', views.TopicGenerateView.as_view(), name='topic-generate'),
     
+    # Terms agreement endpoint
+    path('terms/agree/', views.TermsAgreeView.as_view(), name='terms-agree'),
+    
     # Router URLs
     path('', include(router.urls)),
 ]

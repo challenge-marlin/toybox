@@ -231,6 +231,117 @@ def get_submission_file_url(submission, request=None):
     return result
 
 
+def audit_zip_file(zip_path):
+    """
+    ZIPファイルの内容を監査し、怪しいファイルがないかチェックする
+    
+    Args:
+        zip_path: ZIPファイルのパス
+    
+    Returns:
+        dict: {
+            'is_safe': bool,
+            'warnings': list[str],
+            'errors': list[str],
+            'has_index_html': bool,
+            'suspicious_files': list[str],
+            'web_files': list[str]
+        }
+    """
+    import zipfile
+    import os
+    
+    result = {
+        'is_safe': True,
+        'warnings': [],
+        'errors': [],
+        'has_index_html': False,
+        'suspicious_files': [],
+        'web_files': []
+    }
+    
+    # 怪しいファイル拡張子のリスト
+    # 注意: .jsはWebゲームに必須のため除外
+    SUSPICIOUS_EXTENSIONS = {
+        '.exe', '.bat', '.cmd', '.com', '.scr', '.vbs', '.jar', '.app',
+        '.dll', '.so', '.dylib', '.sys', '.drv', '.ocx', '.cpl', '.msi', '.msm',
+        '.ps1', '.sh', '.bash', '.zsh', '.fish', '.py', '.pyc', '.pyo', '.pyd',
+        '.php', '.asp', '.aspx', '.jsp', '.pl', '.rb', '.go', '.rs', '.c', '.cpp',
+        '.deb', '.rpm', '.pkg', '.dmg', '.iso', '.img', '.bin', '.run'
+    }
+    
+    # Webゲームに関連するファイル拡張子
+    WEB_FILE_EXTENSIONS = {
+        '.html', '.htm', '.css', '.js', '.json', '.xml', '.svg',
+        '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp',
+        '.mp3', '.mp4', '.webm', '.ogg', '.wav', '.flac',
+        '.woff', '.woff2', '.ttf', '.eot', '.otf',
+        '.txt', '.md', '.pdf'
+    }
+    
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            file_list = zip_ref.namelist()
+            
+            # 各ファイルをチェック
+            for file_name in file_list:
+                # ディレクトリはスキップ
+                if file_name.endswith('/'):
+                    continue
+                
+                # ファイル名を小文字に変換して拡張子を取得
+                file_lower = file_name.lower()
+                file_ext = os.path.splitext(file_lower)[1]
+                
+                # index.htmlの存在確認
+                if file_lower == 'index.html' or file_lower.endswith('/index.html'):
+                    result['has_index_html'] = True
+                    result['web_files'].append(file_name)
+                    continue
+                
+                # Webゲームに関連するファイルかチェック
+                if file_ext in WEB_FILE_EXTENSIONS:
+                    result['web_files'].append(file_name)
+                    continue
+                
+                # 怪しいファイル拡張子かチェック
+                if file_ext in SUSPICIOUS_EXTENSIONS:
+                    result['suspicious_files'].append(file_name)
+                    result['warnings'].append(f'怪しいファイルが検出されました: {file_name}')
+                    result['is_safe'] = False
+                    continue
+                
+                # 拡張子がないファイルも警告
+                if not file_ext and '.' not in os.path.basename(file_name):
+                    result['warnings'].append(f'拡張子のないファイルが検出されました: {file_name}')
+            
+            # index.htmlがない場合はエラー
+            if not result['has_index_html']:
+                result['errors'].append('index.htmlが見つかりません。Webゲームにはindex.htmlが必要です。')
+                result['is_safe'] = False
+            
+            # Webゲームに関連するファイルが少なすぎる場合は警告
+            if len(result['web_files']) < 2:
+                result['warnings'].append('Webゲームに関連するファイルが少なすぎます。')
+                result['is_safe'] = False
+            
+            # 怪しいファイルが多すぎる場合はエラー
+            if len(result['suspicious_files']) > 0:
+                result['errors'].append(f'{len(result["suspicious_files"])}個の怪しいファイルが検出されました。')
+                result['is_safe'] = False
+            
+    except zipfile.BadZipFile:
+        result['errors'].append('ZIPファイルが破損しているか、無効な形式です。')
+        result['is_safe'] = False
+    except Exception as e:
+        logger.error(f'Failed to audit ZIP file {zip_path}: {str(e)}', exc_info=True)
+        result['errors'].append(f'ZIPファイルの監査中にエラーが発生しました: {str(e)}')
+        result['is_safe'] = False
+    
+    return result
+
+
+
 
 
 

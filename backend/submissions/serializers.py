@@ -34,54 +34,26 @@ class SubmissionSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'author', 'created_at', 'deleted_at', 'status']
     
     def get_image(self, obj):
-        """Get absolute URL for image field."""
-        if obj.image:
-            try:
-                # ファイルの存在確認
-                from django.conf import settings
-                if hasattr(obj.image, 'path'):
-                    if not os.path.exists(obj.image.path):
-                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
-                        obj.image = None
-                        obj.save(update_fields=['image'])
-                        return None
-                
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(obj.image.url)
-                return obj.image.url
-            except (ValueError, AttributeError, OSError) as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to get image URL for submission {obj.id}: {str(e)}')
-                return None
+        """Get absolute URL for image field (統一ユーティリティを使用)."""
+        from toybox.image_utils import get_image_url, verify_image_file_exists, clean_invalid_image_url
         
-        # Fallback to image_url if image field is empty
-        if obj.image_url:
-            # image_urlの存在確認
-            try:
-                from django.conf import settings
-                from urllib.parse import urlparse
-                # URLからファイルパスを抽出
-                if obj.image_url.startswith('http'):
-                    parsed = urlparse(obj.image_url)
-                    file_path = parsed.path
-                else:
-                    file_path = obj.image_url
-                
-                # /uploads/submissions/ から始まる場合、ファイルの存在確認
-                if file_path.startswith('/uploads/submissions/'):
-                    filename = file_path.replace('/uploads/submissions/', '')
-                    full_path = settings.MEDIA_ROOT / 'submissions' / filename
-                    if not full_path.exists():
-                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
-                        obj.image_url = None
-                        obj.save(update_fields=['image_url'])
-                        return None
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to verify image_url for submission {obj.id}: {str(e)}')
+        request = self.context.get('request')
+        
+        # ImageFieldを優先
+        image_url = get_image_url(
+            image_field=obj.image,
+            image_url_field=obj.image_url,
+            request=request,
+            verify_exists=True
+        )
+        
+        # ファイルが存在しない場合、データベースをクリア
+        if obj.image and not image_url:
+            clean_invalid_image_url(obj, 'image')
+        elif obj.image_url and not image_url:
+            clean_invalid_image_url(obj, 'image', 'image_url')
+        
+        return image_url
         
         return obj.image_url or None
     

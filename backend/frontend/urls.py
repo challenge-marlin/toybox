@@ -17,7 +17,9 @@ urlpatterns = [
     path('profile/view/', views.profile_view, name='profile-view'),
     path('announcement/<int:announcement_id>/', views.announcement_detail, name='announcement-detail'),
     path('terms/', views.terms, name='terms'),
+    path('terms/agree/', views.terms_agree, name='terms-agree'),
     path('inquiry/', views.inquiry, name='inquiry'),
     path('derivative-guidelines/', views.derivative_guidelines, name='derivative-guidelines'),
+    path('privacy/', views.privacy, name='privacy'),
 ]
 

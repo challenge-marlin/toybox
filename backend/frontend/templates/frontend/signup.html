@@ -91,11 +91,389 @@
         opacity: 0.6;
         cursor: not-allowed;
     }
+    
+    /* 利用規約同意モーダル */
+    .terms-agree-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow-y: auto;
+        padding: 2rem 1rem;
+    }
+    
+    .terms-agree-modal-content {
+        max-width: 900px;
+        width: 100%;
+        background: var(--steam-iron-900);
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        padding: 2rem;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .terms-agree-header {
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--steam-iron-700);
+        padding-bottom: 1rem;
+        text-align: center;
+    }
+    
+    .terms-agree-header h1 {
+        color: var(--steam-gold-300);
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .terms-agree-header p {
+        color: var(--steam-iron-300);
+        font-size: 0.875rem;
+    }
+    
+    .terms-content-wrapper {
+        position: relative;
+        max-height: 50vh;
+        overflow-y: auto;
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        padding: 1.5rem;
+        background: var(--steam-iron-800);
+        margin-bottom: 2rem;
+        flex: 1;
+    }
+    
+    .terms-content {
+        color: var(--steam-iron-100);
+        font-size: 0.875rem;
+        line-height: 1.8;
+    }
+    
+    .terms-content section {
+        margin-bottom: 2rem;
+    }
+    
+    .terms-content h2 {
+        color: var(--steam-gold-200);
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    
+    .terms-content h3 {
+        color: var(--steam-gold-300);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .terms-content p {
+        margin-bottom: 1rem;
+    }
+    
+    .terms-content ol {
+        margin-left: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .terms-content ol ol {
+        margin-left: 1.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .terms-content li {
+        margin-bottom: 0.5rem;
+    }
+    
+    .scroll-indicator {
+        position: sticky;
+        bottom: 0;
+        background: linear-gradient(to top, var(--steam-iron-800) 0%, rgba(31, 35, 42, 0) 100%);
+        padding: 2rem 0 1rem;
+        text-align: center;
+        color: var(--steam-iron-300);
+        font-size: 0.875rem;
+        pointer-events: none;
+    }
+    
+    .agree-button-container {
+        text-align: center;
+        padding: 1.5rem;
+        background: var(--steam-iron-800);
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+    }
+    
+    .agree-button {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        background: var(--steam-gold-500);
+        color: black;
+        border: none;
+        border-radius: 9999px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    
+    .agree-button.enabled {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    
+    .agree-button.enabled:hover {
+        background: var(--steam-gold-400);
+    }
+    
+    .agree-button:disabled {
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="signup-container">
+<!-- 利用規約同意モーダル -->
+<div id="terms-agree-modal" class="terms-agree-modal" style="display: block;">
+    <div class="terms-agree-modal-content">
+        <div class="terms-agree-header">
+            <h1>利用規約への同意</h1>
+            <p>アカウント作成には利用規約への同意が必要です。利用規約を最後までお読みいただき、同意してください。</p>
+        </div>
+        
+        <div class="terms-content-wrapper" id="terms-content-wrapper">
+            <div class="terms-content" id="terms-content">
+                <section>
+                    <p>
+                        本規約は、TOYBOX上でユーザーが制作・投稿・プレイするゲーム（以下「本ゲーム」といいます）の利用条件を定めるものです。
+                    </p>
+                    <p>
+                        本ゲームを利用するユーザー（以下「ユーザー」といいます）は、本規約に同意したものとみなします。
+                    </p>
+                </section>
+
+                <section>
+                    <h2>第1条（適用範囲）</h2>
+                    <ol>
+                        <li>
+                            本規約は、ユーザーが本ゲームのプレイ、ゲーム作品の制作・投稿、タイトルやキャプションの入力など、本ゲームに関わるすべての行為に適用されます。
+                        </li>
+                        <li>
+                            本規約に定めのない事項については、TOYBOX全体のコミュニティガイドラインおよびその他の規約が適用されます。
+                        </li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h2>第2条（タイトル・キャプションのモラル）</h2>
+                    <ol>
+                        <li>
+                            ユーザーは、ゲームのタイトル、キャプション、説明文、タグ等（以下「タイトル等」といいます）において、以下の内容を含めてはなりません。
+                            <ol>
+                                <li>他者を侮辱・中傷する表現</li>
+                                <li>差別的、攻撃的、または暴力性の高い表現</li>
+                                <li>過度に不安や恐怖をあおる表現</li>
+                                <li>誤解を与える虚偽の情報</li>
+                                <li>その他、一般的なモラルや公序良俗に反すると運営が判断する表現</li>
+                            </ol>
+                        </li>
+                        <li>
+                            タイトル等は、ゲームの内容をわかりやすく、かつ参加者が安心して閲覧できる表現を心がけてください。
+                        </li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h2>第3条（禁止コンテンツ：卑猥・グロテスク・危険行為 等）</h2>
+                    <p>
+                        ユーザーは、本ゲーム内で制作・投稿・使用するすべての画像・テキスト・音声その他のコンテンツ（以下「コンテンツ」といいます）において、以下のいずれにも該当してはなりません。
+                    </p>
+
+                    <div>
+                        <h3>1. 卑猥・性的表現</h3>
+                        <ol>
+                            <li>性行為を想起させる露骨な表現</li>
+                            <li>過度に性的な身体強調表現</li>
+                            <li>未成年を対象とするいかなる性的表現</li>
+                            <li>性的搾取・性的暴力を肯定または美化する表現</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3>2. グロテスク・過度な暴力表現</h3>
+                        <ol>
+                            <li>流血・損壊・内臓の露出など、過度にグロテスクな描写</li>
+                            <li>自殺・自傷行為を直接的かつ扇情的に描写する内容</li>
+                            <li>殺害・虐待を肯定または美化する内容</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3>3. クラッシュ目的・システム妨害等のゲーム</h3>
+                        <ol>
+                            <li>明らかにアプリケーションや端末のフリーズ／クラッシュを狙った設計</li>
+                            <li>サーバーやネットワークに過度な負荷を与えることを目的とした仕様</li>
+                            <li>セキュリティホールの悪用を目的としたコンテンツ</li>
+                            <li>不具合・バグ・脆弱性を故意に利用させることを主目的としたコンテンツ</li>
+                            <li>ZIPファイルにウィルス、マルウェア、その他の悪意のあるファイル（自動実行プラグイン等を含む）を隠匿・混入させる行為</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3>4. 法令違反・犯罪行為の助長</h3>
+                        <ol>
+                            <li>犯罪行為の具体的な手口の紹介・指南</li>
+                            <li>違法薬物、違法行為、危険行為を肯定または推奨する内容</li>
+                            <li>その他、法令に違反し、または違反を助長する内容</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3>5. その他、運営が不適切と判断する表現</h3>
+                        <ol>
+                            <li>極端な政治・宗教的主張を一方的に主張する内容</li>
+                            <li>特定の個人・団体の権利を侵害するおそれがある内容</li>
+                            <li>未成年に不適切と判断される過激なテーマ・表現</li>
+                        </ol>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>第4条（迷惑行為の禁止）</h2>
+                    <p>
+                        ユーザーは、本ゲームの利用に際して、以下のような迷惑行為を行ってはなりません。
+                    </p>
+
+                    <div>
+                        <h3>1. スパム的な投稿・行為</h3>
+                        <ol>
+                            <li>同様またはほとんど内容の変わらないゲームやステージを短時間で大量に投稿する行為</li>
+                            <li>意味のない記号・文字列のみで構成されたタイトル等の連投</li>
+                            <li>他者の作品一覧を埋めることを目的とした過剰な投稿</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3>2. 荒らし行為</h3>
+                        <ol>
+                            <li>他者を挑発・不快にさせることを主目的としたゲームやタイトル等の作成</li>
+                            <li>明らかにプレイ体験を損なう目的の罠的・嫌がらせ的設計のみを特徴とするゲーム</li>
+                            <li>コミュニティ内で炎上・対立をあおることを目的とした投稿</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3>3. なりすまし・詐称</h3>
+                        <ol>
+                            <li>他のユーザーや運営・公式アカウントを装う行為</li>
+                            <li>他人の作品を自作であるかのように偽る行為</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3>4. その他の迷惑行為</h3>
+                        <ol>
+                            <li>利用者や運営の活動を妨害する行為</li>
+                            <li>不具合や仕様の穴を悪用し、他ユーザーの体験を著しく損なう行為</li>
+                            <li>運営が迷惑行為と判断する一切の行為</li>
+                        </ol>
+                    </div>
+                </section>
+
+                <section>
+                    <h2>第5条（ペナルティ・対応措置）</h2>
+                    <ol>
+                        <li>
+                            ユーザーが本規約に違反した場合、またはそのおそれがあると運営が判断した場合、運営は事前の通知なく、以下のいずれかまたは複数の措置を行うことができます。
+                            <ol>
+                                <li>問題のあるコンテンツ（ゲーム・画像・タイトル等）の非公開化または削除</li>
+                                <li>警告メッセージの送信</li>
+                                <li>一定期間の投稿・編集・プレイ機能の制限</li>
+                                <li>アカウントの一時停止</li>
+                                <li>アカウントの永久停止（BAN）</li>
+                                <li>必要と判断される場合の、外部サービス・関係機関への通報</li>
+                            </ol>
+                        </li>
+                        <li>
+                            ペナルティの内容・期間は、違反内容の重大さ、過去の経緯、コミュニティへの影響等を総合的に勘案して運営が判断します。
+                        </li>
+                        <li>
+                            特に、第3条に定めるクラッシュ目的・システム妨害等のゲーム、またはZIPファイルへのウィルス・マルウェア等の混入等、重大な違反行為を行った場合、運営は法的措置（損害賠償請求、刑事告訴等を含む）を講じることがあります。
+                        </li>
+                        <li>
+                            運営は、上記の措置によりユーザーに生じた不利益・損害について、一切の責任を負わないものとします。
+                        </li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h2>第6条（免責・その他）</h2>
+                    <ol>
+                        <li>
+                            本ゲームは現状有姿で提供されるものであり、運営は、その完全性・安全性・有用性についていかなる保証も行いません。
+                        </li>
+                        <li>
+                            ユーザー同士のトラブルについては、当事者間で解決するものとし、運営は故意または重過失がある場合を除き、責任を負いません。
+                        </li>
+                        <li>
+                            ZIPファイル形式のゲームを開いた場合に発生した不具合（別タブで開いたゲームの不具合、ブラウザのクラッシュ、端末のフリーズ、データの破損等を含むがこれらに限られません）について、運営は一切の責任を負いません。ユーザーは自己の責任においてゲームをプレイするものとし、発生した損害について運営に請求することはできません。
+                        </li>
+                        <li>
+                            運営は、必要に応じて本規約の内容を変更することができます。変更後の規約は、本ゲーム内または関連サイト上に表示した時点から効力を生じるものとします。
+                        </li>
+                        <li>
+                            ユーザーが本ゲームの利用を継続した場合、変更後の規約に同意したものとみなします。
+                        </li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h2>第7条（お問い合わせ・規約違反の通報）</h2>
+                    <ol>
+                        <li>
+                            ユーザーは、本ゲームに関する質問や不具合報告、規約違反と思われるコンテンツ・ユーザーを発見した場合、所定のお問い合わせ・通報フォームから運営に連絡することができます。
+                        </li>
+                        <li>
+                            お問い合わせ・通報の際には、可能な範囲で以下の情報を記載してください。
+                            <ol>
+                                <li>問題が発生したゲーム名またはコンテンツの名称</li>
+                                <li>問題が発生したおおよその日時</li>
+                                <li>規約違反と思われる理由や状況の説明</li>
+                                <li>その他、運営が状況を把握するために有用と思われる情報</li>
+                            </ol>
+                        </li>
+                        <li>
+                            運営は、すべてのお問い合わせ・通報に個別の回答や対応を約束するものではありませんが、コミュニティの安全と健全な運営のため、可能な範囲で対応に努めます。
+                        </li>
+                    </ol>
+                </section>
+
+                <section style="text-align: center; margin-top: 2rem;">
+                    <p style="color: var(--steam-gold-300); font-weight: 600;">以上</p>
+                </section>
+            </div>
+            <div class="scroll-indicator" id="scroll-indicator">
+                利用規約を最後までスクロールしてください
+            </div>
+        </div>
+        
+        <div class="agree-button-container">
+            <button id="terms-agree-button" class="agree-button" disabled>同意する</button>
+        </div>
+    </div>
+</div>
+
+<!-- サインアップフォーム（初期状態では非表示） -->
+<div class="signup-container" id="signup-form-container" style="display: none;">
     <h1 class="signup-title">アカウント作成</h1>
     <div id="signup-message" class="signup-message" style="display: none;"></div>
     <div id="signup-error" class="signup-error" style="display: none;"></div>
@@ -145,7 +523,80 @@
     // ページ読み込み時に認証チェック
     document.addEventListener('DOMContentLoaded', function() {
         redirectIfAuthenticated();
+        setupTermsAgreement();
+        hideSignupPageNavigation();
     });
+    
+    // サインアップページでヘッダーの「みんなの投稿」と「ログイン」を非表示にする
+    function hideSignupPageNavigation() {
+        // 「みんなの投稿」リンクを非表示
+        const feedLink = document.querySelector('a[href="/feed/"]');
+        if (feedLink) {
+            feedLink.style.display = 'none';
+        }
+        
+        // 「ログイン」リンクを非表示
+        const loginLink = document.getElementById('nav-login');
+        if (loginLink) {
+            loginLink.style.display = 'none';
+        }
+    }
+    
+    let termsAgreed = false;
+    
+    function setupTermsAgreement() {
+        const termsContentWrapper = document.getElementById('terms-content-wrapper');
+        const scrollIndicator = document.getElementById('scroll-indicator');
+        const agreeButton = document.getElementById('terms-agree-button');
+        const termsModal = document.getElementById('terms-agree-modal');
+        const signupFormContainer = document.getElementById('signup-form-container');
+        
+        let hasScrolledToBottom = false;
+        
+        // スクロール検知
+        termsContentWrapper.addEventListener('scroll', function() {
+            const scrollTop = termsContentWrapper.scrollTop;
+            const scrollHeight = termsContentWrapper.scrollHeight;
+            const clientHeight = termsContentWrapper.clientHeight;
+            
+            // 最後までスクロールしたかチェック（10pxの余裕を持たせる）
+            if (scrollTop + clientHeight >= scrollHeight - 10) {
+                if (!hasScrolledToBottom) {
+                    hasScrolledToBottom = true;
+                    scrollIndicator.style.display = 'none';
+                    agreeButton.classList.add('enabled');
+                    agreeButton.disabled = false;
+                }
+            } else {
+                if (hasScrolledToBottom) {
+                    hasScrolledToBottom = false;
+                    scrollIndicator.style.display = 'block';
+                    agreeButton.classList.remove('enabled');
+                    agreeButton.disabled = true;
+                }
+            }
+        });
+        
+        // 初期状態で既に最後までスクロールされている場合
+        if (termsContentWrapper.scrollHeight <= termsContentWrapper.clientHeight) {
+            hasScrolledToBottom = true;
+            scrollIndicator.style.display = 'none';
+            agreeButton.classList.add('enabled');
+            agreeButton.disabled = false;
+        }
+        
+        // 同意ボタンのクリック処理
+        agreeButton.addEventListener('click', function() {
+            if (!hasScrolledToBottom || agreeButton.disabled) {
+                return;
+            }
+            
+            termsAgreed = true;
+            // モーダルを非表示にしてフォームを表示
+            termsModal.style.display = 'none';
+            signupFormContainer.style.display = 'block';
+        });
+    }
     
     async function handleSubmit(e) {
         e.preventDefault();
@@ -158,6 +609,13 @@
         // Hide previous messages
         messageDiv.style.display = 'none';
         errorDiv.style.display = 'none';
+        
+        // 利用規約に同意しているかチェック
+        if (!termsAgreed) {
+            errorDiv.textContent = '利用規約への同意が必要です';
+            errorDiv.style.display = 'block';
+            return;
+        }
         
         // Get form data
         const formData = new FormData(form);

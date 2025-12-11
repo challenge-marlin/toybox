@@ -96,61 +96,41 @@ class UserMetaSerializer(serializers.ModelSerializer):
         """Override to check title expiry and add title image URL."""
         data = super().to_representation(instance)
         
-        # アバターURLの存在確認
-        avatar_url = data.get('avatar_url')
-        if avatar_url:
-            try:
-                from django.conf import settings
-                # URLからファイルパスを抽出
-                if avatar_url.startswith('http'):
-                    from urllib.parse import urlparse
-                    parsed = urlparse(avatar_url)
-                    file_path = parsed.path
-                else:
-                    file_path = avatar_url
-                
-                # /uploads/profiles/ から始まる場合、ファイルの存在確認
-                if file_path.startswith('/uploads/profiles/'):
-                    filename = file_path.replace('/uploads/profiles/', '')
-                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
-                    if not full_path.exists():
-                        # ファイルが存在しない場合はNoneを返す
-                        data['avatar_url'] = None
-                        # データベースも更新（オプション）
-                        instance.user.avatar_url = None
-                        instance.user.save(update_fields=['avatar_url'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to verify avatar URL for user {instance.user.id}: {e}')
+        # アバターURLとヘッダーURLの取得と検証（統一ユーティリティを使用）
+        from toybox.image_utils import get_image_url, verify_image_file_exists
+        request = self.context.get('request')
         
-        # ヘッダーURLの存在確認
+        # ユーザーのアバターURL（Userモデルから取得）
+        user = instance.user
+        avatar_url = None
+        if hasattr(user, 'avatar_url') and user.avatar_url:
+            if verify_image_file_exists(user.avatar_url):
+                avatar_url = get_image_url(
+                    image_url_field=user.avatar_url,
+                    request=request,
+                    verify_exists=False  # 既に検証済み
+                )
+            else:
+                # ファイルが存在しない場合はデータベースをクリア
+                user.avatar_url = None
+                user.save(update_fields=['avatar_url'])
+        
+        data['avatar_url'] = avatar_url
+        
+        # ヘッダーURLの取得と検証
         header_url = data.get('header_url')
         if header_url:
-            try:
-                from django.conf import settings
-                # URLからファイルパスを抽出
-                if header_url.startswith('http'):
-                    from urllib.parse import urlparse
-                    parsed = urlparse(header_url)
-                    file_path = parsed.path
-                else:
-                    file_path = header_url
-                
-                # /uploads/profiles/ から始まる場合、ファイルの存在確認
-                if file_path.startswith('/uploads/profiles/'):
-                    filename = file_path.replace('/uploads/profiles/', '')
-                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
-                    if not full_path.exists():
-                        # ファイルが存在しない場合はNoneを返す
-                        data['header_url'] = None
-                        # データベースも更新（オプション）
-                        instance.header_url = None
-                        instance.save(update_fields=['header_url'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to verify header URL for user {instance.user.id}: {e}')
+            if verify_image_file_exists(header_url):
+                header_url = get_image_url(
+                    image_url_field=header_url,
+                    request=request,
+                    verify_exists=False  # 既に検証済み
+                )
+            else:
+                # ファイルが存在しない場合はNoneを返す（データベース更新は行わない）
+                header_url = None
+        
+        data['header_url'] = header_url
         
         # Check if title is expired
         if instance.active_title and instance.expires_at:
@@ -165,18 +145,15 @@ class UserMetaSerializer(serializers.ModelSerializer):
         if active_title:
             try:
                 from gamification.models import Title
+                from toybox.image_utils import get_image_url
                 title_obj = Title.objects.filter(name=active_title).first()
                 if title_obj:
-                    request = self.context.get('request')
-                    if title_obj.image:
-                        if request:
-                            data['active_title_image_url'] = request.build_absolute_uri(title_obj.image.url)
-                        else:
-                            data['active_title_image_url'] = title_obj.image.url
-                    elif title_obj.image_url:
-                        data['active_title_image_url'] = title_obj.image_url
-                    else:
-                        data['active_title_image_url'] = None
+                    data['active_title_image_url'] = get_image_url(
+                        image_field=title_obj.image,
+                        image_url_field=title_obj.image_url,
+                        request=request,
+                        verify_exists=True
+                    )
                 else:
                     data['active_title_image_url'] = None
             except Exception as e:

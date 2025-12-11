@@ -16,6 +16,8 @@
             const navCollection = document.getElementById('nav-collection');
             const navProfile = document.getElementById('nav-profile');
             const navFeed = document.querySelector('a[href="/feed/"]');
+            const profileViewEntry = document.getElementById('profile-view-entry');
+            const profileEntry = document.getElementById('profile-entry');
             const logoLink = document.getElementById('logo-link');
             
             // リンクを非表示にする
@@ -43,6 +45,20 @@
             if (navFeed) {
                 navFeed.style.display = 'none';
                 navFeed.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+            if (profileViewEntry) {
+                profileViewEntry.style.display = 'none';
+                profileViewEntry.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+            if (profileEntry) {
+                profileEntry.style.display = 'none';
+                profileEntry.addEventListener('click', function(e) {
                     e.preventDefault();
                     return false;
                 });
@@ -277,6 +293,19 @@
 </div>
 
 <script>
+    // URL検証を設定
+    document.addEventListener('DOMContentLoaded', function() {
+        const nameInput = document.getElementById('name');
+        const messageTextarea = document.getElementById('message');
+        
+        if (nameInput) {
+            setupURLValidation(nameInput);
+        }
+        if (messageTextarea) {
+            setupURLValidation(messageTextarea);
+        }
+    });
+    
     document.getElementById('contactForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         

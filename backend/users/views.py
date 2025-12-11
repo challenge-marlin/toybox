@@ -280,61 +280,36 @@ class ProfileGetView(APIView):
         # Get display_name from display_name field, fallback to bio, then display_id
         display_name = meta.display_name or meta.bio or user.display_id
         
-        # アバターURLの存在確認
-        avatar_url = user.avatar_url
-        if avatar_url:
-            try:
-                # URLからファイルパスを抽出
-                if avatar_url.startswith('http'):
-                    # 絶対URLの場合、パス部分を抽出
-                    from urllib.parse import urlparse
-                    parsed = urlparse(avatar_url)
-                    file_path = parsed.path
-                else:
-                    # 相対パスの場合
-                    file_path = avatar_url
-                
-                # /uploads/profiles/ から始まる場合、ファイルの存在確認
-                if file_path.startswith('/uploads/profiles/'):
-                    filename = file_path.replace('/uploads/profiles/', '')
-                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
-                    if not full_path.exists():
-                        # ファイルが存在しない場合はNoneを返す
-                        avatar_url = None
-                        # データベースも更新（オプション）
-                        user.avatar_url = None
-                        user.save(update_fields=['avatar_url'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to verify avatar URL for user {user.id}: {e}')
+        # アバターURLとヘッダーURLの取得と検証（統一ユーティリティを使用）
+        from toybox.image_utils import get_image_url, verify_image_file_exists
         
-        # ヘッダーURLの存在確認
-        header_url = meta.header_url
-        if header_url:
-            try:
-                # URLからファイルパスを抽出
-                if header_url.startswith('http'):
-                    from urllib.parse import urlparse
-                    parsed = urlparse(header_url)
-                    file_path = parsed.path
-                else:
-                    file_path = header_url
-                
-                # /uploads/profiles/ から始まる場合、ファイルの存在確認
-                if file_path.startswith('/uploads/profiles/'):
-                    filename = file_path.replace('/uploads/profiles/', '')
-                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
-                    if not full_path.exists():
-                        # ファイルが存在しない場合はNoneを返す
-                        header_url = None
-                        # データベースも更新（オプション）
-                        meta.header_url = None
-                        meta.save(update_fields=['header_url'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to verify header URL for user {user.id}: {e}')
+        # アバターURL
+        avatar_url = None
+        if user.avatar_url:
+            if verify_image_file_exists(user.avatar_url):
+                avatar_url = get_image_url(
+                    image_url_field=user.avatar_url,
+                    request=request,
+                    verify_exists=False  # 既に検証済み
+                )
+            else:
+                # ファイルが存在しない場合はデータベースをクリア
+                user.avatar_url = None
+                user.save(update_fields=['avatar_url'])
+        
+        # ヘッダーURL
+        header_url = None
+        if meta.header_url:
+            if verify_image_file_exists(meta.header_url):
+                header_url = get_image_url(
+                    image_url_field=meta.header_url,
+                    request=request,
+                    verify_exists=False  # 既に検証済み
+                )
+            else:
+                # ファイルが存在しない場合はデータベースをクリア
+                meta.header_url = None
+                meta.save(update_fields=['header_url'])
         
         # 称号のバナー画像URLを取得
         active_title_image_url = None
@@ -343,10 +318,12 @@ class ProfileGetView(APIView):
                 from gamification.models import Title
                 title_obj = Title.objects.filter(name=active_title).first()
                 if title_obj:
-                    if title_obj.image:
-                        active_title_image_url = request.build_absolute_uri(title_obj.image.url)
-                    elif title_obj.image_url:
-                        active_title_image_url = title_obj.image_url
+                    active_title_image_url = get_image_url(
+                        image_field=title_obj.image,
+                        image_url_field=title_obj.image_url,
+                        request=request,
+                        verify_exists=True
+                    )
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -737,4 +714,41 @@ class DiscordStatusView(APIView):
             'discord_connected': discord_connected,
             'guild_member': guild_member,
             'discord_username': meta.discord_username if discord_connected else None,
+        })
+
+
+class TermsAgreeView(APIView):
+    """Agree to terms of service (for paid users, first time only)."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Record terms agreement."""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        # 課金ユーザー以外はエラー
+        if request.user.role != User.Role.PAID_USER:
+            return Response({
+                'error': 'この機能は課金ユーザーのみ利用できます'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # UserMetaを取得または作成
+        meta, created = UserMeta.objects.get_or_create(user=request.user)
+        
+        # 既に同意済みの場合はエラー
+        if meta.terms_agreed_at:
+            return Response({
+                'error': '既に利用規約に同意済みです'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 同意日時を記録
+        meta.terms_agreed_at = timezone.now()
+        meta.save()
+        
+        logger.info(f'Terms agreed by user {request.user.id} at {meta.terms_agreed_at}')
+        
+        return Response({
+            'ok': True,
+            'message': '利用規約への同意を記録しました',
+            'agreed_at': meta.terms_agreed_at.isoformat()
         })

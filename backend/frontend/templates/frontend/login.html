@@ -189,7 +189,17 @@
     // ページ読み込み時に認証チェック
     document.addEventListener('DOMContentLoaded', function() {
         redirectIfAuthenticated();
+        hideLoginPageNavigation();
     });
+    
+    // ログインページでヘッダーの「みんなの投稿」を非表示にする
+    function hideLoginPageNavigation() {
+        // 「みんなの投稿」リンクを非表示
+        const feedLink = document.querySelector('a[href="/feed/"]');
+        if (feedLink) {
+            feedLink.style.display = 'none';
+        }
+    }
     
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();

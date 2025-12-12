@@ -22,5 +22,7 @@ urlpatterns = [
     path('inquiry/', views.inquiry, name='inquiry'),
     path('derivative-guidelines/', views.derivative_guidelines, name='derivative-guidelines'),
     path('privacy/', views.privacy, name='privacy'),
+    path('tutorials/', views.tutorials_index, name='tutorials-index'),
+    path('tutorials/<slug:slug>/', views.tutorial_detail, name='tutorial-detail'),
 ]
 

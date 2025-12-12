@@ -376,8 +376,38 @@
     <!-- 右カラム -->
     <aside>
         <!-- お題をジェネレート -->
-        <section class="me-section" id="random-prompt-entry">
-            <h2>お題をジェネレート</h2>
+        <section class="me-section" id="random-prompt-entry" style="position: relative;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <h2 style="margin: 0;">お題をジェネレート</h2>
+                <div class="tutorial-help-container">
+                    <button 
+                        id="tutorialHelpBtn" 
+                        class="tutorial-help-btn"
+                        type="button"
+                        aria-label="チュートリアルヘルプ"
+                        aria-expanded="false"
+                        aria-controls="tutorialHelpPopover"
+                        title="作り方チュートリアル">
+                        ?
+                    </button>
+                    <div 
+                        id="tutorialHelpPopover" 
+                        class="tutorial-help-popover"
+                        role="dialog"
+                        aria-labelledby="tutorialHelpPopoverTitle"
+                        hidden="true">
+                        <div class="tutorial-help-popover-header">
+                            <h3 id="tutorialHelpPopoverTitle" class="tutorial-help-popover-title">作り方チュートリアル</h3>
+                            <p class="tutorial-help-popover-description">AIでの作り方を用途別にまとめています。</p>
+                        </div>
+                        <div class="tutorial-help-popover-links">
+                            <a href="/tutorials/image/" class="tutorial-help-link">画像の作り方を見る</a>
+                            <a href="/tutorials/video/" class="tutorial-help-link">動画の作り方を見る</a>
+                            <a href="/tutorials/web-game/" class="tutorial-help-link">Webブラウザゲームの作り方を見る</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="topic-display" style="color: var(--steam-iron-100); font-size: 0.875rem; margin-bottom: 0.75rem; padding: 0.75rem; background: var(--steam-iron-800); border-radius: 4px; border: 1px solid var(--steam-iron-700); display: none;">
                 <div id="topic-content" style="line-height: 1.6;"></div>
             </div>
@@ -2886,5 +2916,7 @@
 
 {% block extra_js %}
 <script src="{% static 'frontend/js/common/utils.js' %}"></script>
+<link rel="stylesheet" href="{% static 'frontend/css/tutorial_help.css' %}">
+<script src="{% static 'frontend/js/tutorial_help.js' %}"></script>
 {% endblock %}
 

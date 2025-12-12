@@ -263,6 +263,101 @@ def privacy(request):
     return render(request, 'frontend/privacy.html')
 
 
+def tutorials_index(request):
+    """Tutorials list page."""
+    tutorials = [
+        {
+            'slug': 'image',
+            'title': '画像の作り方',
+            'description': 'どの生成AIでどうつくればいいの？',
+            'icon': '🖼️',
+        },
+        {
+            'slug': 'video',
+            'title': '動画の作り方',
+            'description': 'どの生成AIでどうつくればいいの？',
+            'icon': '🎬',
+        },
+        {
+            'slug': 'web-game',
+            'title': 'Webブラウザゲームの作り方',
+            'description': 'AIでどうつくるの？',
+            'icon': '🎮',
+        },
+    ]
+    return render(request, 'frontend/tutorials/index.html', {
+        'tutorials': tutorials
+    })
+
+
+def tutorial_detail(request, slug):
+    """Tutorial detail page."""
+    from pathlib import Path
+    from django.http import Http404
+    import markdown
+    import bleach
+    
+    # 許可されたslugのみ
+    allowed_slugs = ['image', 'video', 'web-game']
+    if slug not in allowed_slugs:
+        raise Http404("チュートリアルが見つかりません")
+    
+    # Markdownファイルのパス
+    # views.pyは frontend/views.py にあるので、親ディレクトリ（frontend/）に移動してから tutorials/content/ にアクセス
+    base_dir = Path(__file__).resolve().parent
+    content_dir = base_dir / 'tutorials' / 'content'
+    md_file = content_dir / f'{slug}.md'
+    
+    if not md_file.exists():
+        raise Http404("チュートリアルコンテンツが見つかりません")
+    
+    # Markdownを読み込んでHTMLに変換
+    with open(md_file, 'r', encoding='utf-8') as f:
+        markdown_content = f.read()
+    
+    # MarkdownをHTMLに変換
+    html_content = markdown.markdown(
+        markdown_content,
+        extensions=['extra', 'codehilite', 'nl2br']
+    )
+    
+    # XSS対策：許可されたタグと属性のみを許可
+    allowed_tags = [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'p', 'br', 'strong', 'em', 'u', 's',
+        'ul', 'ol', 'li',
+        'a', 'blockquote', 'code', 'pre',
+        'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'div', 'span'
+    ]
+    allowed_attributes = {
+        'a': ['href', 'title', 'target', 'rel'],
+        'img': ['src', 'alt', 'title', 'width', 'height'],
+        'code': ['class'],
+        'pre': ['class'],
+    }
+    
+    cleaned_html = bleach.clean(
+        html_content,
+        tags=allowed_tags,
+        attributes=allowed_attributes,
+        strip=True
+    )
+    
+    # タイトルマッピング
+    title_map = {
+        'image': '画像の作り方',
+        'video': '動画の作り方',
+        'web-game': 'Webブラウザゲームの作り方',
+    }
+    
+    return render(request, 'frontend/tutorials/detail.html', {
+        'slug': slug,
+        'title': title_map.get(slug, 'チュートリアル'),
+        'content': cleaned_html,
+    })
+
+
 # API views
 class AnnouncementsView(APIView):
     """Get active announcements."""

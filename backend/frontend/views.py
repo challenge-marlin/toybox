@@ -174,6 +174,33 @@ def profile_view(request):
     return render(request, 'frontend/profile_view.html')
 
 
+def announcements_list(request):
+    """Announcements list page."""
+    from .models import Announcement
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    announcements = Announcement.objects.filter(
+        is_active=True
+    ).order_by('-created_at')
+    
+    # 3日以内のお知らせにNEWフラグを付ける
+    now = timezone.now()
+    three_days_ago = now - timedelta(days=3)
+    
+    announcements_with_new = []
+    for announcement in announcements:
+        is_new = announcement.created_at >= three_days_ago
+        announcements_with_new.append({
+            'announcement': announcement,
+            'is_new': is_new
+        })
+    
+    return render(request, 'frontend/announcements_list.html', {
+        'announcements_with_new': announcements_with_new
+    })
+
+
 def announcement_detail(request, announcement_id):
     """Announcement detail page."""
     from .models import Announcement

@@ -931,10 +931,15 @@
                 const now = new Date();
                 const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
                 
+                // 3つ以上ある場合は最初の2つだけを表示
+                const displayCount = data.announcements.length >= 3 ? 2 : data.announcements.length;
+                const displayAnnouncements = data.announcements.slice(0, displayCount);
+                const hasMore = data.announcements.length > 2;
+                
                 // リスト形式で表示
                 container.innerHTML = `
                     <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
-                        ${data.announcements.map(announcement => {
+                        ${displayAnnouncements.map(announcement => {
                             const date = new Date(announcement.created_at);
                             const dateStr = date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
                             const isNew = date >= threeDaysAgo;
@@ -952,6 +957,11 @@
                             `;
                         }).join('')}
                     </ul>
+                    ${hasMore ? `
+                        <div style="margin-top: 1rem; text-align: center; padding-top: 0.75rem; border-top: 1px solid var(--steam-iron-700);">
+                            <a href="/announcements/" style="color: var(--steam-gold-300); text-decoration: underline; font-size: 0.875rem; font-weight: 600;">お知らせ一覧を見る</a>
+                        </div>
+                    ` : ''}
                 `;
             } else {
                 container.innerHTML = '<div style="color: var(--steam-iron-300); font-size: 0.875rem; padding: 1rem; text-align: center;">お知らせはありません</div>';
@@ -2872,5 +2882,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'frontend/js/common/utils.js' %}"></script>
 {% endblock %}
 

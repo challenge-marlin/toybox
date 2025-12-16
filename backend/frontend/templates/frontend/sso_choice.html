@@ -1,0 +1,283 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}SSO連携 - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sso-choice-container {
+        max-width: 600px;
+        margin: 4rem auto;
+        padding: 0 1rem;
+    }
+    
+    .sso-choice-card {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-600);
+        border-radius: 8px;
+        padding: 2rem;
+    }
+    
+    .sso-choice-header {
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    .sso-choice-header h1 {
+        color: var(--steam-gold-300);
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .sso-choice-header p {
+        color: var(--steam-iron-200);
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+    
+    .sso-choice-options {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .sso-choice-option {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        padding: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .sso-choice-option:hover {
+        border-color: var(--steam-iron-500);
+        background: var(--steam-iron-750);
+    }
+    
+    .sso-choice-option h2 {
+        color: var(--steam-gold-300);
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .sso-choice-option p {
+        color: var(--steam-iron-200);
+        font-size: 0.875rem;
+        margin: 0;
+        line-height: 1.6;
+    }
+    
+    .sso-choice-back {
+        margin-top: 2rem;
+        text-align: center;
+    }
+    
+    .sso-choice-back a {
+        color: var(--steam-gold-300);
+        text-decoration: underline;
+        font-size: 0.875rem;
+    }
+    
+    .sso-choice-back a:hover {
+        color: var(--steam-gold-200);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sso-choice-container">
+    <div class="sso-choice-card">
+        <div class="sso-choice-header">
+            <h1>StudySphere連携</h1>
+            <p>StudySphereアカウントとToyBoxを連携する方法を選択してください。</p>
+        </div>
+        
+        <div class="sso-choice-options">
+            <div class="sso-choice-option" onclick="window.location.href='/login/?sso_link=true'">
+                <h2>既存アカウントでログインして連携</h2>
+                <p>既にToyBoxアカウントをお持ちの場合は、ログインしてから連携できます。</p>
+            </div>
+            
+            <div class="sso-choice-option" onclick="showCreateUserForm()">
+                <h2>新規アカウントを作成して連携</h2>
+                <p>新しいToyBoxアカウントを作成して、StudySphereアカウントと連携します。</p>
+            </div>
+        </div>
+        
+        <div id="create-user-form" style="display: none; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--steam-iron-700);">
+            <h3 style="color: var(--steam-gold-300); font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">新規アカウント情報</h3>
+            <form id="create-user-form-element" onsubmit="handleCreateUser(event)">
+                <div style="margin-bottom: 1rem;">
+                    <label for="display-id-input" style="display: block; color: var(--steam-iron-200); font-size: 0.875rem; margin-bottom: 0.5rem;">
+                        表示ID <span style="color: #ef4444;">（必須）</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="display-id-input" 
+                        name="display_id" 
+                        required
+                        maxlength="100"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--steam-iron-700); border-radius: 4px; background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem;"
+                        placeholder="表示IDを入力"
+                    >
+                    <div id="display-id-error" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label for="email-input" style="display: block; color: var(--steam-iron-200); font-size: 0.875rem; margin-bottom: 0.5rem;">
+                        メールアドレス <span style="color: var(--steam-iron-400);">（任意）</span>
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email-input" 
+                        name="email"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--steam-iron-700); border-radius: 4px; background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem;"
+                        placeholder="メールアドレスを入力（任意）"
+                    >
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem;">
+                    <button 
+                        type="submit" 
+                        id="create-user-submit-btn"
+                        style="flex: 1; background: var(--steam-brown-500); color: white; border: none; border-radius: 4px; padding: 0.75rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.2s;"
+                        onmouseover="this.style.background='var(--steam-brown-600)'"
+                        onmouseout="this.style.background='var(--steam-brown-500)'"
+                    >
+                        アカウントを作成して連携
+                    </button>
+                    <button 
+                        type="button" 
+                        onclick="hideCreateUserForm()"
+                        style="flex: 1; background: var(--steam-iron-700); color: var(--steam-iron-200); border: none; border-radius: 4px; padding: 0.75rem; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;"
+                        onmouseover="this.style.background='var(--steam-iron-600)'"
+                        onmouseout="this.style.background='var(--steam-iron-700)'"
+                    >
+                        キャンセル
+                    </button>
+                </div>
+                
+                <div id="create-user-error" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.75rem; display: none;"></div>
+            </form>
+        </div>
+        
+        <div class="sso-choice-back">
+            <a href="/login/">ログイン画面に戻る</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'frontend/js/auth.js' %}"></script>
+<script>
+    function showCreateUserForm() {
+        document.getElementById('create-user-form').style.display = 'block';
+    }
+    
+    function hideCreateUserForm() {
+        document.getElementById('create-user-form').style.display = 'none';
+        document.getElementById('create-user-form-element').reset();
+        document.getElementById('create-user-error').style.display = 'none';
+        document.getElementById('display-id-error').style.display = 'none';
+    }
+    
+    async function handleCreateUser(event) {
+        event.preventDefault();
+        
+        const submitBtn = document.getElementById('create-user-submit-btn');
+        const errorDiv = document.getElementById('create-user-error');
+        const displayIdError = document.getElementById('display-id-error');
+        const displayIdInput = document.getElementById('display-id-input');
+        const emailInput = document.getElementById('email-input');
+        
+        // エラーをクリア
+        errorDiv.style.display = 'none';
+        displayIdError.style.display = 'none';
+        displayIdInput.style.borderColor = '';
+        
+        const displayId = displayIdInput.value.trim();
+        const email = emailInput.value.trim() || null;
+        
+        if (!displayId) {
+            displayIdError.textContent = '表示IDは必須です';
+            displayIdError.style.display = 'block';
+            displayIdInput.style.borderColor = '#ef4444';
+            return;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = '作成中...';
+        
+        try {
+            // セッションからexternal_user_idを取得（サーバー側で処理）
+            const response = await fetch('/api/sso/create-user/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken(),
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    display_id: displayId,
+                    email: email,
+                    provider: 'studysphere',
+                }),
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                if (data.error && data.error.includes('表示ID')) {
+                    displayIdError.textContent = data.error;
+                    displayIdError.style.display = 'block';
+                    displayIdInput.style.borderColor = '#ef4444';
+                } else {
+                    errorDiv.textContent = data.error || 'アカウント作成に失敗しました';
+                    errorDiv.style.display = 'block';
+                }
+                return;
+            }
+            
+            if (data.ok && data.access) {
+                // トークンを保存
+                localStorage.setItem('access_token', data.access);
+                localStorage.setItem('refresh_token', data.refresh);
+                
+                // マイページへリダイレクト
+                window.location.href = '/me/?sso_create=success';
+            } else {
+                errorDiv.textContent = 'アカウント作成に失敗しました';
+                errorDiv.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Create user error:', error);
+            errorDiv.textContent = 'アカウント作成に失敗しました。時間をおいて再度お試しください。';
+            errorDiv.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'アカウントを作成して連携';
+        }
+    }
+    
+    function getCsrfToken() {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrftoken') {
+                return value;
+            }
+        }
+        return '';
+    }
+    
+    // ログイン画面から来た場合の処理
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('sso_link') === 'true') {
+        // ログイン後にSSO連携を完了する処理は、ログイン画面側で実装
+    }
+</script>
+{% endblock %}

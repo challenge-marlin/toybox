@@ -32,6 +32,11 @@ urlpatterns = [
     # Terms agreement endpoint
     path('terms/agree/', views.TermsAgreeView.as_view(), name='terms-agree'),
     
+    # StudySphere SSO endpoints
+    path('sso/ticket/verify/', views.StudySphereTicketVerifyView.as_view(), name='sso-ticket-verify'),
+    path('sso/link/', views.StudySphereSSOLinkView.as_view(), name='sso-link'),
+    path('sso/create-user/', views.StudySphereSSOCreateUserView.as_view(), name='sso-create-user'),
+    
     # Router URLs
     path('', include(router.urls)),
 ]

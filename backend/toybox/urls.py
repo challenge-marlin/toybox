@@ -8,6 +8,8 @@ from django.conf.urls.static import static
 from users import views as user_views
 from frontend.views import AnnouncementsView
 import frontend.views as frontend_views
+from users import views as user_views
+from users.views import StudySphereSSOCallbackView, StudySphereSSOChoiceView, StudySphereSSOErrorView
 # まず、すべてのadmin.pyファイルをインポートしてモデルを登録
 # これにより、admin.siteにすべてのモデルが登録されます
 import users.admin  # noqa: F401
@@ -80,6 +82,11 @@ urlpatterns += [
     
     # Frontend (Django templates)
     path('', include('frontend.urls')),
+    
+    # SSO callback (frontend URLとして扱う)
+    path('sso/callback/', StudySphereSSOCallbackView.as_view(), name='sso-callback'),
+    path('sso/choice/', StudySphereSSOChoiceView.as_view(), name='sso-choice'),
+    path('sso/error/', StudySphereSSOErrorView.as_view(), name='sso-error'),
 ]
 
 # Media files serving

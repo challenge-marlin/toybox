@@ -6,10 +6,21 @@ from django.conf import settings
 import sys
 import os
 
-# Add scripts directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'scripts'))
+# mongo_to_pgモジュールが存在する場合のみインポート（オプショナル）
+MongoToPGMigrator = None
 
-from mongo_to_pg import MongoToPGMigrator
+# Add scripts directory to path
+scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'scripts')
+if os.path.exists(scripts_dir):
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    
+    # mongo_to_pgモジュールが存在する場合のみインポート
+    try:
+        from mongo_to_pg import MongoToPGMigrator
+    except ImportError:
+        # mongo_to_pgモジュールが存在しない場合はNoneとして扱う
+        MongoToPGMigrator = None
 
 
 class Command(BaseCommand):
@@ -52,6 +63,10 @@ class Command(BaseCommand):
         )
     
     def handle(self, *args, **options):
+        if MongoToPGMigrator is None:
+            self.stdout.write(self.style.ERROR('mongo_to_pg module not found. Please install it or ensure scripts/mongo_to_pg.py exists.'))
+            return
+        
         mongo_uri = options['mongo_uri']
         mongo_db = options['mongo_db']
         dry_run = options['dry_run']

@@ -1,0 +1,104 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}SSO認証エラー - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sso-error-container {
+        max-width: 600px;
+        margin: 4rem auto;
+        padding: 0 1rem;
+    }
+    
+    .sso-error-card {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-600);
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .sso-error-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    
+    .sso-error-title {
+        color: var(--steam-gold-300);
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+    
+    .sso-error-message {
+        color: var(--steam-iron-200);
+        font-size: 0.875rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+    }
+    
+    .sso-error-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .sso-error-btn {
+        background: var(--steam-brown-500);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: background 0.2s;
+    }
+    
+    .sso-error-btn:hover {
+        background: var(--steam-brown-600);
+    }
+    
+    .sso-error-btn-secondary {
+        background: var(--steam-iron-700);
+        color: var(--steam-iron-200);
+    }
+    
+    .sso-error-btn-secondary:hover {
+        background: var(--steam-iron-600);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sso-error-container">
+    <div class="sso-error-card">
+        <div class="sso-error-icon">⚠️</div>
+        <h1 class="sso-error-title">SSO認証エラー</h1>
+        <p class="sso-error-message">
+            {{ error_message }}
+        </p>
+        
+        <div class="sso-error-actions">
+            {% if error_code == 'ALREADY_USED' or error_code == 'EXPIRED' %}
+                {% if studysphere_url %}
+                    <a href="{{ studysphere_url }}" class="sso-error-btn">
+                        StudySphereに戻る
+                    </a>
+                {% endif %}
+            {% endif %}
+            
+            <a href="/login/" class="sso-error-btn sso-error-btn-secondary">
+                ログイン画面に戻る
+            </a>
+            
+            <a href="/" class="sso-error-btn sso-error-btn-secondary">
+                トップページに戻る
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -235,6 +235,14 @@
                     setRefreshToken(data.refresh);
                 }
                 
+                // SSO連携処理（URLパラメータで判定）
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('sso_link') === 'true') {
+                    // SSO連携を完了
+                    await completeSSOLink(data.access);
+                    return;
+                }
+                
                 // 警告メッセージがある場合は表示
                 if (data.penalty && data.penalty.message) {
                     showPenaltyModal(data.penalty.type, data.penalty.message);
@@ -269,6 +277,41 @@
             submitBtn.textContent = 'ログイン';
         }
     });
+    
+    async function completeSSOLink(accessToken) {
+        try {
+            // セッションからexternal_user_idを取得するため、サーバー側で処理
+            const response = await fetch('/api/sso/link/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    provider: 'studysphere',
+                }),
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.ok) {
+                // SSO連携成功
+                const redirectUrl = '/me/?sso_link=success';
+                window.location.href = redirectUrl;
+            } else {
+                // SSO連携失敗
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = data.error || 'SSO連携に失敗しました';
+                errorDiv.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('SSO link error:', error);
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = 'SSO連携に失敗しました';
+            errorDiv.style.display = 'block';
+        }
+    }
     
     function showPenaltyModal(type, message) {
         const modal = document.getElementById('penaltyModal');

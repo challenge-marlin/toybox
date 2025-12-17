@@ -62,6 +62,17 @@
   --fg: #1F232A;
 }
 
+/* ライトモード時の背景色を明るく */
+[data-theme="light"] body {
+  background: #F2F3F5;
+  color: #1F232A;
+}
+
+[data-theme="light"] .header-nav {
+  background: rgba(242, 243, 245, 0.9) !important;
+  border-bottom-color: #C8CED6 !important;
+}
+
 * {
   margin: 0;
   padding: 0;

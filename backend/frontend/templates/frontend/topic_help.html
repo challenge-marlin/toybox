@@ -1,0 +1,172 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}お題をジェネレート - 使い方 - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .help-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    
+    .help-header {
+        margin-bottom: 2rem;
+    }
+    
+    .help-header h1 {
+        color: var(--steam-gold-300);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .help-content {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-600);
+        border-radius: 8px;
+        padding: 2rem;
+    }
+    
+    .help-content section {
+        margin-bottom: 2rem;
+    }
+    
+    .help-content h2 {
+        color: var(--steam-gold-300);
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--steam-iron-600);
+    }
+    
+    .help-content h3 {
+        color: var(--steam-gold-400);
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 1.5rem 0 0.75rem 0;
+    }
+    
+    .help-content p {
+        color: var(--steam-iron-100);
+        font-size: 0.875rem;
+        line-height: 1.8;
+        margin: 0.75rem 0;
+    }
+    
+    .help-content ul {
+        color: var(--steam-iron-100);
+        font-size: 0.875rem;
+        line-height: 1.8;
+        margin: 0.75rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .help-content li {
+        margin: 0.5rem 0;
+    }
+    
+    .help-content .note {
+        background: var(--steam-iron-900);
+        border-left: 3px solid var(--steam-gold-500);
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+    }
+    
+    .help-content .example {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.875rem;
+    }
+    
+    .back-link {
+        display: inline-block;
+        margin-top: 2rem;
+        color: var(--steam-gold-400);
+        text-decoration: underline;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="help-container">
+    <div class="help-header">
+        <h1>お題をジェネレート - 使い方</h1>
+    </div>
+    
+    <div class="help-content">
+        <section>
+            <h2>作品の作り方ガイド</h2>
+            <p>お題に沿った作品を作成するためのガイドです。以下のボタンから、それぞれの作り方を確認できます。</p>
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+                <a href="/tutorials/image/" style="display: block; padding: 1rem; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-600); border-radius: 8px; text-decoration: none; color: var(--steam-gold-300); font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'; this.style.borderColor='var(--steam-gold-500)'" onmouseout="this.style.background='var(--steam-iron-900)'; this.style.borderColor='var(--steam-iron-600)'">
+                    📷 画像の作り方
+                </a>
+                <a href="/tutorials/video/" style="display: block; padding: 1rem; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-600); border-radius: 8px; text-decoration: none; color: var(--steam-gold-300); font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'; this.style.borderColor='var(--steam-gold-500)'" onmouseout="this.style.background='var(--steam-iron-900)'; this.style.borderColor='var(--steam-iron-600)'">
+                    🎬 動画の作り方
+                </a>
+                <a href="/tutorials/game/" style="display: block; padding: 1rem; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-600); border-radius: 8px; text-decoration: none; color: var(--steam-gold-300); font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'; this.style.borderColor='var(--steam-gold-500)'" onmouseout="this.style.background='var(--steam-iron-900)'; this.style.borderColor='var(--steam-iron-600)'">
+                    🎮 Webゲームの作り方
+                </a>
+            </div>
+        </section>
+        
+        <section>
+            <h2>概要</h2>
+            <p>「お題をジェネレート」機能は、作品のテーマに迷った時にランダムなお題を表示してくれる機能です。画像・動画用のお題とゲーム用のお題の2種類から選択できます。</p>
+        </section>
+        
+        <section>
+            <h2>使い方</h2>
+            <h3>1. お題の種類を選択</h3>
+            <p>「画像・動画」または「ゲーム」のボタンをクリックしてください。</p>
+            
+            <h3>2. お題の表示</h3>
+            <p>選択した種類に応じて、ランダムなお題が表示されます。</p>
+            
+            <h3>3. お題の内容</h3>
+            <ul>
+                <li><strong>画像・動画</strong>: 画像または動画のテーマが表示されます。タイプ（画像/動画）とタイトル、短い説明が含まれます。</li>
+                <li><strong>ゲーム</strong>: ゲーム開発のテーマが表示されます。タイトル、短い説明、詳細説明、難易度（★の数）、カテゴリが含まれます。</li>
+            </ul>
+        </section>
+        
+        <section>
+            <h2>お題の活用方法</h2>
+            <p>表示されたお題を参考に、以下のような作品を作成できます：</p>
+            <ul>
+                <li>AI画像生成ツールを使って、お題に沿った画像を作成</li>
+                <li>動画編集ソフトを使って、お題に沿った動画を作成</li>
+                <li>ゲーム開発ツールを使って、お題に沿ったゲームを作成</li>
+            </ul>
+            
+            <div class="note">
+                <strong>ヒント:</strong> お題は何度でも生成できるので、気に入ったお題が見つかるまで何度でも試してみてください。
+            </div>
+        </section>
+        
+        <section>
+            <h2>よくある質問</h2>
+            <h3>Q: 同じお題が表示されることはありますか？</h3>
+            <p>A: はい、ランダムに選択されるため、同じお題が表示される可能性があります。</p>
+            
+            <h3>Q: お題を保存できますか？</h3>
+            <p>A: 現在のところ、お題を保存する機能はありません。気に入ったお題は、メモやスクリーンショットで保存してください。</p>
+            
+            <h3>Q: お題の難易度はどのように決まっていますか？</h3>
+            <p>A: ゲームのお題には難易度が★の数で表示されます。★が多いほど難易度が高いお題です。</p>
+        </section>
+    </div>
+    
+    <a href="/me/" class="back-link">← マイページに戻る</a>
+</div>
+{% endblock %}
+

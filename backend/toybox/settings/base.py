@@ -132,6 +132,9 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
+# Admin URL (for security, customizable via environment variable)
+ADMIN_URL = os.environ.get('ADMIN_URL', 'admin')
+
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -300,13 +303,7 @@ DISCORD_REDIRECT_URI = os.environ.get('DISCORD_REDIRECT_URI', '')
 DISCORD_BOT_TOKEN = os.environ.get('DISCORD_BOT_TOKEN', '')
 DISCORD_CHANNEL_ID = os.environ.get('DISCORD_CHANNEL_ID', '')
 DISCORD_SERVER_ID = os.environ.get('DISCORD_SERVER_ID', '')
-DISCORD_INVITE_CODE = os.environ.get('DISCORD_INVITE_CODE', 'pCznkCmgkx')
-
-# StudySphere SSO Settings (仮 - 返信待ち)
-# TODO: 実際の値が返ってきたらコメントアウトを外して設定してください
-# STUDYSPHERE_API_BASE_URL = os.environ.get('STUDYSPHERE_API_BASE_URL', '')
-# STUDYSPHERE_FRONTEND_URL = os.environ.get('STUDYSPHERE_FRONTEND_URL', '')
-# STUDYSPHERE_SERVICE_TOKEN = os.environ.get('STUDYSPHERE_SERVICE_TOKEN', '')
+DISCORD_INVITE_CODE = os.environ.get('DISCORD_INVITE_CODE', 'xSP8p44H')
 
 # CORS (if needed for frontend)
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', '').split(',') if os.environ.get('CORS_ORIGINS') else []

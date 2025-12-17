@@ -85,39 +85,6 @@
         border-color: #0ea5e9;
     }
     
-    .submission-like-btn {
-        position: absolute;
-        bottom: 0.5rem;
-        right: 0.5rem;
-        z-index: 10;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        border-radius: 4px;
-        background: rgba(0, 0, 0, 0.6);
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
-        color: white;
-        border: none;
-        cursor: pointer;
-        pointer-events: auto;
-        transition: all 0.2s;
-    }
-    
-    .submission-like-btn:hover {
-        background: rgba(0, 0, 0, 0.8);
-    }
-    
-    .submission-like-btn svg {
-        width: 14px;
-        height: 14px;
-    }
-    
-    .submission-like-btn.liked svg {
-        fill: #fb7185;
-        color: #fb7185;
-    }
-    
     .upload-area {
         display: flex;
         flex-direction: column;
@@ -335,7 +302,7 @@
         <section class="me-section">
             <h2>Discord</h2>
             <div id="discord-section-buttons" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-                <a href="https://discord.gg/{{ DISCORD_INVITE_CODE|default:'pCznkCmgkx' }}" target="_blank" rel="noreferrer" class="discord-join-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; width: 100%; justify-content: center; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s;">
+                <a href="https://discord.gg/{{ DISCORD_INVITE_CODE|default:'xSP8p44H' }}" target="_blank" rel="noreferrer" class="discord-join-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; width: 100%; justify-content: center; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
                     </svg>
@@ -376,37 +343,10 @@
     <!-- 右カラム -->
     <aside>
         <!-- お題をジェネレート -->
-        <section class="me-section" id="random-prompt-entry" style="position: relative;">
+        <section class="me-section" id="random-prompt-entry">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
                 <h2 style="margin: 0;">お題をジェネレート</h2>
-                <div class="tutorial-help-container">
-                    <button 
-                        id="tutorialHelpBtn" 
-                        class="tutorial-help-btn"
-                        type="button"
-                        aria-label="チュートリアルヘルプ"
-                        aria-expanded="false"
-                        aria-controls="tutorialHelpPopover"
-                        title="作り方チュートリアル">
-                        ?
-                    </button>
-                    <div 
-                        id="tutorialHelpPopover" 
-                        class="tutorial-help-popover"
-                        role="dialog"
-                        aria-labelledby="tutorialHelpPopoverTitle"
-                        hidden="true">
-                        <div class="tutorial-help-popover-header">
-                            <h3 id="tutorialHelpPopoverTitle" class="tutorial-help-popover-title">作り方チュートリアル</h3>
-                            <p class="tutorial-help-popover-description">AIでの作り方を用途別にまとめています。</p>
-                        </div>
-                        <div class="tutorial-help-popover-links">
-                            <a href="/tutorials/image/" class="tutorial-help-link">画像の作り方を見る</a>
-                            <a href="/tutorials/video/" class="tutorial-help-link">動画の作り方を見る</a>
-                            <a href="/tutorials/web-game/" class="tutorial-help-link">Webブラウザゲームの作り方を見る</a>
-                        </div>
-                    </div>
-                </div>
+                <button onclick="showTopicHelp()" style="width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--steam-iron-700); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-600); font-size: 0.875rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='var(--steam-iron-600)'" onmouseout="this.style.background='var(--steam-iron-700)'" title="ヘルプ">?</button>
             </div>
             <div id="topic-display" style="color: var(--steam-iron-100); font-size: 0.875rem; margin-bottom: 0.75rem; padding: 0.75rem; background: var(--steam-iron-800); border-radius: 4px; border: 1px solid var(--steam-iron-700); display: none;">
                 <div id="topic-content" style="line-height: 1.6;"></div>
@@ -605,10 +545,6 @@
 <script>
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     const token = getAccessToken();
-    const discordInviteCode = '{{ DISCORD_INVITE_CODE|default:"pCznkCmgkx" }}';
-    
-    // 提出物データを保持するグローバル変数
-    let submissions = [];
     
     // Toast通知機能
     function showToast(type, message) {
@@ -861,21 +797,9 @@
                 if (expiresAt > now) {
                     // 有効期限内
                     if (titleElement) {
-                        const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
-                        if (imageUrl && imageUrl.trim() !== '' && imageUrl !== 'null' && imageUrl !== 'undefined') {
-                            const img = document.createElement('img');
-                            img.src = imageUrl;
-                            img.alt = data.activeTitle;
-                            img.style.cssText = 'max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;';
-                            img.onerror = function() {
-                                this.style.display = 'none';
-                                titleElement.innerHTML = `<span style="color: var(--steam-gold-300); font-size: 0.875rem;">称号: ${data.activeTitle}</span>`;
-                            };
-                            img.onload = function() {
-                                this.style.display = 'block';
-                            };
-                            titleElement.innerHTML = '';
-                            titleElement.appendChild(img);
+                        if (data.activeTitleImageUrl || data.active_title_image_url) {
+                            const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
+                            titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300); font-size: 0.875rem;\\'>称号: ${data.activeTitle}</span>';">`;
                         } else {
                             titleElement.innerHTML = `<span style="color: var(--steam-gold-300); font-size: 0.875rem;">称号: ${data.activeTitle}</span>`;
                         }
@@ -899,21 +823,9 @@
             } else if (data.activeTitle) {
                 // expires_atがない場合は表示
                 if (titleElement) {
-                    const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
-                    if (imageUrl && imageUrl.trim() !== '' && imageUrl !== 'null' && imageUrl !== 'undefined') {
-                        const img = document.createElement('img');
-                        img.src = imageUrl;
-                        img.alt = data.activeTitle;
-                        img.style.cssText = 'max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;';
-                        img.onerror = function() {
-                            this.style.display = 'none';
-                            titleElement.innerHTML = `<span style="color: var(--steam-gold-300); font-size: 0.875rem;">称号: ${data.activeTitle}</span>`;
-                        };
-                        img.onload = function() {
-                            this.style.display = 'block';
-                        };
-                        titleElement.innerHTML = '';
-                        titleElement.appendChild(img);
+                    if (data.activeTitleImageUrl || data.active_title_image_url) {
+                        const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
+                        titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300); font-size: 0.875rem;\\'>称号: ${data.activeTitle}</span>';">`;
                     } else {
                         titleElement.innerHTML = `<span style="color: var(--steam-gold-300); font-size: 0.875rem;">称号: ${data.activeTitle}</span>`;
                     }
@@ -962,10 +874,10 @@
                 const now = new Date();
                 const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
                 
-                // 3つ以上ある場合は最初の2つだけを表示
-                const displayCount = data.announcements.length >= 3 ? 2 : data.announcements.length;
+                // 3項目まで表示
+                const displayCount = 3;
                 const displayAnnouncements = data.announcements.slice(0, displayCount);
-                const hasMore = data.announcements.length > 2;
+                const hasMore = data.announcements.length > displayCount;
                 
                 // リスト形式で表示
                 container.innerHTML = `
@@ -989,8 +901,8 @@
                         }).join('')}
                     </ul>
                     ${hasMore ? `
-                        <div style="margin-top: 1rem; text-align: center; padding-top: 0.75rem; border-top: 1px solid var(--steam-iron-700);">
-                            <a href="/announcements/" style="color: var(--steam-gold-300); text-decoration: underline; font-size: 0.875rem; font-weight: 600;">お知らせ一覧を見る</a>
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--steam-iron-700); text-align: center;">
+                            <a href="/announcements/" style="color: var(--steam-gold-400); font-size: 0.875rem; text-decoration: underline;">もっと見る</a>
                         </div>
                     ` : ''}
                 `;
@@ -1048,8 +960,6 @@
                 console.error('submissions-grid element not found');
                 return;
             }
-            // グローバル変数に提出物データを保存
-            submissions = data.items || [];
             if (data.items && data.items.length > 0) {
                 // ゲーム名を取得する関数
                 function getGameName(item) {
@@ -1105,9 +1015,6 @@
                         content = `<img src="${assetUrl}" alt="submission" style="width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; cursor: zoom-in;" ${onClickHandler}>`;
                     }
                     
-                    const isLiked = item.liked || false;
-                    const likesCount = item.likesCount || item.likes_count || 0;
-                    
                     return `
                         <div class="submission-item ${itemClass}" style="position: relative;">
                             ${content}
@@ -1120,12 +1027,6 @@
                                     開く
                                 </a>
                             ` : ''}
-                            <button class="submission-like-btn ${isLiked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${isLiked})" style="pointer-events: auto;">
-                                <svg viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-                                </svg>
-                                <span>${likesCount}</span>
-                            </button>
                             <button onclick="deleteSubmission('${item.id}')" style="display: none; position: absolute; top: 0.5rem; right: 0.5rem; border-radius: 9999px; background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border: none; cursor: pointer; z-index: 10; pointer-events: auto;" class="submission-delete-btn">削除</button>
                         </div>
                     `;
@@ -1143,217 +1044,13 @@
                     });
                 });
             } else {
-                submissions = [];
                 grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物がありません</div>';
             }
         })
         .catch(err => {
             console.error('Failed to load submissions:', err);
-            submissions = [];
             document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物の読み込みに失敗しました</div>';
         });
-    }
-    
-    // 提出物を再レンダリングする関数
-    function renderSubmissions() {
-        const grid = document.getElementById('submissions-grid');
-        if (!grid) return;
-        
-        if (submissions.length === 0) {
-            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物がありません</div>';
-            return;
-        }
-        
-        // ゲーム名を取得する関数
-        function getGameName(item) {
-            if (item.caption && item.caption.trim()) {
-                return item.caption.trim();
-            }
-            if (item.gameUrl) {
-                const urlParts = item.gameUrl.split('/');
-                const gameNameIndex = urlParts.findIndex(part => part === 'games');
-                if (gameNameIndex >= 0 && gameNameIndex + 2 < urlParts.length) {
-                    const potentialName = urlParts[gameNameIndex + 2];
-                    if (potentialName && potentialName !== 'index.html') {
-                        return potentialName;
-                    }
-                }
-            }
-            return 'GAME';
-        }
-        
-        grid.innerHTML = submissions.map(item => {
-            const isGame = item.gameUrl;
-            const isVideo = item.videoUrl;
-            const itemClass = isGame ? 'game' : (isVideo ? 'video' : '');
-            const imageUrl = item.displayImageUrl || item.imageUrl;
-            
-            let content = '';
-            let onClickHandler = '';
-            let assetType = '';
-            let assetUrl = '';
-            
-            if (isGame) {
-                const gameName = getGameName(item);
-                assetType = 'game';
-                assetUrl = item.gameUrl || '';
-                onClickHandler = `onclick="openLightbox('${assetUrl}', 'game', '${item.id}')"`;
-                if (imageUrl) {
-                    content = `<img src="${imageUrl}" alt="ゲームサムネイル" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" ${onClickHandler}>`;
-                } else {
-                    content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; user-select: none;" ${onClickHandler}><div style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--steam-iron-200);"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 0.25rem;"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/></svg><div style="font-size: 0.75rem; letter-spacing: 0.1em; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 0.25rem;">${gameName}</div></div></div>`;
-                }
-            } else if (isVideo) {
-                assetUrl = item.videoUrl || '';
-                assetType = 'video';
-                onClickHandler = `onclick="openLightbox('${assetUrl}', 'video', '${item.id}')"`;
-                content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; position: relative;" ${onClickHandler}><video src="${assetUrl}" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px;" muted preload="metadata"></video><div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><div style="height: 3rem; width: 3rem; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></div></div></div>`;
-            } else {
-                assetUrl = imageUrl || '';
-                assetType = 'image';
-                onClickHandler = `onclick="openLightbox('${assetUrl}', 'image', '${item.id}')"`;
-                content = `<img src="${assetUrl}" alt="submission" style="width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; cursor: zoom-in;" ${onClickHandler}>`;
-            }
-            
-            const isLiked = item.liked || false;
-            const likesCount = item.likesCount || item.likes_count || 0;
-            
-            return `
-                <div class="submission-item ${itemClass}" style="position: relative;">
-                    ${content}
-                    ${isGame && assetUrl ? `
-                        <a href="${assetUrl}" target="_blank" rel="noreferrer" style="position: absolute; top: 0.5rem; left: 0.5rem; z-index: 10; display: inline-flex; align-items: center; gap: 0.25rem; border-radius: 4px; background: rgba(0, 0, 0, 0.6); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; text-decoration: none; cursor: pointer; pointer-events: auto;" onclick="event.stopPropagation()" title="ゲームを開く">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
-                            </svg>
-                            開く
-                        </a>
-                    ` : ''}
-                    <button class="submission-like-btn ${isLiked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${isLiked})" style="pointer-events: auto;">
-                        <svg viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg>
-                        <span>${likesCount}</span>
-                    </button>
-                    <button onclick="deleteSubmission('${item.id}')" style="display: none; position: absolute; top: 0.5rem; right: 0.5rem; border-radius: 9999px; background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border: none; cursor: pointer; z-index: 10; pointer-events: auto;" class="submission-delete-btn">削除</button>
-                </div>
-            `;
-        }).join('');
-        
-        // ホバーで削除ボタン表示
-        document.querySelectorAll('.submission-item').forEach(item => {
-            item.addEventListener('mouseenter', function() {
-                const btn = this.querySelector('.submission-delete-btn');
-                if (btn) btn.style.display = 'block';
-            });
-            item.addEventListener('mouseleave', function() {
-                const btn = this.querySelector('.submission-delete-btn');
-                if (btn) btn.style.display = 'none';
-            });
-        });
-    }
-    
-    // いいね機能
-    async function toggleLike(submissionId, currentLiked) {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-            alert('ログインが必要です');
-            return;
-        }
-        
-        const item = submissions.find(s => s.id === submissionId);
-        if (!item) return;
-        
-        // 楽観的更新（即座にカウントを更新）
-        const newLiked = !currentLiked;
-        const currentCount = item.likesCount || item.likes_count || 0;
-        const newCount = Math.max(0, currentCount + (currentLiked ? -1 : 1));
-        
-        item.liked = newLiked;
-        item.likesCount = newCount;
-        item.likes_count = newCount;
-        renderSubmissions();
-        
-        // ライトボックスが開いていて、同じ提出物の場合はライトボックス内のいいねも更新
-        if (currentLightboxAssetId === submissionId) {
-            const likeBtn = document.getElementById('lightbox-like-btn');
-            const likeCount = document.getElementById('lightbox-like-count');
-            if (likeBtn && likeCount) {
-                likeCount.textContent = newCount;
-                if (newLiked) {
-                    likeBtn.classList.add('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                } else {
-                    likeBtn.classList.remove('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                }
-            }
-        }
-        
-        // API呼び出し
-        try {
-            const method = currentLiked ? 'DELETE' : 'POST';
-            const response = await fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
-                method: method,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: method === 'POST' ? JSON.stringify({}) : undefined
-            });
-            
-            const data = await response.json();
-            if (data.ok !== undefined && data.likesCount !== undefined) {
-                // サーバーからの結果で更新
-                const serverLiked = data.liked || false;
-                const serverCount = data.likesCount || 0;
-                
-                item.liked = serverLiked;
-                item.likesCount = serverCount;
-                item.likes_count = serverCount;
-                renderSubmissions();
-                
-                // ライトボックスが開いていて、同じ提出物の場合はライトボックス内のいいねも更新
-                if (currentLightboxAssetId === submissionId) {
-                    const likeBtn = document.getElementById('lightbox-like-btn');
-                    const likeCount = document.getElementById('lightbox-like-count');
-                    if (likeBtn && likeCount) {
-                        likeCount.textContent = serverCount;
-                        if (serverLiked) {
-                            likeBtn.classList.add('liked');
-                            likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                        } else {
-                            likeBtn.classList.remove('liked');
-                            likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                        }
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('Failed to toggle like:', err);
-            // エラー時はロールバック
-            item.liked = currentLiked;
-            item.likesCount = currentCount;
-            item.likes_count = currentCount;
-            renderSubmissions();
-            
-            // ライトボックスが開いていて、同じ提出物の場合はライトボックス内のいいねもロールバック
-            if (currentLightboxAssetId === submissionId) {
-                const likeBtn = document.getElementById('lightbox-like-btn');
-                const likeCount = document.getElementById('lightbox-like-count');
-                if (likeBtn && likeCount) {
-                    likeCount.textContent = currentCount;
-                    if (currentLiked) {
-                        likeBtn.classList.add('liked');
-                        likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                    } else {
-                        likeBtn.classList.remove('liked');
-                        likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                    }
-                }
-            }
-        }
     }
     
     let timelineItems = [];
@@ -1810,6 +1507,10 @@
             errorElement.style.whiteSpace = 'pre-line'; // 改行を表示
             console.error('Game upload error:', err);
         }
+    }
+    
+    function showTopicHelp() {
+        window.location.href = '/topic-help/';
     }
     
     function generateTopic(type) {
@@ -2369,46 +2070,19 @@
             lightboxImage.src = url;
         }
         
-        // いいねボタンとDiscordシェアボタンを表示（すべてのタイプでいいねボタンを表示）
-        lightboxActions.style.display = 'flex';
-        
-        // Discordシェアボタンは画像と動画のみ表示
-        const discordShareBtn = document.getElementById('discord-share-btn');
-        if (discordShareBtn) {
-            if (type === 'image' || type === 'video') {
-                discordShareBtn.style.display = 'inline-flex';
-                // Discord認証状態を確認してボタンを更新
-                const token = localStorage.getItem('access_token');
-                if (token) {
-                    checkDiscordStatus();
-                }
-            } else {
-                discordShareBtn.style.display = 'none';
+        // Discordシェアボタンを表示（画像と動画のみ）
+        if (type === 'image' || type === 'video') {
+            lightboxActions.style.display = 'flex';
+            // Discord認証状態を確認してボタンを更新
+            if (token) {
+                checkDiscordStatus();
             }
+        } else {
+            lightboxActions.style.display = 'none';
         }
         
         // 投稿詳細情報を取得
         if (assetId) {
-            // まず、カード上のデータからいいね状態を取得（優先）
-            const cardItem = submissions.find(s => s.id === assetId);
-            
-            // カード上のいいね状態をライトボックスに反映
-            const likeBtn = document.getElementById('lightbox-like-btn');
-            const likeCount = document.getElementById('lightbox-like-count');
-            if (likeBtn && likeCount && cardItem) {
-                const isLiked = cardItem.liked || false;
-                const likesCount = cardItem.likesCount || cardItem.likes_count || 0;
-                
-                likeCount.textContent = likesCount;
-                if (isLiked) {
-                    likeBtn.classList.add('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                } else {
-                    likeBtn.classList.remove('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                }
-            }
-            
             try {
                 const token = localStorage.getItem('access_token');
                 const res = await fetch(`/api/submissions/${assetId}/`, {
@@ -2418,21 +2092,6 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    
-                    // カード上のデータがない場合のみ、APIから取得したデータを使用
-                    if (!cardItem && likeBtn && likeCount) {
-                        const isLiked = data.liked || false;
-                        const likesCount = data.likes_count || data.likesCount || 0;
-                        
-                        likeCount.textContent = likesCount;
-                        if (isLiked) {
-                            likeBtn.classList.add('liked');
-                            likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                        } else {
-                            likeBtn.classList.remove('liked');
-                            likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                        }
-                    }
                     
                     // ゲーム投稿の場合、サムネイルを表示
                     if (type === 'game') {
@@ -2587,7 +2246,8 @@
         } else if (!discordStatus.guild_member) {
             btn.innerHTML = '<span>Discordサーバーに参加</span>';
             btn.onclick = () => {
-                window.open(`https://discord.gg/${discordInviteCode}`, '_blank');
+                const inviteCode = 'xSP8p44H'; // DISCORD_INVITE_CODEから取得可能
+                window.open(`https://discord.gg/${inviteCode}`, '_blank');
                 setTimeout(() => {
                     checkDiscordStatus();
                 }, 2000);
@@ -2652,131 +2312,6 @@
     }
     
     // Discordシェア機能
-    // ライトボックス内のいいね機能
-    async function toggleLightboxLike(event) {
-        event.stopPropagation();
-        
-        if (!currentLightboxAssetId) return;
-        
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-            alert('ログインが必要です');
-            return;
-        }
-        
-        const likeBtn = document.getElementById('lightbox-like-btn');
-        const likeCount = document.getElementById('lightbox-like-count');
-        if (!likeBtn || !likeCount) return;
-        
-        const isCurrentlyLiked = likeBtn.classList.contains('liked');
-        const currentCount = parseInt(likeCount.textContent) || 0;
-        
-        // 楽観的更新
-        const newLiked = !isCurrentlyLiked;
-        const newCount = Math.max(0, currentCount + (isCurrentlyLiked ? -1 : 1));
-        
-        likeCount.textContent = newCount;
-        if (newLiked) {
-            likeBtn.classList.add('liked');
-            likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-        } else {
-            likeBtn.classList.remove('liked');
-            likeBtn.querySelector('svg').setAttribute('fill', 'none');
-        }
-        
-        // マイページ内の提出物も更新
-        const item = submissions.find(s => s.id === currentLightboxAssetId);
-        if (item) {
-            item.liked = newLiked;
-            item.likesCount = newCount;
-            item.likes_count = newCount;
-            renderSubmissions();
-        }
-        
-        // グローバルないいね状態を更新（他のページでも使用可能）
-        // カスタムイベントを発火して、他のコンポーネントに通知
-        window.dispatchEvent(new CustomEvent('likeToggled', {
-            detail: {
-                submissionId: currentLightboxAssetId,
-                liked: newLiked,
-                likesCount: newCount
-            }
-        }));
-        
-        // API呼び出し
-        try {
-            const method = isCurrentlyLiked ? 'DELETE' : 'POST';
-            const response = await fetch(`/api/submissions/${encodeURIComponent(currentLightboxAssetId)}/like/`, {
-                method: method,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: method === 'POST' ? JSON.stringify({}) : undefined
-            });
-            
-            const data = await response.json();
-            if (data.ok !== undefined && data.likesCount !== undefined) {
-                // サーバーからの結果で更新
-                const serverLiked = data.liked || false;
-                const serverCount = data.likesCount || 0;
-                
-                likeCount.textContent = serverCount;
-                if (serverLiked) {
-                    likeBtn.classList.add('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                } else {
-                    likeBtn.classList.remove('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                }
-                
-                // マイページ内の提出物も更新
-                if (item) {
-                    item.liked = serverLiked;
-                    item.likesCount = serverCount;
-                    item.likes_count = serverCount;
-                    renderSubmissions();
-                }
-                
-                // グローバルないいね状態を更新
-                window.dispatchEvent(new CustomEvent('likeToggled', {
-                    detail: {
-                        submissionId: currentLightboxAssetId,
-                        liked: serverLiked,
-                        likesCount: serverCount
-                    }
-                }));
-            }
-        } catch (err) {
-            console.error('Failed to toggle like:', err);
-            // エラー時はロールバック
-            likeCount.textContent = currentCount;
-            if (isCurrentlyLiked) {
-                likeBtn.classList.add('liked');
-                likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-            } else {
-                likeBtn.classList.remove('liked');
-                likeBtn.querySelector('svg').setAttribute('fill', 'none');
-            }
-            
-            if (item) {
-                item.liked = isCurrentlyLiked;
-                item.likesCount = currentCount;
-                item.likes_count = currentCount;
-                renderSubmissions();
-            }
-            
-            // グローバルないいね状態をロールバック
-            window.dispatchEvent(new CustomEvent('likeToggled', {
-                detail: {
-                    submissionId: currentLightboxAssetId,
-                    liked: isCurrentlyLiked,
-                    likesCount: currentCount
-                }
-            }));
-        }
-    }
-    
     async function shareToDiscord() {
         if (!currentLightboxAssetId) {
             alert('アセットIDが見つかりません');
@@ -2895,13 +2430,7 @@
             <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
             <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
         </div>
-        <div id="lightbox-actions" style="display: none; margin-top: 1rem; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <button id="lightbox-like-btn" class="lightbox-like-btn" onclick="toggleLightboxLike(event)" style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-                </svg>
-                <span id="lightbox-like-count">0</span>
-            </button>
+        <div id="lightbox-actions" style="display: none; margin-top: 1rem;">
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
@@ -2912,11 +2441,5 @@
     </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% static 'frontend/js/common/utils.js' %}"></script>
-<link rel="stylesheet" href="{% static 'frontend/css/tutorial_help.css' %}">
-<script src="{% static 'frontend/js/tutorial_help.js' %}"></script>
 {% endblock %}
 

@@ -1,322 +1,293 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理画面 - Discordボット投稿</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
-        .header {
-            background: white;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header h1 { font-size: 1.5rem; color: #dc2626; }
-        .nav { display: flex; gap: 1rem; }
-        .nav a {
-            text-decoration: none;
-            color: #666;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-        .nav a:hover { background: #f0f0f0; }
-        .nav a.active {
-            background: #dc2626;
-            color: white;
-        }
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #333;
-        }
-        textarea {
-            width: 100%;
-            min-height: 120px;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 1rem;
-            resize: vertical;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: #dc2626;
-        }
-        input[type="file"] {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: inherit;
-        }
-        .file-info {
-            margin-top: 0.5rem;
-            font-size: 0.875rem;
-            color: #666;
-        }
-        .btn {
-            background: #dc2626;
-            color: white;
-            border: none;
-            padding: 0.75rem 2rem;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn:hover {
-            background: #b91c1c;
-        }
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .btn-secondary {
-            background: #666;
-        }
-        .btn-secondary:hover {
-            background: #555;
-        }
-        .message {
-            margin-top: 1rem;
-            padding: 1rem;
-            border-radius: 4px;
-        }
-        .message.success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #6ee7b7;
-        }
-        .message.error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fca5a5;
-        }
-        .preview {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: #f9fafb;
-            border-radius: 4px;
-            border: 1px solid #e0e0e0;
-        }
-        .preview img, .preview video {
-            max-width: 100%;
-            max-height: 400px;
-            border-radius: 4px;
-        }
-        .char-count {
-            text-align: right;
-            font-size: 0.875rem;
-            color: #666;
-            margin-top: 0.25rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>管理画面</h1>
-        <nav class="nav">
-            <a href="/admin/console/">ダッシュボード</a>
-            <a href="/admin/console/users/">ユーザー</a>
-            <a href="/admin/console/submissions/">投稿</a>
-            <a href="/admin/console/discord-shares/">Discordシェア</a>
-            <a href="/admin/console/discord-bot-post/" class="active">Discord投稿</a>
-            <a href="/admin/console/audit-logs/">監査ログ</a>
-        </nav>
-    </div>
-    
-    <div class="container">
-        <h2 style="margin-bottom: 1.5rem;">Discordボット投稿</h2>
-        
-        <div class="card">
-            <form id="discord-post-form">
-                <div class="form-group">
-                    <label for="message">メッセージ内容</label>
-                    <textarea id="message" name="message" placeholder="Discordに投稿するメッセージを入力してください..." maxlength="2000"></textarea>
-                    <div class="char-count">
-                        <span id="char-count">0</span> / 2000文字
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="file">ファイル（画像・動画、オプション）</label>
-                    <input type="file" id="file" name="file" accept="image/*,video/*">
-                    <div class="file-info">
-                        対応形式: 画像（JPEG, PNG, WebP, GIF）、動画（MP4, WebM, OGG）<br>
-                        最大サイズ: 25MB
-                    </div>
-                    <div id="file-preview" class="preview" style="display: none;"></div>
-                </div>
-                
-                <div id="message-area"></div>
-                
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                    <button type="submit" class="btn" id="submit-btn">投稿する</button>
-                    <button type="button" class="btn btn-secondary" onclick="resetForm()">リセット</button>
-                </div>
-            </form>
+{% extends 'adminpanel/base.html' %}
+{% load static %}
+
+{% block title %}管理画面 - Discordボット投稿{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #333;
+    }
+    textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 1rem;
+        resize: vertical;
+    }
+    textarea:focus {
+        outline: none;
+        border-color: #dc2626;
+    }
+    input[type="file"], input[type="text"] {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 1rem;
+    }
+    input[type="text"]:focus {
+        outline: none;
+        border-color: #dc2626;
+    }
+    .file-info {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: #666;
+    }
+    .btn {
+        background: #dc2626;
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn:hover {
+        background: #b91c1c;
+    }
+    .btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+    .btn-secondary {
+        background: #666;
+    }
+    .btn-secondary:hover {
+        background: #555;
+    }
+    .message {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: 4px;
+    }
+    .message.success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+    .message.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+    .preview {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 4px;
+        border: 1px solid #e0e0e0;
+    }
+    .preview img, .preview video {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 4px;
+    }
+    .char-count {
+        text-align: right;
+        font-size: 0.875rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 1.5rem;">Discordボット投稿</h2>
+
+<div class="card">
+    <form id="discord-post-form">
+        <div class="form-group">
+            <label for="channel_id">DiscordチャンネルID</label>
+            <input type="text" id="channel_id" name="channel_id" placeholder="{% if default_channel_id %}{{ default_channel_id }}{% else %}チャンネルIDを入力してください{% endif %}" value="{% if default_channel_id %}{{ default_channel_id }}{% endif %}">
+            <div class="file-info" style="margin-top: 0.5rem;">
+                投稿先のDiscordチャンネルIDを入力してください（数字のみ）<br>
+                {% if default_channel_id %}
+                <span style="color: #059669;">デフォルト値: {{ default_channel_id }}</span>
+                {% else %}
+                <span style="color: #dc2626;">デフォルト値が設定されていません。チャンネルIDを入力してください。</span>
+                {% endif %}
+            </div>
         </div>
-    </div>
+        
+        <div class="form-group">
+            <label for="message">メッセージ内容</label>
+            <textarea id="message" name="message" placeholder="Discordに投稿するメッセージを入力してください..." maxlength="2000"></textarea>
+            <div class="char-count">
+                <span id="char-count">0</span> / 2000文字
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="file">ファイル（画像・動画、オプション）</label>
+            <input type="file" id="file" name="file" accept="image/*,video/*">
+            <div class="file-info">
+                対応形式: 画像（JPEG, PNG, WebP, GIF）、動画（MP4, WebM, OGG）<br>
+                最大サイズ: 25MB
+            </div>
+            <div id="file-preview" class="preview" style="display: none;"></div>
+        </div>
+        
+        <div id="message-area"></div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn" id="submit-btn">投稿する</button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">リセット</button>
+        </div>
+    </form>
+</div>
 
-    <script>
-        const messageInput = document.getElementById('message');
-        const fileInput = document.getElementById('file');
-        const charCount = document.getElementById('char-count');
-        const filePreview = document.getElementById('file-preview');
-        const form = document.getElementById('discord-post-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const messageArea = document.getElementById('message-area');
+<script>
+    const messageInput = document.getElementById('message');
+    const fileInput = document.getElementById('file');
+    const channelIdInput = document.getElementById('channel_id');
+    const charCount = document.getElementById('char-count');
+    const filePreview = document.getElementById('file-preview');
+    const form = document.getElementById('discord-post-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const messageArea = document.getElementById('message-area');
 
-        // 文字数カウント
-        messageInput.addEventListener('input', function() {
-            charCount.textContent = this.value.length;
-        });
+    // 文字数カウント
+    messageInput.addEventListener('input', function() {
+        charCount.textContent = this.value.length;
+    });
 
-        // ファイルプレビュー
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                filePreview.style.display = 'block';
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    if (file.type.startsWith('image/')) {
-                        filePreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-                    } else if (file.type.startsWith('video/')) {
-                        filePreview.innerHTML = `<video src="${e.target.result}" controls></video>`;
-                    }
-                };
-                reader.readAsDataURL(file);
-            } else {
-                filePreview.style.display = 'none';
-                filePreview.innerHTML = '';
-            }
-        });
-
-        // フォーム送信
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const message = messageInput.value.trim();
-            const file = fileInput.files[0];
-            
-            if (!message && !file) {
-                showMessage('メッセージまたはファイルのいずれかが必要です。', 'error');
-                return;
-            }
-            
-            if (file && file.size > 25 * 1024 * 1024) {
-                showMessage('ファイルサイズが25MBを超えています。', 'error');
-                return;
-            }
-            
-            submitBtn.disabled = true;
-            submitBtn.textContent = '投稿中...';
-            clearMessage();
-            
-            try {
-                const formData = new FormData();
-                if (message) {
-                    formData.append('message', message);
+    // ファイルプレビュー
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            filePreview.style.display = 'block';
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (file.type.startsWith('image/')) {
+                    filePreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                } else if (file.type.startsWith('video/')) {
+                    filePreview.innerHTML = `<video src="${e.target.result}" controls></video>`;
                 }
-                if (file) {
-                    formData.append('file', file);
-                }
-                
-                const response = await fetch('/api/admin/discord-bot-post/', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.ok) {
-                    showMessage('Discordに投稿しました！', 'success');
-                    resetForm();
-                } else {
-                    showMessage(data.error || '投稿に失敗しました。', 'error');
-                }
-            } catch (error) {
-                showMessage('エラーが発生しました: ' + error.message, 'error');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '投稿する';
-            }
-        });
-
-        function resetForm() {
-            messageInput.value = '';
-            charCount.textContent = '0';
-            fileInput.value = '';
+            };
+            reader.readAsDataURL(file);
+        } else {
             filePreview.style.display = 'none';
             filePreview.innerHTML = '';
-            clearMessage();
         }
+    });
 
-        function showMessage(text, type) {
-            messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
+    // フォーム送信
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const channelId = channelIdInput.value.trim();
+        const message = messageInput.value.trim();
+        const file = fileInput.files[0];
+        
+        if (!channelId) {
+            showMessage('チャンネルIDを入力してください。', 'error');
+            return;
         }
-
-        function clearMessage() {
-            messageArea.innerHTML = '';
+        
+        // Validate channel ID format (numeric only)
+        if (!/^\d+$/.test(channelId)) {
+            showMessage('チャンネルIDは数字のみで構成されている必要があります。', 'error');
+            return;
         }
+        
+        if (!message && !file) {
+            showMessage('メッセージまたはファイルのいずれかが必要です。', 'error');
+            return;
+        }
+        
+        if (file && file.size > 25 * 1024 * 1024) {
+            showMessage('ファイルサイズが25MBを超えています。', 'error');
+            return;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = '投稿中...';
+        clearMessage();
+        
+        try {
+            const formData = new FormData();
+            formData.append('channel_id', channelId);
+            if (message) {
+                formData.append('message', message);
+            }
+            if (file) {
+                formData.append('file', file);
+            }
+            
+            const response = await fetch('/api/admin/discord-bot-post/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.ok) {
+                showMessage('Discordに投稿しました！', 'success');
+                resetForm();
+            } else {
+                showMessage(data.error || '投稿に失敗しました。', 'error');
+            }
+        } catch (error) {
+            showMessage('エラーが発生しました: ' + error.message, 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '投稿する';
+        }
+    });
 
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
+    function resetForm() {
+        // Keep channel_id when resetting (don't clear it)
+        messageInput.value = '';
+        charCount.textContent = '0';
+        fileInput.value = '';
+        filePreview.style.display = 'none';
+        filePreview.innerHTML = '';
+        clearMessage();
+    }
+
+    function showMessage(text, type) {
+        messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
+    }
+
+    function clearMessage() {
+        messageArea.innerHTML = '';
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
                 }
             }
-            return cookieValue;
         }
-    </script>
-</body>
-</html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return cookieValue;
+    }
+</script>
+{% endblock %}

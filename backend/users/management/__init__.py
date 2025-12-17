@@ -6,21 +6,17 @@ from django.conf import settings
 import sys
 import os
 
-# mongo_to_pgモジュールが存在する場合のみインポート（オプショナル）
-MongoToPGMigrator = None
-
 # Add scripts directory to path
 scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'scripts')
-if os.path.exists(scripts_dir):
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
-    
-    # mongo_to_pgモジュールが存在する場合のみインポート
-    try:
-        from mongo_to_pg import MongoToPGMigrator
-    except ImportError:
-        # mongo_to_pgモジュールが存在しない場合はNoneとして扱う
-        MongoToPGMigrator = None
+if scripts_dir not in sys.path:
+    sys.path.insert(0, scripts_dir)
+
+# mongo_to_pgモジュールが存在する場合のみインポート（オプショナル）
+try:
+    from mongo_to_pg import MongoToPGMigrator
+except ImportError:
+    # mongo_to_pgモジュールが存在しない場合はNoneとして扱う
+    MongoToPGMigrator = None
 
 
 class Command(BaseCommand):

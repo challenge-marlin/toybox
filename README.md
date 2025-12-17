@@ -92,7 +92,7 @@ docker compose restart web
 すべてのサービスを再起動する場合：
 
 ```powershell
-cd backend
+cd backend　
 docker compose restart
 ```
 

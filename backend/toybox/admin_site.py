@@ -18,8 +18,11 @@ class CustomAdminSite(admin.AdminSite):
         Display the main admin index page.
         Add custom admin console link to context.
         """
+        from django.conf import settings
+        admin_url = getattr(settings, 'ADMIN_URL', 'admin')
         extra_context = extra_context or {}
-        extra_context['custom_admin_console_url'] = '/admin/console/'
+        extra_context['custom_admin_console_url'] = f'/{admin_url}/console/'
+        extra_context['discord_bot_post_url'] = f'/{admin_url}/console/discord-bot-post/'
         extra_context['toybox_home_url'] = '/'
         return super().index(request, extra_context)
     
@@ -27,8 +30,11 @@ class CustomAdminSite(admin.AdminSite):
         """
         Add custom links to every admin page context.
         """
+        from django.conf import settings
+        admin_url = getattr(settings, 'ADMIN_URL', 'admin')
         context = super().each_context(request)
-        context['custom_admin_console_url'] = '/admin/console/'
+        context['custom_admin_console_url'] = f'/{admin_url}/console/'
+        context['discord_bot_post_url'] = f'/{admin_url}/console/discord-bot-post/'
         context['toybox_home_url'] = '/'
         return context
 

@@ -18,7 +18,7 @@ from django.utils.decorators import method_decorator
 from django.utils import timezone
 from django.conf import settings
 from .serializers import UserMetaSerializer, CustomTokenObtainPairSerializer, RegisterSerializer, UserSerializer
-from .models import UserMeta, UserCard, UserRegistration, UserSSOLink
+from .models import UserMeta, UserCard, UserRegistration
 from django.contrib.auth import get_user_model
 from .discord_oauth import (
     get_discord_oauth_url,
@@ -27,7 +27,6 @@ from .discord_oauth import (
     get_discord_guild_member,
     get_valid_discord_access_token,
 )
-from .studysphere_sso import verify_ticket, get_studysphere_login_url
 from django.shortcuts import redirect
 from django.utils import timezone
 
@@ -281,36 +280,61 @@ class ProfileGetView(APIView):
         # Get display_name from display_name field, fallback to bio, then display_id
         display_name = meta.display_name or meta.bio or user.display_id
         
-        # アバターURLとヘッダーURLの取得と検証（統一ユーティリティを使用）
-        from toybox.image_utils import get_image_url, verify_image_file_exists
+        # アバターURLの存在確認
+        avatar_url = user.avatar_url
+        if avatar_url:
+            try:
+                # URLからファイルパスを抽出
+                if avatar_url.startswith('http'):
+                    # 絶対URLの場合、パス部分を抽出
+                    from urllib.parse import urlparse
+                    parsed = urlparse(avatar_url)
+                    file_path = parsed.path
+                else:
+                    # 相対パスの場合
+                    file_path = avatar_url
+                
+                # /uploads/profiles/ から始まる場合、ファイルの存在確認
+                if file_path.startswith('/uploads/profiles/'):
+                    filename = file_path.replace('/uploads/profiles/', '')
+                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
+                    if not full_path.exists():
+                        # ファイルが存在しない場合はNoneを返す
+                        avatar_url = None
+                        # データベースも更新（オプション）
+                        user.avatar_url = None
+                        user.save(update_fields=['avatar_url'])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to verify avatar URL for user {user.id}: {e}')
         
-        # アバターURL
-        avatar_url = None
-        if user.avatar_url:
-            if verify_image_file_exists(user.avatar_url):
-                avatar_url = get_image_url(
-                    image_url_field=user.avatar_url,
-                    request=request,
-                    verify_exists=False  # 既に検証済み
-                )
-            else:
-                # ファイルが存在しない場合はデータベースをクリア
-                user.avatar_url = None
-                user.save(update_fields=['avatar_url'])
-        
-        # ヘッダーURL
-        header_url = None
-        if meta.header_url:
-            if verify_image_file_exists(meta.header_url):
-                header_url = get_image_url(
-                    image_url_field=meta.header_url,
-                    request=request,
-                    verify_exists=False  # 既に検証済み
-                )
-            else:
-                # ファイルが存在しない場合はデータベースをクリア
-                meta.header_url = None
-                meta.save(update_fields=['header_url'])
+        # ヘッダーURLの存在確認
+        header_url = meta.header_url
+        if header_url:
+            try:
+                # URLからファイルパスを抽出
+                if header_url.startswith('http'):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(header_url)
+                    file_path = parsed.path
+                else:
+                    file_path = header_url
+                
+                # /uploads/profiles/ から始まる場合、ファイルの存在確認
+                if file_path.startswith('/uploads/profiles/'):
+                    filename = file_path.replace('/uploads/profiles/', '')
+                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
+                    if not full_path.exists():
+                        # ファイルが存在しない場合はNoneを返す
+                        header_url = None
+                        # データベースも更新（オプション）
+                        meta.header_url = None
+                        meta.save(update_fields=['header_url'])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to verify header URL for user {user.id}: {e}')
         
         # 称号のバナー画像URLを取得
         active_title_image_url = None
@@ -319,12 +343,10 @@ class ProfileGetView(APIView):
                 from gamification.models import Title
                 title_obj = Title.objects.filter(name=active_title).first()
                 if title_obj:
-                    active_title_image_url = get_image_url(
-                        image_field=title_obj.image,
-                        image_url_field=title_obj.image_url,
-                        request=request,
-                        verify_exists=True
-                    )
+                    if title_obj.image:
+                        active_title_image_url = request.build_absolute_uri(title_obj.image.url)
+                    elif title_obj.image_url:
+                        active_title_image_url = title_obj.image_url
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -753,417 +775,3 @@ class TermsAgreeView(APIView):
             'message': '利用規約への同意を記録しました',
             'agreed_at': meta.terms_agreed_at.isoformat()
         })
-
-
-# StudySphere SSO Views
-class StudySphereTicketVerifyView(APIView):
-    """
-    StudySphereチケット検証APIエンドポイント。
-    
-    POST /api/sso/ticket/verify
-    Body: {"ticket": "xxxx"}
-    
-    Response:
-    {
-        "valid": true,
-        "studysphere_user_id": "12345"
-    }
-    または
-    {
-        "valid": false,
-        "error": "エラーメッセージ",
-        "error_code": "ALREADY_USED" | "EXPIRED" | "INVALID"
-    }
-    """
-    permission_classes = [AllowAny]
-    
-    def post(self, request):
-        """チケットを検証し、ユーザー情報を返す。"""
-        ticket = request.data.get('ticket', '').strip()
-        
-        if not ticket:
-            return Response({
-                'valid': False,
-                'error': 'チケットが指定されていません',
-                'error_code': 'MISSING_TICKET',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # チケットを検証
-        result = verify_ticket(ticket)
-        
-        if result.get('valid'):
-            return Response({
-                'valid': True,
-                'studysphere_user_id': result.get('studysphere_user_id'),
-            })
-        else:
-            error_code = result.get('error_code', 'INVALID')
-            return Response({
-                'valid': False,
-                'error': result.get('error', 'チケットが無効です'),
-                'error_code': error_code,
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-
-class StudySphereSSOCallbackView(APIView):
-    """
-    StudySphere SSOコールバック処理。
-    
-    GET /sso/callback?ticket=xxxx
-    
-    処理フロー：
-    1. ticketを検証
-    2. 既存SSO連携を確認（最優先）
-    3. 未連携の場合：
-       - ログイン中 → 紐付け処理へ
-       - 未ログイン → 選択画面へ
-    """
-    permission_classes = [AllowAny]
-    
-    def get(self, request):
-        """SSOコールバックを処理する。"""
-        ticket = request.GET.get('ticket', '').strip()
-        
-        if not ticket:
-            # エラー画面へリダイレクト
-            return redirect('/sso/error/?error=missing_ticket')
-        
-        # ① ticketを検証
-        verify_result = verify_ticket(ticket)
-        
-        if not verify_result.get('valid'):
-            error_code = verify_result.get('error_code', 'INVALID')
-            error_message = verify_result.get('error', 'チケットが無効です')
-            # エラー画面へリダイレクト
-            return redirect(f'/sso/error/?error_code={error_code}&error={error_message}')
-        
-        external_user_id = verify_result.get('studysphere_user_id')
-        if not external_user_id:
-            return redirect('/sso/error/?error=no_user_id')
-        
-        provider = 'studysphere'
-        
-        # ② 既存SSO連携を確認（最優先）
-        try:
-            existing_link = UserSSOLink.objects.filter(
-                provider=provider,
-                external_user_id=external_user_id
-            ).first()
-            
-            if existing_link:
-                # 既に連携済み → 対応するユーザーでログイン
-                user = existing_link.user
-                
-                # JWTトークンを生成
-                refresh = RefreshToken.for_user(user)
-                
-                # セッションにトークンを保存（フロントエンドで取得できるように）
-                request.session['sso_access_token'] = str(refresh.access_token)
-                request.session['sso_refresh_token'] = str(refresh)
-                request.session.modified = True
-                
-                # マイページへリダイレクト（ticketをクリア）
-                return redirect('/me/?sso_login=success')
-        except Exception as e:
-            logger.error(f'Error checking existing SSO link: {str(e)}')
-            return redirect('/sso/error/?error=check_failed')
-        
-        # ③ 未連携の場合の分岐
-        if request.user.is_authenticated:
-            # A. ログイン中 → 既存アカウントに紐付け（最優先・安全ルート）
-            try:
-                # 既に別のSSO連携があるかチェック
-                existing_user_link = UserSSOLink.objects.filter(
-                    provider=provider,
-                    user=request.user
-                ).first()
-                
-                if existing_user_link:
-                    # 既にこのプロバイダーに連携済み
-                    return redirect('/me/?sso_error=already_linked')
-                
-                # SSO連携を作成
-                UserSSOLink.objects.create(
-                    provider=provider,
-                    external_user_id=external_user_id,
-                    user=request.user
-                )
-                
-                logger.info(f'SSO link created: user={request.user.id}, provider={provider}, external_id={external_user_id}')
-                
-                # マイページへリダイレクト
-                return redirect('/me/?sso_link=success')
-            except Exception as e:
-                logger.error(f'Error creating SSO link: {str(e)}')
-                return redirect('/sso/error/?error=link_failed')
-        else:
-            # B. 未ログイン → 選択画面へ
-            # external_user_idをセッションに一時保存
-            request.session['sso_pending_external_user_id'] = external_user_id
-            request.session['sso_pending_provider'] = provider
-            request.session.modified = True
-            
-            # 選択画面へリダイレクト
-            return redirect('/sso/choice/')
-
-
-class StudySphereSSOChoiceView(APIView):
-    """
-    SSO選択画面（ログイン/新規作成を選択）。
-    
-    GET /sso/choice/
-    """
-    permission_classes = [AllowAny]
-    
-    def get(self, request):
-        """SSO選択画面を表示する。"""
-        # セッションから一時保存されたexternal_user_idを確認
-        external_user_id = request.session.get('sso_pending_external_user_id')
-        provider = request.session.get('sso_pending_provider', 'studysphere')
-        
-        if not external_user_id:
-            # セッションに情報がない場合はエラー
-            return redirect('/sso/error/?error=no_pending_link')
-        
-        # テンプレートをレンダリング
-        from django.shortcuts import render
-        return render(request, 'frontend/sso_choice.html', {
-            'provider': provider,
-            'external_user_id': external_user_id,
-        })
-
-
-class StudySphereSSOErrorView(APIView):
-    """
-    SSOエラー画面。
-    
-    GET /sso/error/?error_code=xxx&error=xxx
-    """
-    permission_classes = [AllowAny]
-    
-    def get(self, request):
-        """SSOエラー画面を表示する。"""
-        error_code = request.GET.get('error_code', 'UNKNOWN')
-        error_message = request.GET.get('error', 'SSO認証でエラーが発生しました')
-        
-        # エラーメッセージのマッピング
-        error_messages = {
-            'ALREADY_USED': 'このチケットは既に使用されています。',
-            'EXPIRED': 'チケットの有効期限が切れています。',
-            'INVALID': '無効なチケットです。',
-            'CONFIG_ERROR': 'SSO設定が正しくありません。管理者にお問い合わせください。',
-            'API_ERROR': 'StudySphere APIへの接続に失敗しました。',
-            'VERIFICATION_ERROR': 'チケット検証に失敗しました。',
-            'MISSING_TICKET': 'チケットが指定されていません。',
-            'NO_USER_ID': 'ユーザーIDが取得できませんでした。',
-            'CHECK_FAILED': 'SSO連携確認に失敗しました。',
-            'LINK_FAILED': 'SSO連携に失敗しました。',
-            'NO_PENDING_LINK': 'SSO連携情報が見つかりませんでした。',
-        }
-        
-        display_message = error_messages.get(error_code, error_message)
-        
-        # StudySphereのフロントエンドURL（仮）
-        # TODO: 実際のURLが返ってきたらコメントアウトを外してください
-        studysphere_url = None  # getattr(settings, 'STUDYSPHERE_FRONTEND_URL', None)
-        
-        from django.shortcuts import render
-        return render(request, 'frontend/sso_error.html', {
-            'error_code': error_code,
-            'error_message': display_message,
-            'studysphere_url': studysphere_url,
-        })
-
-
-class StudySphereSSOLinkView(APIView):
-    """
-    既存ToyBoxユーザーがSSO連携するAPI。
-    
-    POST /api/sso/link/
-    Body: {"external_user_id": "12345", "provider": "studysphere"}
-    
-    認証必須：ログイン中のユーザーに紐付ける
-    """
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request):
-        """既存ユーザーにSSO連携を紐付ける。"""
-        # セッションからexternal_user_idを取得（ログイン画面から来た場合）
-        external_user_id = request.data.get('external_user_id', '').strip()
-        if not external_user_id:
-            external_user_id = request.session.get('sso_pending_external_user_id', '').strip()
-        
-        provider = request.data.get('provider', 'studysphere')
-        
-        if not external_user_id:
-            return Response({
-                'ok': False,
-                'error': 'SSO連携情報が見つかりませんでした。再度SSO認証を行ってください。',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # 既に別のユーザーに紐付いているかチェック
-        existing_link = UserSSOLink.objects.filter(
-            provider=provider,
-            external_user_id=external_user_id
-        ).first()
-        
-        if existing_link:
-            if existing_link.user == request.user:
-                # 既にこのユーザーに紐付いている
-                return Response({
-                    'ok': True,
-                    'message': '既にSSO連携済みです',
-                })
-            else:
-                # 別のユーザーに紐付いている
-                return Response({
-                    'ok': False,
-                    'error': 'このStudySphereアカウントは既に別のToyBoxアカウントに連携されています',
-                }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # 既にこのユーザーが別のSSO連携を持っているかチェック
-        existing_user_link = UserSSOLink.objects.filter(
-            provider=provider,
-            user=request.user
-        ).first()
-        
-        if existing_user_link:
-            # 既存の連携を更新
-            existing_user_link.external_user_id = external_user_id
-            existing_user_link.save()
-            
-            return Response({
-                'ok': True,
-                'message': 'SSO連携を更新しました',
-            })
-        
-        # 新規SSO連携を作成
-        UserSSOLink.objects.create(
-            provider=provider,
-            external_user_id=external_user_id,
-            user=request.user
-        )
-        
-        # セッションから一時保存された情報をクリア
-        if 'sso_pending_external_user_id' in request.session:
-            del request.session['sso_pending_external_user_id']
-        if 'sso_pending_provider' in request.session:
-            del request.session['sso_pending_provider']
-        request.session.modified = True
-        
-        logger.info(f'SSO link created via API: user={request.user.id}, provider={provider}, external_id={external_user_id}')
-        
-        return Response({
-            'ok': True,
-            'message': 'SSO連携が完了しました',
-        })
-
-
-class StudySphereSSOCreateUserView(APIView):
-    """
-    新規ToyBoxユーザーを作成してSSO連携するAPI。
-    
-    POST /api/sso/create-user/
-    Body: {
-        "external_user_id": "12345",
-        "provider": "studysphere",
-        "display_id": "user123",
-        "email": "user@example.com" (optional)
-    }
-    
-    認証不要：新規ユーザー作成のため
-    """
-    permission_classes = [AllowAny]
-    
-    def post(self, request):
-        """新規ユーザーを作成してSSO連携する。"""
-        # セッションからexternal_user_idを取得（選択画面から来た場合）
-        external_user_id = request.data.get('external_user_id', '').strip()
-        if not external_user_id:
-            external_user_id = request.session.get('sso_pending_external_user_id', '').strip()
-        
-        provider = request.data.get('provider', 'studysphere')
-        display_id = request.data.get('display_id', '').strip()
-        email = request.data.get('email', '').strip() or None
-        
-        # バリデーション
-        if not external_user_id:
-            return Response({
-                'ok': False,
-                'error': 'SSO連携情報が見つかりませんでした。再度SSO認証を行ってください。',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not display_id:
-            return Response({
-                'ok': False,
-                'error': 'display_idが指定されていません',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # 既に別のユーザーに紐付いているかチェック
-        existing_link = UserSSOLink.objects.filter(
-            provider=provider,
-            external_user_id=external_user_id
-        ).first()
-        
-        if existing_link:
-            return Response({
-                'ok': False,
-                'error': 'このStudySphereアカウントは既にToyBoxアカウントに連携されています',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # display_idの重複チェック
-        if User.objects.filter(display_id=display_id).exists():
-            return Response({
-                'ok': False,
-                'error': 'この表示IDは既に使用されています',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # emailの重複チェック（指定されている場合）
-        if email and User.objects.filter(email=email).exists():
-            return Response({
-                'ok': False,
-                'error': 'このメールアドレスは既に使用されています',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # 新規ユーザーを作成
-        try:
-            user = User.objects.create_user(
-                display_id=display_id,
-                email=email,
-                password=None,  # SSO連携なのでパスワードは不要（ただし、AbstractBaseUserの制約で設定が必要）
-            )
-            # パスワードを設定（使われないが、AbstractBaseUserの制約で必要）
-            user.set_unusable_password()
-            user.save()
-            
-            # SSO連携を作成
-            UserSSOLink.objects.create(
-                provider=provider,
-                external_user_id=external_user_id,
-                user=user
-            )
-            
-            # セッションから一時保存された情報をクリア
-            if 'sso_pending_external_user_id' in request.session:
-                del request.session['sso_pending_external_user_id']
-            if 'sso_pending_provider' in request.session:
-                del request.session['sso_pending_provider']
-            request.session.modified = True
-            
-            # JWTトークンを生成
-            refresh = RefreshToken.for_user(user)
-            
-            logger.info(f'New user created via SSO: user={user.id}, provider={provider}, external_id={external_user_id}')
-            
-            return Response({
-                'ok': True,
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-                'role': user.role,
-            }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            logger.error(f'Error creating user via SSO: {str(e)}')
-            return Response({
-                'ok': False,
-                'error': 'ユーザー作成に失敗しました',
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

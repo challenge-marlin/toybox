@@ -176,5 +176,9 @@ def audit_log_list(request):
 @require_http_methods(["GET"])
 def discord_bot_post(request):
     """Discord bot post page."""
-    return render(request, 'adminpanel/discord_bot_post.html')
+    from django.conf import settings
+    default_channel_id = getattr(settings, 'DISCORD_CHANNEL_ID', '')
+    return render(request, 'adminpanel/discord_bot_post.html', {
+        'default_channel_id': default_channel_id
+    })
 

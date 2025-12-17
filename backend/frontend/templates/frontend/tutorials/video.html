@@ -1,0 +1,229 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}動画生成の仕方 - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tutorial-container {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    
+    .tutorial-header {
+        margin-bottom: 2rem;
+    }
+    
+    .tutorial-header h1 {
+        color: var(--steam-gold-300);
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .tutorial-content {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-600);
+        border-radius: 8px;
+        padding: 2rem;
+    }
+    
+    .tutorial-content section {
+        margin-bottom: 2rem;
+    }
+    
+    .tutorial-content h2 {
+        color: var(--steam-gold-300);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--steam-iron-600);
+    }
+    
+    .tutorial-content h3 {
+        color: var(--steam-gold-400);
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 1.5rem 0 0.75rem 0;
+    }
+    
+    .tutorial-content p {
+        color: var(--steam-iron-100);
+        font-size: 0.9375rem;
+        line-height: 1.8;
+        margin: 0.75rem 0;
+    }
+    
+    .tutorial-content ul, .tutorial-content ol {
+        color: var(--steam-iron-100);
+        font-size: 0.9375rem;
+        line-height: 1.8;
+        margin: 0.75rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .tutorial-content li {
+        margin: 0.5rem 0;
+    }
+    
+    .tutorial-content .note {
+        background: var(--steam-iron-900);
+        border-left: 4px solid #0ea5e9;
+        padding: 1rem;
+        margin: 1.5rem 0;
+        border-radius: 4px;
+    }
+    
+    .tutorial-content .tool-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .tutorial-content .tool-item {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .tutorial-content .tool-item h4 {
+        color: var(--steam-gold-400);
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .tutorial-content .tool-item p {
+        font-size: 0.875rem;
+        margin: 0;
+    }
+    
+    .back-link {
+        display: inline-block;
+        margin-top: 2rem;
+        color: var(--steam-gold-400);
+        text-decoration: underline;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tutorial-container">
+    <div class="tutorial-header">
+        <h1>🎬 動画生成の仕方</h1>
+        <p style="color: var(--steam-iron-300); font-size: 0.9375rem;">AI動画生成ツールを使った動画作成のガイド</p>
+    </div>
+    
+    <div class="tutorial-content">
+        <section>
+            <h2>はじめに</h2>
+            <p>TOYBOXでは、AI動画生成ツールを使って作成した動画を投稿できます。お題をジェネレート機能で取得したテーマに沿って、プロンプトから直接動画を生成してみましょう。</p>
+        </section>
+        
+        <section>
+            <h2>おすすめのAI動画生成ツール</h2>
+            <div class="tool-list">
+                <div class="tool-item">
+                    <h4>Veo 3.1</h4>
+                    <p>Googleが開発した高品質なAI動画生成モデル。長尺動画生成に対応。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Runway</h4>
+                    <p>プロフェッショナル向けのAI動画生成ツール。高品質な動画を生成可能。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Pika</h4>
+                    <p>使いやすいAI動画生成ツール。画像から動画を生成することも可能。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Luma Dream Machine</h4>
+                    <p>無料で使えるAI動画生成ツール。画像から動画を生成できる。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Stable Video Diffusion</h4>
+                    <p>Stability AIが開発したオープンソースの動画生成モデル。画像から動画を生成可能で無料で利用できます。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Kling AI</h4>
+                    <p>中国発のAI動画生成ツール。高品質な動画生成が可能。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Gen-3 Alpha</h4>
+                    <p>Runwayの最新モデル。高品質な動画生成に対応。</p>
+                </div>
+            </div>
+        </section>
+        
+        <section>
+            <h2>基本的な使い方</h2>
+            <h3>1. お題を取得</h3>
+            <p>マイページの「お題をジェネレート」機能で、動画用のお題を取得します。</p>
+            
+            <h3>2. プロンプトを作成</h3>
+            <p>取得したお題を参考に、AI動画生成ツール用のプロンプト（指示文）を作成します。動き、カメラワーク、雰囲気などを詳しく記述すると、より理想的な動画が生成されます。</p>
+            <div class="note">
+                <strong>ヒント:</strong> プロンプトには、動きの方向、カメラの動き（ズームイン、パン、ティルトなど）、時間帯、天候、雰囲気などを詳しく記述すると、より理想的な動画が生成されます。
+            </div>
+            
+            <h3>3. 動画を生成</h3>
+            <p>作成したプロンプトをAI動画生成ツールに入力し、動画を生成します。気に入った動画ができるまで何度でも試してみましょう。</p>
+            
+            <h3>4. 動画を調整（オプション）</h3>
+            <p>生成した動画が気に入らない場合は、プロンプトを調整して再生成するか、動画編集ソフトで微調整することもできます。</p>
+            
+            <h3>5. 動画を投稿</h3>
+            <p>生成した動画をTOYBOXにアップロードして、みんなにシェアしましょう。</p>
+        </section>
+        
+        <section>
+            <h2>プロンプト作成のコツ</h2>
+            <ul>
+                <li><strong>動きを具体的に記述:</strong> 「歩く」「走る」「飛ぶ」「回転する」など、動きを明確に指定しましょう。</li>
+                <li><strong>カメラワークを指定:</strong> 「ズームイン」「パン（横移動）」「ティルト（縦移動）」「ドリー（前後移動）」など、カメラの動きを指定すると動画がより魅力的になります。</li>
+                <li><strong>時間帯や天候を指定:</strong> 「朝日が昇る」「夕日が沈む」「雨の日」「雪が降る」など、時間帯や天候を指定すると雰囲気が出ます。</li>
+                <li><strong>画風を指定:</strong> 「リアル」「アニメ風」「映画的」「ドキュメンタリー風」など、画風を指定できます。</li>
+                <li><strong>長さを考慮:</strong> 多くのAI動画生成ツールは短い動画（数秒〜数十秒）を生成します。長い動画が必要な場合は、複数の動画を生成して編集ソフトでつなげることもできます。</li>
+            </ul>
+        </section>
+        
+        <section>
+            <h2>各ツールの特徴</h2>
+            <h3>Veo 3.1</h3>
+            <p>Googleが開発した最新のAI動画生成モデル。長尺動画（最大60秒）の生成に対応し、高品質な動画を生成できます。プロンプトの理解力が高く、複雑なシーンも生成可能です。</p>
+            
+            <h3>Runway</h3>
+            <p>プロフェッショナル向けのAI動画生成ツール。画像から動画を生成する機能や、動画の編集機能も充実しています。有料プランでは高解像度の動画生成が可能です。</p>
+            
+            <h3>Pika</h3>
+            <p>使いやすいインターフェースが特徴のAI動画生成ツール。画像から動画を生成する機能が強力で、アニメーション風の動画も生成できます。</p>
+            
+            <h3>Luma Dream Machine</h3>
+            <p>無料で使えるAI動画生成ツール。画像をアップロードするだけで動画を生成できます。初心者にもおすすめです。</p>
+        </section>
+        
+        <section>
+            <h2>よくある質問</h2>
+            <h3>Q: どのツールが初心者におすすめですか？</h3>
+            <p>A: Luma Dream MachineやPikaが初心者向けで使いやすいです。より高品質な動画が必要な場合はVeo 3.1やRunwayがおすすめです。</p>
+            
+            <h3>Q: 無料で使えるツールはありますか？</h3>
+            <p>A: Luma Dream MachineやStable Video Diffusionは無料で利用できます。多くのツールが無料トライアルを提供しています。</p>
+            
+            <h3>Q: 生成した動画の著作権はどうなりますか？</h3>
+            <p>A: ツールによって異なりますが、多くの場合、生成した動画は作成者のものとして扱われます。利用規約を確認してください。</p>
+            
+            <h3>Q: 長い動画を生成できますか？</h3>
+            <p>A: Veo 3.1は最大60秒の動画を生成できます。それ以上の長さが必要な場合は、複数の動画を生成して編集ソフトでつなげることをおすすめします。</p>
+        </section>
+    </div>
+    
+    <a href="/topic-help/" class="back-link">← お題をジェネレートのヘルプに戻る</a>
+    <a href="/me/" class="back-link" style="margin-left: 1rem;">← マイページに戻る</a>
+</div>
+{% endblock %}
+

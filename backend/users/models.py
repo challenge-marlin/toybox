@@ -147,7 +147,7 @@ class UserMeta(models.Model):
     # Profile fields
     display_name = models.CharField(max_length=50, blank=True)
     bio = models.TextField(max_length=1000, blank=True)
-    header_url = models.URLField(max_length=500, blank=True, null=True)
+    header_url = models.URLField(max_length=500, blank=True)
     lottery_bonus_count = models.IntegerField(default=0)
     
     # Notifications (JSON array of notification objects)
@@ -207,42 +207,3 @@ class UserCard(models.Model):
     
     def __str__(self):
         return f'{self.user.display_id} - {self.card.code}'
-
-
-class UserSSOLink(models.Model):
-    """
-    SSO連携情報を管理するテーブル。
-    
-    既存ToyBoxユーザーが後からSSO連携するケースを安全に扱うため、
-    SSO情報とToyBoxユーザーを1対1で紐付けます。
-    
-    原則：
-    - SSO経由で無条件に新規ユーザーを作成してはいけない
-    - 同じStudySphereユーザーが複数ToyBoxユーザーに紐付くのを防ぐ
-    - 同じToyBoxユーザーが複数回SSO連携しても安全
-    """
-    provider = models.CharField('SSOプロバイダー', max_length=50, db_index=True, help_text='例: studysphere')
-    external_user_id = models.CharField('外部ユーザーID', max_length=255, db_index=True, help_text='StudySphereのユーザーIDなど')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sso_links')
-    
-    created_at = models.DateTimeField('作成日時', auto_now_add=True)
-    updated_at = models.DateTimeField('更新日時', auto_now=True)
-    
-    class Meta:
-        db_table = 'user_sso_links'
-        verbose_name = 'SSO連携情報'
-        verbose_name_plural = 'SSO連携情報'
-        # 同じプロバイダーで同じ外部ユーザーIDが複数のToyBoxユーザーに紐付くのを防ぐ
-        unique_together = [
-            ('provider', 'external_user_id'),
-        ]
-        # 同じToyBoxユーザーが同じプロバイダーに複数回連携するのを防ぐ（必要に応じて）
-        # ただし、複数プロバイダーへの連携は許可する
-        indexes = [
-            models.Index(fields=['provider', 'external_user_id']),
-            models.Index(fields=['user', 'provider']),
-            models.Index(fields=['created_at']),
-        ]
-    
-    def __str__(self):
-        return f'{self.user.display_id} - {self.provider}:{self.external_user_id}'

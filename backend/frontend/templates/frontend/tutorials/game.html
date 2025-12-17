@@ -1,0 +1,293 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}Webゲームの作り方（LLMバイブコーディング） - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tutorial-container {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    
+    .tutorial-header {
+        margin-bottom: 2rem;
+    }
+    
+    .tutorial-header h1 {
+        color: var(--steam-gold-300);
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .tutorial-content {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-600);
+        border-radius: 8px;
+        padding: 2rem;
+    }
+    
+    .tutorial-content section {
+        margin-bottom: 2rem;
+    }
+    
+    .tutorial-content h2 {
+        color: var(--steam-gold-300);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--steam-iron-600);
+    }
+    
+    .tutorial-content h3 {
+        color: var(--steam-gold-400);
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 1.5rem 0 0.75rem 0;
+    }
+    
+    .tutorial-content p {
+        color: var(--steam-iron-100);
+        font-size: 0.9375rem;
+        line-height: 1.8;
+        margin: 0.75rem 0;
+    }
+    
+    .tutorial-content ul, .tutorial-content ol {
+        color: var(--steam-iron-100);
+        font-size: 0.9375rem;
+        line-height: 1.8;
+        margin: 0.75rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .tutorial-content li {
+        margin: 0.5rem 0;
+    }
+    
+    .tutorial-content code {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 4px;
+        padding: 0.125rem 0.375rem;
+        font-family: monospace;
+        font-size: 0.875rem;
+        color: var(--steam-gold-300);
+    }
+    
+    .tutorial-content pre {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        padding: 1rem;
+        overflow-x: auto;
+        margin: 1rem 0;
+    }
+    
+    .tutorial-content pre code {
+        background: none;
+        border: none;
+        padding: 0;
+        color: var(--steam-iron-100);
+    }
+    
+    .tutorial-content .note {
+        background: var(--steam-iron-900);
+        border-left: 4px solid #a855f7;
+        padding: 1rem;
+        margin: 1.5rem 0;
+        border-radius: 4px;
+    }
+    
+    .tutorial-content .tool-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .tutorial-content .tool-item {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .tutorial-content .tool-item h4 {
+        color: var(--steam-gold-400);
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .tutorial-content .tool-item p {
+        font-size: 0.875rem;
+        margin: 0;
+    }
+    
+    .back-link {
+        display: inline-block;
+        margin-top: 2rem;
+        color: var(--steam-gold-400);
+        text-decoration: underline;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tutorial-container">
+    <div class="tutorial-header">
+        <h1>🎮 Webゲームの作り方（LLMバイブコーディング）</h1>
+        <p style="color: var(--steam-iron-300); font-size: 0.9375rem;">AI（LLM）を活用したWebゲーム作成のガイド</p>
+    </div>
+    
+    <div class="tutorial-content">
+        <section>
+            <h2>はじめに</h2>
+            <p>TOYBOXでは、Webブラウザで動くミニゲームを投稿できます。プログラミング経験がなくても、GeminiやChatGPTなどのLLM（大規模言語モデル）を使えば、AIにコードを書いてもらうことで簡単にゲームを作成できます。</p>
+            <div class="note">
+                <strong>重要:</strong> ゲームは必ず<code>index.html</code>を含むZIPファイルとしてアップロードしてください。Webブラウザで直接実行できる形式である必要があります。
+            </div>
+        </section>
+        
+        <section>
+            <h2>おすすめのLLM（AI）ツール</h2>
+            <div class="tool-list">
+                <div class="tool-item">
+                    <h4>Google Gemini</h4>
+                    <p>Googleが開発したLLM。コード生成に優れている。無料で利用可能。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>ChatGPT（OpenAI）</h4>
+                    <p>OpenAIが開発したLLM。コード生成とデバッグに強い。有料プランあり。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Claude（Anthropic）</h4>
+                    <p>Anthropicが開発したLLM。長文のコード生成に優れている。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>GitHub Copilot</h4>
+                    <p>GitHubとOpenAIが共同開発。コード補完と生成に特化。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Cursor</h4>
+                    <p>AI統合型コードエディタ。コード生成と編集が簡単。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Codeium</h4>
+                    <p>無料で使えるAIコード補完ツール。VS Code拡張機能あり。</p>
+                </div>
+            </div>
+        </section>
+        
+        <section>
+            <h2>基本的な使い方</h2>
+            <h3>1. お題を取得</h3>
+            <p>マイページの「お題をジェネレート」機能で、ゲーム用のお題を取得します。</p>
+            
+            <h3>2. LLMにゲームの要件を伝える</h3>
+            <p>取得したお題を参考に、LLMにゲームの要件を伝えます。以下のような情報を含めると良いでしょう：</p>
+            <ul>
+                <li>ゲームのジャンル（アクション、パズル、RPGなど）</li>
+                <li>操作方法（マウスクリック、キーボード入力など）</li>
+                <li>ゲームのルールや目標</li>
+                <li>画面のデザインやスタイル</li>
+                <li>必要な機能（スコア、タイマー、レベルなど）</li>
+            </ul>
+            
+            <h3>3. LLMにコードを生成してもらう</h3>
+            <p>LLMに「HTML、CSS、JavaScriptを使って、[ゲームの説明]のWebゲームを作成してください。index.htmlファイル1つにすべてのコードを含めてください。」と依頼します。</p>
+            <div class="note">
+                <strong>ヒント:</strong> 最初はシンプルなゲームから始めて、徐々に機能を追加していくのがおすすめです。「クリックゲーム」「じゃんけんゲーム」「数当てゲーム」など、簡単なものから試してみましょう。
+            </div>
+            
+            <h3>4. 生成されたコードを確認・修正</h3>
+            <p>LLMが生成したコードを確認し、動作をテストします。うまく動かない場合は、エラーメッセージや問題点をLLMに伝えて修正してもらいましょう。</p>
+            
+            <h3>5. index.htmlファイルを保存</h3>
+            <p>生成されたコードを<code>index.html</code>というファイル名で保存します。すべてのコード（HTML、CSS、JavaScript）を1つのファイルに含めるのがポイントです。</p>
+            
+            <h3>6. ZIPファイルにまとめる</h3>
+            <p>画像や音声ファイルなど、追加のリソースがある場合は、それらも含めてZIPファイルにまとめます。<code>index.html</code>は必ずZIPファイルのルートディレクトリに配置してください。</p>
+            
+            <h3>7. ゲームを投稿</h3>
+            <p>作成したZIPファイルをTOYBOXにアップロードして、みんなに遊んでもらいましょう。</p>
+        </section>
+        
+        <section>
+            <h2>LLMへのプロンプト例</h2>
+            <p>以下は、LLMにゲームを作成してもらう際のプロンプト例です。参考にしてください。</p>
+            
+            <h3>例1: シンプルなクリックゲーム</h3>
+            <pre><code>HTML、CSS、JavaScriptを使って、シンプルなクリックゲームを作成してください。
+
+要件:
+- 画面中央にボタンがある
+- ボタンをクリックするとスコアが増える
+- スコアが表示される
+- ダークテーマでスタイリッシュなデザイン
+- index.htmlファイル1つにすべてのコードを含める</code></pre>
+            
+            <h3>例2: じゃんけんゲーム</h3>
+            <pre><code>HTML、CSS、JavaScriptを使って、じゃんけんゲームを作成してください。
+
+要件:
+- プレイヤーは「グー」「チョキ」「パー」のボタンから選択
+- CPUはランダムに選択
+- 勝敗を判定して表示
+- 勝率を記録・表示
+- かわいいデザイン
+- index.htmlファイル1つにすべてのコードを含める</code></pre>
+            
+            <h3>例3: 数当てゲーム</h3>
+            <pre><code>HTML、CSS、JavaScriptを使って、数当てゲームを作成してください。
+
+要件:
+- 1から100までの数字をランダムに生成
+- プレイヤーが数字を入力して推測
+- 「もっと大きい」「もっと小さい」とヒントを表示
+- 正解までの試行回数を表示
+- ゲームクリア時に祝福メッセージを表示
+- index.htmlファイル1つにすべてのコードを含める</code></pre>
+        </section>
+        
+        <section>
+            <h2>LLMバイブコーディングのコツ</h2>
+            <ul>
+                <li><strong>具体的に伝える:</strong> 「ゲームを作って」ではなく、「クリックゲームを作って、スコアを表示して」のように具体的に伝えましょう。</li>
+                <li><strong>段階的に機能を追加:</strong> 最初はシンプルなゲームを作り、動作確認してから機能を追加していきましょう。</li>
+                <li><strong>エラーはそのまま伝える:</strong> エラーが発生したら、エラーメッセージをそのままLLMに伝えると、修正方法を提案してくれます。</li>
+                <li><strong>デザインも指定する:</strong> 「ダークテーマ」「かわいいデザイン」「シンプルなデザイン」など、デザインの希望も伝えましょう。</li>
+                <li><strong>1ファイルにまとめる:</strong> 「index.htmlファイル1つにすべてのコードを含めてください」と明示的に伝えると、管理が簡単になります。</li>
+                <li><strong>動作確認を忘れずに:</strong> 生成されたコードは必ずブラウザで動作確認しましょう。</li>
+            </ul>
+        </section>
+        
+        <section>
+            <h2>よくある質問</h2>
+            <h3>Q: プログラミング経験がなくても作れますか？</h3>
+            <p>A: はい、LLMにコードを生成してもらうので、プログラミング経験がなくてもゲームを作成できます。ただし、生成されたコードを確認して動作テストする必要があります。</p>
+            
+            <h3>Q: どのLLMがおすすめですか？</h3>
+            <p>A: 初心者の方は無料で使えるGoogle Geminiがおすすめです。より高度な機能が必要な場合はChatGPT（有料プラン）やClaudeが良いでしょう。</p>
+            
+            <h3>Q: 生成されたコードが動かない場合はどうすればいいですか？</h3>
+            <p>A: エラーメッセージや問題点をLLMに伝えて、修正してもらいましょう。ブラウザの開発者ツール（F12キー）でエラーを確認することもできます。</p>
+            
+            <h3>Q: ファイルサイズの制限はありますか？</h3>
+            <p>A: TOYBOXでは最大50MBまでアップロードできます。画像や音声ファイルを多く含めるとサイズが大きくなるので注意しましょう。</p>
+            
+            <h3>Q: 外部リソース（CDNなど）を使えますか？</h3>
+            <p>A: 可能ですが、オフラインでも動作するように、必要なファイルはすべてZIPに含めることをおすすめします。LLMに「外部リソースを使わず、すべてのコードを1つのファイルに含めてください」と伝えると良いでしょう。</p>
+        </section>
+    </div>
+    
+    <a href="/topic-help/" class="back-link">← お題をジェネレートのヘルプに戻る</a>
+    <a href="/me/" class="back-link" style="margin-left: 1rem;">← マイページに戻る</a>
+</div>
+{% endblock %}
+

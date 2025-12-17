@@ -176,18 +176,16 @@ def profile_view(request):
 
 def announcements_list(request):
     """Announcements list page."""
-    from .models import Announcement
+    from datetime import datetime, timedelta
     from django.utils import timezone
-    from datetime import timedelta
+    from .models import Announcement
     
     announcements = Announcement.objects.filter(
         is_active=True
     ).order_by('-created_at')
     
-    # 3日以内のお知らせにNEWフラグを付ける
-    now = timezone.now()
-    three_days_ago = now - timedelta(days=3)
-    
+    # 3日以内のお知らせにNEWマークを付ける
+    three_days_ago = timezone.now() - timedelta(days=3)
     announcements_with_new = []
     for announcement in announcements:
         is_new = announcement.created_at >= three_days_ago
@@ -258,104 +256,29 @@ def derivative_guidelines(request):
     return render(request, 'frontend/derivative_guidelines.html')
 
 
+def topic_help(request):
+    """Topic generation help page."""
+    return render(request, 'frontend/topic_help.html')
+
+
+def tutorial_image(request):
+    """Image creation tutorial page."""
+    return render(request, 'frontend/tutorials/image.html')
+
+
+def tutorial_video(request):
+    """Video creation tutorial page."""
+    return render(request, 'frontend/tutorials/video.html')
+
+
+def tutorial_game(request):
+    """Web game creation tutorial page."""
+    return render(request, 'frontend/tutorials/game.html')
+
+
 def privacy(request):
     """Privacy policy page."""
     return render(request, 'frontend/privacy.html')
-
-
-def tutorials_index(request):
-    """Tutorials list page."""
-    tutorials = [
-        {
-            'slug': 'image',
-            'title': '画像の作り方',
-            'description': 'どの生成AIでどうつくればいいの？',
-            'icon': '🖼️',
-        },
-        {
-            'slug': 'video',
-            'title': '動画の作り方',
-            'description': 'どの生成AIでどうつくればいいの？',
-            'icon': '🎬',
-        },
-        {
-            'slug': 'web-game',
-            'title': 'Webブラウザゲームの作り方',
-            'description': 'AIでどうつくるの？',
-            'icon': '🎮',
-        },
-    ]
-    return render(request, 'frontend/tutorials/index.html', {
-        'tutorials': tutorials
-    })
-
-
-def tutorial_detail(request, slug):
-    """Tutorial detail page."""
-    from pathlib import Path
-    from django.http import Http404
-    import markdown
-    import bleach
-    
-    # 許可されたslugのみ
-    allowed_slugs = ['image', 'video', 'web-game']
-    if slug not in allowed_slugs:
-        raise Http404("チュートリアルが見つかりません")
-    
-    # Markdownファイルのパス
-    # views.pyは frontend/views.py にあるので、親ディレクトリ（frontend/）に移動してから tutorials/content/ にアクセス
-    base_dir = Path(__file__).resolve().parent
-    content_dir = base_dir / 'tutorials' / 'content'
-    md_file = content_dir / f'{slug}.md'
-    
-    if not md_file.exists():
-        raise Http404("チュートリアルコンテンツが見つかりません")
-    
-    # Markdownを読み込んでHTMLに変換
-    with open(md_file, 'r', encoding='utf-8') as f:
-        markdown_content = f.read()
-    
-    # MarkdownをHTMLに変換
-    html_content = markdown.markdown(
-        markdown_content,
-        extensions=['extra', 'codehilite', 'nl2br']
-    )
-    
-    # XSS対策：許可されたタグと属性のみを許可
-    allowed_tags = [
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'p', 'br', 'strong', 'em', 'u', 's',
-        'ul', 'ol', 'li',
-        'a', 'blockquote', 'code', 'pre',
-        'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
-        'div', 'span'
-    ]
-    allowed_attributes = {
-        'a': ['href', 'title', 'target', 'rel'],
-        'img': ['src', 'alt', 'title', 'width', 'height'],
-        'code': ['class'],
-        'pre': ['class'],
-    }
-    
-    cleaned_html = bleach.clean(
-        html_content,
-        tags=allowed_tags,
-        attributes=allowed_attributes,
-        strip=True
-    )
-    
-    # タイトルマッピング
-    title_map = {
-        'image': '画像の作り方',
-        'video': '動画の作り方',
-        'web-game': 'Webブラウザゲームの作り方',
-    }
-    
-    return render(request, 'frontend/tutorials/detail.html', {
-        'slug': slug,
-        'title': title_map.get(slug, 'チュートリアル'),
-        'content': cleaned_html,
-    })
 
 
 # API views

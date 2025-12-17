@@ -55,13 +55,13 @@
         <h1>管理画面</h1>
         <nav class="nav">
             <a href="/" class="home-link">TOYBOXホーム</a>
-            <a href="/admin/" class="django-admin-link">Django管理画面</a>
-            <a href="/admin/console/" {% if request.resolver_match.url_name == 'admin-dashboard' %}class="active"{% endif %}>ダッシュボード</a>
-            <a href="/admin/console/users/" {% if 'users' in request.path %}class="active"{% endif %}>ユーザー</a>
-            <a href="/admin/console/submissions/" {% if 'submissions' in request.path %}class="active"{% endif %}>投稿</a>
-            <a href="/admin/console/discord-shares/" {% if 'discord-shares' in request.path %}class="active"{% endif %}>Discordシェア</a>
-            <a href="/admin/console/discord-bot-post/" {% if 'discord-bot-post' in request.path %}class="active"{% endif %}>Discord投稿</a>
-            <a href="/admin/console/audit-logs/" {% if 'audit-logs' in request.path %}class="active"{% endif %}>監査ログ</a>
+            <a href="/{{ ADMIN_URL }}/" class="django-admin-link">Django管理画面</a>
+            <a href="/{{ ADMIN_URL }}/console/" {% if request.resolver_match.url_name == 'admin-dashboard' %}class="active"{% endif %}>ダッシュボード</a>
+            <a href="/{{ ADMIN_URL }}/console/users/" {% if 'users' in request.path %}class="active"{% endif %}>ユーザー</a>
+            <a href="/{{ ADMIN_URL }}/console/submissions/" {% if 'submissions' in request.path %}class="active"{% endif %}>投稿</a>
+            <a href="/{{ ADMIN_URL }}/console/discord-shares/" {% if 'discord-shares' in request.path %}class="active"{% endif %}>Discordシェア</a>
+            <a href="/{{ ADMIN_URL }}/console/discord-bot-post/" {% if 'discord-bot-post' in request.path %}class="active"{% endif %}>Discord投稿</a>
+            <a href="/{{ ADMIN_URL }}/console/audit-logs/" {% if 'audit-logs' in request.path %}class="active"{% endif %}>監査ログ</a>
         </nav>
     </div>
     

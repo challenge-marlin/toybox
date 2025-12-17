@@ -8,8 +8,6 @@ from django.conf.urls.static import static
 from users import views as user_views
 from frontend.views import AnnouncementsView
 import frontend.views as frontend_views
-from users import views as user_views
-from users.views import StudySphereSSOCallbackView, StudySphereSSOChoiceView, StudySphereSSOErrorView
 # まず、すべてのadmin.pyファイルをインポートしてモデルを登録
 # これにより、admin.siteにすべてのモデルが登録されます
 import users.admin  # noqa: F401
@@ -43,12 +41,18 @@ try:
 except ImportError:
     SPECTACULAR_AVAILABLE = False
 
+# Get ADMIN_URL with default value 'admin'
+# Use settings.ADMIN_URL directly to ensure it's read from environment
+ADMIN_URL = settings.ADMIN_URL
+
 urlpatterns = [
     # Admin panel (custom admin UI) - Must be before admin.site.urls
-    path('admin/console/', include('adminpanel.urls')),
+    # セキュリティのため、環境変数 ADMIN_URL で設定可能なURLを使用
+    path(f'{ADMIN_URL}/console/', include('adminpanel.urls')),
     
     # Django admin site (custom admin site)
-    path('admin/', custom_admin_site.urls),
+    # セキュリティのため、環境変数 ADMIN_URL で設定可能なURLを使用
+    path(f'{ADMIN_URL}/', custom_admin_site.urls),
 ]
 
 # API Schema (if drf-spectacular is installed)
@@ -82,11 +86,6 @@ urlpatterns += [
     
     # Frontend (Django templates)
     path('', include('frontend.urls')),
-    
-    # SSO callback (frontend URLとして扱う)
-    path('sso/callback/', StudySphereSSOCallbackView.as_view(), name='sso-callback'),
-    path('sso/choice/', StudySphereSSOChoiceView.as_view(), name='sso-choice'),
-    path('sso/error/', StudySphereSSOErrorView.as_view(), name='sso-error'),
 ]
 
 # Media files serving

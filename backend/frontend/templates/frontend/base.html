@@ -5,75 +5,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ToyBox{% endblock %}</title>
-    <link rel="icon" type="image/x-icon" href="{% static 'frontend/favicon.ico' %}">
-    <link rel="apple-touch-icon" href="{% static 'frontend/favicon.ico' %}">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
     <link rel="stylesheet" href="{% static 'frontend/css/base.css' %}">
     <script src="{% static 'frontend/js/auth.js' %}"></script>
     {% block extra_css %}{% endblock %}
-    <style>
-        .nav-tab {
-            position: relative;
-        }
-        
-        .nav-tab:hover {
-            color: var(--steam-gold-300) !important;
-            background: rgba(224, 168, 0, 0.1);
-            border-radius: 4px 4px 0 0;
-        }
-        
-        .nav-tab-active {
-            color: var(--steam-gold-300) !important;
-            font-weight: 600;
-        }
-        
-        .nav-tab-active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--steam-gold-500);
-        }
-        
-        @media (max-width: 768px) {
-            #main-nav-tabs {
-                flex-wrap: wrap;
-                gap: 0.125rem;
-            }
-            
-            .nav-tab {
-                padding: 0.375rem 0.5rem !important;
-                font-size: 0.75rem !important;
-            }
-        }
-    </style>
-    <script>
-        // テーマを即座に適用（FOUCを防ぐ）
-        (function() {
-            const savedTheme = localStorage.getItem('toybox-theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        })();
-    </script>
 </head>
 <body>
-    <header class="header-nav" style="border-bottom: 1px solid var(--steam-iron-800); background: var(--steam-iron-900); transition: background-color 0.3s ease, border-color 0.3s ease;">
+    <header class="header-nav" style="border-bottom: 1px solid var(--steam-iron-800); background: rgba(31, 35, 42, 0.7);">
         <div class="container" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; font-size: 0.875rem; max-width: 1200px; margin: 0 auto;">
-            <nav style="display: flex; align-items: center; gap: 0.5rem;">
-                <a href="/" id="logo-link" style="display: flex; align-items: center; margin-right: 0.5rem;">
+            <nav style="display: flex; align-items: center; gap: 1rem;">
+                <a href="/" id="logo-link" style="display: flex; align-items: center;">
                     <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="ToyBox" style="height: 2rem; width: auto;">
                 </a>
-                <div id="main-nav-tabs" style="display: flex; align-items: center; gap: 0.25rem; border-bottom: 2px solid var(--steam-iron-800);">
-                    <a href="/me/" id="nav-me" class="nav-tab" style="color: var(--steam-gold-400); text-decoration: none; display: none; padding: 0.5rem 0.75rem; font-size: 0.875rem; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;">マイページ</a>
-                    <a href="/collection/" id="nav-collection" class="nav-tab" style="color: var(--steam-gold-400); text-decoration: none; display: none; padding: 0.5rem 0.75rem; font-size: 0.875rem; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;">コレクション</a>
-                    <a href="/profile/view/" id="profile-view-entry" class="nav-tab" style="color: var(--steam-gold-400); text-decoration: none; display: none; padding: 0.5rem 0.75rem; font-size: 0.875rem; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;">プロフィール</a>
-                    <a href="/feed/" id="nav-feed" class="nav-tab" style="color: var(--steam-gold-400); text-decoration: none; padding: 0.5rem 0.75rem; font-size: 0.875rem; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;">みんなの投稿</a>
-                </div>
-                <div style="display: flex; align-items: center; gap: 1rem; margin-left: 0.5rem;">
-                    <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
-                    <a href="/admin/console/" id="nav-admin-console" style="color: var(--steam-gold-400); text-decoration: none; display: none;">管理画面</a>
-                    <a href="/admin/" id="nav-admin-django" style="color: var(--steam-gold-400); text-decoration: none; display: none;">Django管理</a>
-                </div>
+                <a href="/me/" id="nav-me" style="color: var(--steam-gold-400); text-decoration: none; display: none;">マイページ</a>
+                <a href="/collection/" id="nav-collection" style="color: var(--steam-gold-400); text-decoration: none; display: none;">コレクション</a>
+                <a href="/profile/view/" id="nav-profile" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール</a>
+                <a href="/feed/" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
+                <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
             </nav>
             <div id="user-info" style="display: flex; align-items: center; gap: 0.75rem; color: var(--steam-iron-200); display: none;">
                 <div id="notification-container" style="position: relative; display: none;">
@@ -94,21 +43,8 @@
                         </div>
                     </div>
                 </div>
-                <!-- ユーザーメニュー -->
-                <div id="user-menu-container" style="position: relative; display: none;">
-                    <button id="user-menu-button" onclick="toggleUserMenu()" style="background: transparent; border: none; padding: 0; cursor: pointer; border-radius: 50%; overflow: hidden; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" aria-label="ユーザーメニュー">
-                        <div id="user-avatar-icon" style="width: 32px; height: 32px; border-radius: 50%; background: var(--steam-iron-800); color: var(--steam-gold-300); display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: 600; border: 2px solid var(--steam-iron-700); overflow: hidden;">
-                            <span>U</span>
-                        </div>
-                    </button>
-                    <div id="user-menu-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; width: 200px; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700); border-radius: 4px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); z-index: 50; overflow: hidden;">
-                        <a href="/profile/" style="display: block; padding: 0.75rem 1rem; color: var(--steam-iron-100); text-decoration: none; font-size: 0.875rem; transition: background 0.2s; border-bottom: 1px solid var(--steam-iron-800);" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">プロフィール設定</a>
-                        <button id="theme-toggle-button" onclick="toggleTheme()" style="display: block; width: 100%; padding: 0.75rem 1rem; background: transparent; border: none; color: var(--steam-iron-100); text-align: left; font-size: 0.875rem; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--steam-iron-800);" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">
-                            <span id="theme-toggle-text">ライトモードに切り替え</span>
-                        </button>
-                        <a href="/login/" onclick="clearAuth(); window.location.href='/'; return false;" style="display: block; padding: 0.75rem 1rem; color: var(--steam-iron-100); text-decoration: none; font-size: 0.875rem; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">ログアウト</a>
-                    </div>
-                </div>
+                <span id="user-display-id" style="display: inline;"></span>
+                <a href="/login/" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="clearAuth(); window.location.href='/'; return false;">ログアウト</a>
             </div>
         </div>
     </header>
@@ -117,30 +53,7 @@
         {% block content %}{% endblock %}
     </main>
     
-    {% block footer %}
-    {% if request.resolver_match.url_name != 'index' and request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'signup' %}
-    <footer style="margin-top: 4rem; padding: 2rem 1rem; border-top: 1px solid var(--steam-iron-800); background: var(--steam-iron-900); transition: background-color 0.3s ease, border-color 0.3s ease;">
-        <div class="container" style="max-width: 1200px; margin: 0 auto;">
-            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                <!-- フッターメニュー -->
-                <nav style="display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; align-items: center;">
-                    <a href="/terms/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">利用規約</a>
-                    <a href="/derivative-guidelines/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">二次創作ガイドライン</a>
-                    <a href="/privacy/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">プライバシーポリシー</a>
-                    <a href="/inquiry/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">問い合わせ</a>
-                </nav>
-                <!-- コピーライト -->
-                <div style="text-align: center; color: var(--steam-iron-300); font-size: 0.75rem;">
-                    <p>2026 ©AYATORI.Inc</p>
-                </div>
-            </div>
-        </div>
-    </footer>
-    {% endif %}
-    {% endblock %}
-    
     {% block extra_js %}{% endblock %}
-    <script src="{% static 'frontend/js/onboarding.js' %}"></script>
     <script>
         // 通知機能の変数（グローバルスコープ）
         let notificationItems = [];
@@ -284,104 +197,45 @@
             .catch(err => console.error('Failed to mark notifications as read:', err));
         }
         
-        // 現在のページに応じてタブをアクティブにする
-        function setActiveTab() {
-            const currentPath = window.location.pathname;
-            const navTabs = document.querySelectorAll('.nav-tab');
-            
-            navTabs.forEach(tab => {
-                const tabPath = new URL(tab.href).pathname;
-                let isActive = false;
-                
-                // 現在のパスがタブのパスと一致するか、またはタブのパスで始まる場合
-                if (currentPath === tabPath) {
-                    isActive = true;
-                } else if (tabPath !== '/' && currentPath.startsWith(tabPath)) {
-                    isActive = true;
-                } else if (tabPath === '/profile/view/' && (currentPath.startsWith('/profile/view/') || currentPath.startsWith('/profile/') && currentPath !== '/profile/')) {
-                    // プロフィールページの特別な処理（/profile/view/ または /profile/?user=xxx）
-                    isActive = true;
-                }
-                
-                if (isActive) {
-                    tab.classList.add('nav-tab-active');
-                    tab.style.color = 'var(--steam-gold-300)';
-                    tab.style.borderBottomColor = 'var(--steam-gold-500)';
-                    tab.style.fontWeight = '600';
-                } else {
-                    tab.classList.remove('nav-tab-active');
-                    tab.style.color = 'var(--steam-gold-400)';
-                    tab.style.borderBottomColor = 'transparent';
-                    tab.style.fontWeight = 'normal';
-                }
-            });
-        }
-        
         // ナビゲーションの認証状態に応じた表示切り替えと通知読み込み
         document.addEventListener('DOMContentLoaded', function() {
             const isAuthenticated = hasValidToken();
             const logoLink = document.getElementById('logo-link');
             const navMe = document.getElementById('nav-me');
             const navCollection = document.getElementById('nav-collection');
-            const navProfile = document.getElementById('profile-view-entry');
+            const navProfile = document.getElementById('nav-profile');
             const navLogin = document.getElementById('nav-login');
-            const userMenuContainer = document.getElementById('user-menu-container');
-            const navAdminConsole = document.getElementById('nav-admin-console');
-            const navAdminDjango = document.getElementById('nav-admin-django');
             const userInfo = document.getElementById('user-info');
             const userDisplayId = document.getElementById('user-display-id');
             
             if (isAuthenticated) {
                 // ログイン済みの場合
                 if (logoLink) logoLink.href = '/me/';
-                if (navMe) navMe.style.display = 'block';
-                if (navCollection) navCollection.style.display = 'block';
-                if (navProfile) navProfile.style.display = 'block';
+                if (navMe) navMe.style.display = 'inline';
+                if (navCollection) navCollection.style.display = 'inline';
+                if (navProfile) navProfile.style.display = 'inline';
                 if (navLogin) navLogin.style.display = 'none';
                 if (userInfo) userInfo.style.display = 'flex';
-                
-                // タブのアクティブ状態を設定
-                setActiveTab();
                 
                 const notificationContainer = document.getElementById('notification-container');
                 if (notificationContainer) notificationContainer.style.display = 'block';
                 
-                // ユーザー情報を取得して表示（スーパーユーザーチェック含む）
-                fetch('/api/users/me/', {
+                // ユーザー情報を取得して表示
+                fetch('/api/users/me/meta/', {
                     headers: {
                         'Authorization': `Bearer ${getAccessToken()}`,
                     }
                 })
                 .then(res => res.json())
-                .then(userData => {
-                    // スーパーユーザーまたはスタッフの場合、管理画面リンクを表示
-                    if (userData.is_superuser || userData.is_staff) {
-                        if (navAdminConsole) navAdminConsole.style.display = 'inline';
-                        if (navAdminDjango) navAdminDjango.style.display = 'inline';
-                    }
-                    
-                    // メタ情報を取得して表示名とアバターを設定
-                    return fetch('/api/users/me/meta/', {
-                        headers: {
-                            'Authorization': `Bearer ${getAccessToken()}`,
-                        }
-                    });
-                })
-                .then(res => res.json())
                 .then(data => {
-                    // ユーザーメニューのアバターアイコンを更新
-                    const userAvatarIcon = document.getElementById('user-avatar-icon');
-                    if (userAvatarIcon && userMenuContainer) {
-                        if (data.avatar_url) {
-                            const displayName = data.display_name || data.display_id || 'U';
-                            const firstChar = displayName.charAt(0).toUpperCase();
-                            userAvatarIcon.innerHTML = `<img src="${data.avatar_url}" alt="avatar" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 0.875rem; font-weight: 600;\\'>${firstChar}</span>';">`;
-                        } else {
-                            const displayName = data.display_name || data.display_id || 'U';
-                            const firstChar = displayName.charAt(0).toUpperCase();
-                            userAvatarIcon.innerHTML = `<span>${firstChar}</span>`;
+                    if (userDisplayId) {
+                        // display_nameがあれば表示、なければdisplay_idを表示
+                        if (data.display_name) {
+                            userDisplayId.textContent = data.display_name;
+                        } else if (data.display_id) {
+                            userDisplayId.textContent = data.display_id;
                         }
-                        userMenuContainer.style.display = 'block';
+                        userDisplayId.style.display = 'inline';
                     }
                 })
                 .catch(err => console.error('Failed to load user info:', err));
@@ -400,9 +254,6 @@
                 if (navLogin) navLogin.style.display = 'inline';
                 if (userInfo) userInfo.style.display = 'none';
                 
-                // タブのアクティブ状態を設定（ログインしていない場合でも）
-                setActiveTab();
-                
                 const notificationContainer = document.getElementById('notification-container');
                 if (notificationContainer) notificationContainer.style.display = 'none';
             }
@@ -419,63 +270,8 @@
                         dropdown.style.display = 'none';
                     }
                 }
-                
-                // ユーザーメニューの外側をクリックしたら閉じる
-                const userMenuContainer = document.getElementById('user-menu-container');
-                const userMenuDropdown = document.getElementById('user-menu-dropdown');
-                if (userMenuContainer && userMenuDropdown) {
-                    if (!userMenuContainer.contains(e.target)) {
-                        userMenuDropdown.style.display = 'none';
-                    }
-                }
             });
-            
-            // テーマの初期化
-            initializeTheme();
-            
-            // 認証状態の更新後にオンボーディングを開始
-            setTimeout(async () => {
-                if (window.initOnboarding) {
-                    await window.initOnboarding();
-                }
-            }, 500);
         });
-        
-        // ユーザーメニューの開閉
-        let userMenuOpen = false;
-        function toggleUserMenu() {
-            const dropdown = document.getElementById('user-menu-dropdown');
-            if (dropdown) {
-                userMenuOpen = !userMenuOpen;
-                dropdown.style.display = userMenuOpen ? 'block' : 'none';
-            }
-        }
-        
-        // テーマ切り替え機能
-        function initializeTheme() {
-            const savedTheme = localStorage.getItem('toybox-theme') || 'dark';
-            applyTheme(savedTheme);
-            updateThemeToggleText(savedTheme);
-        }
-        
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            applyTheme(newTheme);
-            updateThemeToggleText(newTheme);
-            localStorage.setItem('toybox-theme', newTheme);
-        }
-        
-        function applyTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-        }
-        
-        function updateThemeToggleText(theme) {
-            const toggleText = document.getElementById('theme-toggle-text');
-            if (toggleText) {
-                toggleText.textContent = theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え';
-            }
-        }
     </script>
 </body>
 </html>

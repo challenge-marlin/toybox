@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.http import HttpResponseRedirect
-from .models import UserRegistration, UserMeta, UserCard, UserSSOLink
+from .models import UserRegistration, UserMeta, UserCard
 
 User = get_user_model()
 
@@ -430,16 +430,6 @@ class UserCardAdmin(admin.ModelAdmin):
     search_fields = ['user__email', 'user__display_id', 'card__code']
     list_filter = ['obtained_at', 'card__rarity']
     readonly_fields = ['obtained_at']
-
-
-@admin.register(UserSSOLink)
-class UserSSOLinkAdmin(admin.ModelAdmin):
-    """SSO連携情報管理 - ユーザーのSSO連携情報を管理します。"""
-    list_display = ['user', 'provider', 'external_user_id', 'created_at', 'updated_at']
-    search_fields = ['user__email', 'user__display_id', 'external_user_id', 'provider']
-    list_filter = ['provider', 'created_at']
-    readonly_fields = ['created_at', 'updated_at']
-    raw_id_fields = ['user']  # ユーザー選択を外部キーウィジェットで表示
     fieldsets = (
         ('ユーザー情報', {
             'fields': ('user',),

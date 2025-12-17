@@ -1,0 +1,196 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}画像の作り方 - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tutorial-container {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    
+    .tutorial-header {
+        margin-bottom: 2rem;
+    }
+    
+    .tutorial-header h1 {
+        color: var(--steam-gold-300);
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .tutorial-content {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-600);
+        border-radius: 8px;
+        padding: 2rem;
+    }
+    
+    .tutorial-content section {
+        margin-bottom: 2rem;
+    }
+    
+    .tutorial-content h2 {
+        color: var(--steam-gold-300);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--steam-iron-600);
+    }
+    
+    .tutorial-content h3 {
+        color: var(--steam-gold-400);
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 1.5rem 0 0.75rem 0;
+    }
+    
+    .tutorial-content p {
+        color: var(--steam-iron-100);
+        font-size: 0.9375rem;
+        line-height: 1.8;
+        margin: 0.75rem 0;
+    }
+    
+    .tutorial-content ul, .tutorial-content ol {
+        color: var(--steam-iron-100);
+        font-size: 0.9375rem;
+        line-height: 1.8;
+        margin: 0.75rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .tutorial-content li {
+        margin: 0.5rem 0;
+    }
+    
+    .tutorial-content .note {
+        background: var(--steam-iron-900);
+        border-left: 4px solid var(--steam-gold-500);
+        padding: 1rem;
+        margin: 1.5rem 0;
+        border-radius: 4px;
+    }
+    
+    .tutorial-content .tool-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .tutorial-content .tool-item {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .tutorial-content .tool-item h4 {
+        color: var(--steam-gold-400);
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .tutorial-content .tool-item p {
+        font-size: 0.875rem;
+        margin: 0;
+    }
+    
+    .back-link {
+        display: inline-block;
+        margin-top: 2rem;
+        color: var(--steam-gold-400);
+        text-decoration: underline;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tutorial-container">
+    <div class="tutorial-header">
+        <h1>📷 画像の作り方</h1>
+        <p style="color: var(--steam-iron-300); font-size: 0.9375rem;">AI画像生成ツールを使った画像作成のガイド</p>
+    </div>
+    
+    <div class="tutorial-content">
+        <section>
+            <h2>はじめに</h2>
+            <p>TOYBOXでは、AI画像生成ツールを使って作成した画像を投稿できます。お題をジェネレート機能で取得したテーマに沿って、オリジナルの画像を作成してみましょう。</p>
+        </section>
+        
+        <section>
+            <h2>おすすめのAI画像生成ツール</h2>
+            <div class="tool-list">
+                <div class="tool-item">
+                    <h4>Midjourney</h4>
+                    <p>高品質な画像生成が可能。Discord経由で利用。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>Stable Diffusion</h4>
+                    <p>オープンソースの画像生成AI。無料で利用可能。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>DALL-E</h4>
+                    <p>OpenAIが提供する画像生成AI。簡単に使える。</p>
+                </div>
+                <div class="tool-item">
+                    <h4>NovelAI</h4>
+                    <p>アニメ風の画像生成に特化。サブスクリプション制。</p>
+                </div>
+            </div>
+        </section>
+        
+        <section>
+            <h2>基本的な使い方</h2>
+            <h3>1. お題を取得</h3>
+            <p>マイページの「お題をジェネレート」機能で、画像用のお題を取得します。</p>
+            
+            <h3>2. プロンプトを作成</h3>
+            <p>取得したお題を参考に、AI画像生成ツール用のプロンプト（指示文）を作成します。</p>
+            <div class="note">
+                <strong>ヒント:</strong> プロンプトには、画風、構図、色合い、雰囲気などを詳しく記述すると、より理想的な画像が生成されます。
+            </div>
+            
+            <h3>3. 画像を生成</h3>
+            <p>作成したプロンプトをAI画像生成ツールに入力し、画像を生成します。気に入った画像ができるまで何度でも試してみましょう。</p>
+            
+            <h3>4. 画像を投稿</h3>
+            <p>生成した画像をTOYBOXにアップロードして、みんなにシェアしましょう。</p>
+        </section>
+        
+        <section>
+            <h2>プロンプト作成のコツ</h2>
+            <ul>
+                <li><strong>具体的な描写を追加:</strong> 「美しい夕日」→「オレンジ色に染まった夕日が水平線に沈む、雲が赤く染まった空」</li>
+                <li><strong>画風を指定:</strong> 「アニメ風」「リアル」「水彩画風」「油絵風」など</li>
+                <li><strong>構図を指定:</strong> 「俯瞰」「アップショット」「ワイドショット」など</li>
+                <li><strong>色合いを指定:</strong> 「暖色系」「寒色系」「モノクロ」など</li>
+                <li><strong>雰囲気を指定:</strong> 「幻想的な」「明るい」「暗い」「神秘的」など</li>
+            </ul>
+        </section>
+        
+        <section>
+            <h2>よくある質問</h2>
+            <h3>Q: どのツールがおすすめですか？</h3>
+            <p>A: 初心者の方はDALL-EやMidjourneyが使いやすいです。より高度な制御が必要な場合はStable Diffusionがおすすめです。</p>
+            
+            <h3>Q: 無料で使えるツールはありますか？</h3>
+            <p>A: Stable Diffusionは無料で利用できます。また、多くのツールが無料トライアルを提供しています。</p>
+            
+            <h3>Q: 生成した画像の著作権はどうなりますか？</h3>
+            <p>A: ツールによって異なりますが、多くの場合、生成した画像は作成者のものとして扱われます。利用規約を確認してください。</p>
+        </section>
+    </div>
+    
+    <a href="/topic-help/" class="back-link">← お題をジェネレートのヘルプに戻る</a>
+    <a href="/me/" class="back-link" style="margin-left: 1rem;">← マイページに戻る</a>
+</div>
+{% endblock %}
+

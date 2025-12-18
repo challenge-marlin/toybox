@@ -129,3 +129,4 @@ tar -xzf uploads_backup_20251217_140000.tar.gz
   docker compose exec web python manage.py migrate
   ```
 
+

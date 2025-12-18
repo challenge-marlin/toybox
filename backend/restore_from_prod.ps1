@@ -78,3 +78,4 @@ Write-Host "`n復元が完了しました!" -ForegroundColor Green
 Write-Host "マイグレーションが必要な場合は実行してください:" -ForegroundColor Yellow
 Write-Host "  docker compose exec web python manage.py migrate" -ForegroundColor White
 
+

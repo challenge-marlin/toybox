@@ -285,6 +285,7 @@ python manage.py migrate
 
 ### 主要ドキュメント
 
+- **概要書**: [doc/TOYBOX概要書.md](./doc/TOYBOX概要書.md)
 - **開発ガイド**: [backend/README_DJANGO.md](./backend/README_DJANGO.md)
 - **移行ドキュメント**: [docs/migration/](./docs/migration/)
 - **レガシーコード**: [doc/legacy/](./doc/legacy/)（Django移行前のコード）

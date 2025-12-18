@@ -14,6 +14,22 @@
         <a href="{{ toybox_home_url }}" style="color: #059669; text-decoration: none; font-weight: 600;">TOYBOXホーム</a>
     </span>
     {% endif %}
+
+    {# Maintenance toggle (one-button) #}
+    <span style="margin-left: 1rem; font-size: 0.875rem;">
+        <form method="post" action="{{ maintenance_toggle_url }}" style="display: inline;">
+            {% csrf_token %}
+            {% if maintenance_enabled %}
+                <button type="submit" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #b91c1c; background: #fee2e2; color: #b91c1c; font-weight: 700; cursor: pointer;">
+                    メンテ: ON（クリックでOFF）
+                </button>
+            {% else %}
+                <button type="submit" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #0ea5e9; background: #e0f2fe; color: #075985; font-weight: 700; cursor: pointer;">
+                    メンテ: OFF（クリックでON）
+                </button>
+            {% endif %}
+        </form>
+    </span>
 </div>
 {% endblock %}
 

@@ -281,6 +281,16 @@ def privacy(request):
     return render(request, 'frontend/privacy.html')
 
 
+def maintenance_preview(request):
+    """Maintenance screen preview (always renders the maintenance page)."""
+    from .models import SiteMaintenance
+    s = SiteMaintenance.get_solo()
+    return render(request, 'frontend/maintenance.html', {
+        'message': s.message,
+        'scheduled_end': s.scheduled_end,
+    }, status=503)
+
+
 # API views
 class AnnouncementsView(APIView):
     """Get active announcements."""

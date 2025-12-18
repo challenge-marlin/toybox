@@ -30,3 +30,38 @@ class Announcement(models.Model):
     def __str__(self):
         return f'{self.title} ({self.created_at.strftime("%Y-%m-%d")})'
 
+
+class SiteMaintenance(models.Model):
+    """
+    Site-wide maintenance flag.
+
+    - Singleton運用（id=1 を想定）
+    - Django Admin のヘッダーからワンボタンで ON/OFF できる
+    """
+
+    enabled = models.BooleanField(default=False, verbose_name='メンテナンス中')
+    message = models.TextField(blank=True, default='', verbose_name='メッセージ', help_text='メンテナンス画面に表示する追加メッセージ（任意）')
+    scheduled_end = models.DateTimeField(null=True, blank=True, verbose_name='終了予定', help_text='メンテナンス終了予定（任意）')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新日時')
+
+    class Meta:
+        db_table = 'site_maintenance'
+        verbose_name = 'メンテナンス設定'
+        verbose_name_plural = 'メンテナンス設定'
+
+    def __str__(self):
+        return 'メンテナンス: ON' if self.enabled else 'メンテナンス: OFF'
+
+    @classmethod
+    def get_solo(cls):
+        """
+        Singleton accessor.
+
+        NOTE:
+        以前は pk=1 を固定で作成していましたが、PostgreSQLのシーケンスが進まず
+        Adminの「追加」で pk 衝突が起きるケースがあるため、pk固定はしません。
+        """
+        obj = cls.objects.order_by('id').first()
+        if obj:
+            return obj
+        return cls.objects.create(enabled=False)

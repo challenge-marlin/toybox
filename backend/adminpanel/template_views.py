@@ -7,6 +7,7 @@ from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Count, Q
+from django.conf import settings
 from datetime import datetime
 from toybox.permissions import IsAdmin
 from rest_framework.permissions import IsAuthenticated
@@ -16,13 +17,25 @@ from submissions.models import Submission
 from sharing.models import DiscordShare
 
 
+def _adminpanel_base_context():
+    """
+    Common template context for adminpanel templates.
+    They build header links using {{ ADMIN_URL }}.
+    """
+    return {
+        "ADMIN_URL": getattr(settings, "ADMIN_URL", "admin"),
+    }
+
+
 def admin_required(view_func):
     """Decorator to require admin role."""
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect('/admin/login/?next=' + request.path)
+            admin_url = getattr(settings, "ADMIN_URL", "admin")
+            return redirect(f'/{admin_url}/login/?next=' + request.path)
         if request.user.role != User.Role.ADMIN:
-            return render(request, 'adminpanel/403.html', status=403)
+            ctx = _adminpanel_base_context()
+            return render(request, 'adminpanel/403.html', ctx, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -52,7 +65,9 @@ def dashboard(request):
         'total_submissions': Submission.objects.filter(deleted_at__isnull=True).count(),
     }
     
-    return render(request, 'adminpanel/dashboard.html', {'stats': stats})
+    ctx = _adminpanel_base_context()
+    ctx.update({'stats': stats})
+    return render(request, 'adminpanel/dashboard.html', ctx)
 
 
 @admin_required
@@ -70,10 +85,12 @@ def user_list(request):
     
     users = users.order_by('-created_at')[:100]
     
-    return render(request, 'adminpanel/users/list.html', {
+    ctx = _adminpanel_base_context()
+    ctx.update({
         'users': users,
         'search_query': search_query
     })
+    return render(request, 'adminpanel/users/list.html', ctx)
 
 
 @admin_required
@@ -104,7 +121,8 @@ def user_detail(request, user_id):
         action=AdminAuditLog.Action.WARN
     ).order_by('-created_at')
     
-    return render(request, 'adminpanel/users/detail.html', {
+    ctx = _adminpanel_base_context()
+    ctx.update({
         'user': user,
         'meta': meta,
         'registration': registration,
@@ -114,6 +132,7 @@ def user_detail(request, user_id):
         'audit_logs': audit_logs,
         'warnings': warnings,
     })
+    return render(request, 'adminpanel/users/detail.html', ctx)
 
 
 @admin_required
@@ -128,10 +147,12 @@ def submission_list(request):
     
     submissions = submissions.select_related('author').order_by('-created_at')[:100]
     
-    return render(request, 'adminpanel/submissions/list.html', {
+    ctx = _adminpanel_base_context()
+    ctx.update({
         'submissions': submissions,
         'include_deleted': include_deleted
     })
+    return render(request, 'adminpanel/submissions/list.html', ctx)
 
 
 @admin_required
@@ -146,10 +167,12 @@ def discord_share_list(request):
     
     shares = shares.select_related('user', 'submission').order_by('-shared_at')[:100]
     
-    return render(request, 'adminpanel/discord_shares/list.html', {
+    ctx = _adminpanel_base_context()
+    ctx.update({
         'shares': shares,
         'user_id': user_id
     })
+    return render(request, 'adminpanel/discord_shares/list.html', ctx)
 
 
 @admin_required
@@ -166,19 +189,22 @@ def audit_log_list(request):
     
     logs = logs.select_related('actor', 'target_user', 'target_submission').order_by('-created_at')[:100]
     
-    return render(request, 'adminpanel/audit_logs/list.html', {
+    ctx = _adminpanel_base_context()
+    ctx.update({
         'logs': logs,
         'user_id': user_id
     })
+    return render(request, 'adminpanel/audit_logs/list.html', ctx)
 
 
 @admin_required
 @require_http_methods(["GET"])
 def discord_bot_post(request):
     """Discord bot post page."""
-    from django.conf import settings
     default_channel_id = getattr(settings, 'DISCORD_CHANNEL_ID', '')
-    return render(request, 'adminpanel/discord_bot_post.html', {
+    ctx = _adminpanel_base_context()
+    ctx.update({
         'default_channel_id': default_channel_id
     })
+    return render(request, 'adminpanel/discord_bot_post.html', ctx)
 

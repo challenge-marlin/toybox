@@ -21,12 +21,13 @@ User = get_user_model()
 class UserAdmin(BaseUserAdmin):
     """ユーザー管理 - ユーザー情報の閲覧・編集・削除ができます。"""
     list_display = ['email', 'display_id', 'role', 'is_suspended', 'warning_count', 'is_active', 'is_staff', 'is_superuser']
-    list_filter = ['role', 'is_suspended', 'is_active', 'is_staff', 'is_superuser', 'created_at']
+    list_filter = ['role', 'groups', 'is_suspended', 'is_active', 'is_staff', 'is_superuser', 'created_at']
     search_fields = ['email', 'display_id', 'old_id']
     readonly_fields = ['created_at', 'updated_at']
     ordering = ['email']
     list_editable = ['role', 'is_staff', 'is_superuser', 'is_active']  # 一覧画面で直接編集可能に（ロールも含む）
     actions = ['issue_warning', 'suspend_account', 'unsuspend_account', 'ban_account']
+    filter_horizontal = ('groups', 'user_permissions')
     
     fieldsets = (
         ('認証情報', {
@@ -74,6 +75,34 @@ class UserAdmin(BaseUserAdmin):
             'description': 'is_staff: 管理サイトへのアクセス権限。is_superuser: すべての権限。is_active: アカウントの有効/無効。'
         }),
     )
+
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        Allow assigning permission groups from Django Admin.
+
+        Django's default UserAdmin hides `groups` / `user_permissions` for non-superusers
+        to prevent privilege escalation. In ToyBox we allow users with role=ADMIN
+        to manage groups/permissions, but still prevent granting is_superuser via UI.
+        """
+        kwargs = dict(kwargs)
+
+        # Ensure we don't inherit an exclude tuple that makes fields disappear unexpectedly.
+        exclude = list(kwargs.get('exclude') or [])
+
+        if not request.user.is_superuser:
+            # Keep groups/user_permissions visible for role=ADMIN only.
+            if getattr(request.user, 'role', None) == User.Role.ADMIN:
+                # Still prevent toggling Django's is_superuser flag from this UI.
+                if 'is_superuser' not in exclude:
+                    exclude.append('is_superuser')
+            else:
+                # Non-superusers that are not role=ADMIN: follow secure default.
+                for f in ('is_superuser', 'groups', 'user_permissions'):
+                    if f not in exclude:
+                        exclude.append(f)
+
+        kwargs['exclude'] = exclude
+        return super().get_form(request, obj, **kwargs)
     
     def issue_warning(self, request, queryset):
         """警告を発行します。"""

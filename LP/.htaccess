@@ -1,0 +1,18 @@
+# PHPを有効化（HTMLファイルでもPHPを実行可能にする）
+AddHandler application/x-httpd-php .html .htm .php
+
+# セキュリティ設定
+<IfModule mod_headers.c>
+    # XSS対策
+    Header set X-XSS-Protection "1; mode=block"
+    # クリックジャッキング対策
+    Header set X-Frame-Options "SAMEORIGIN"
+    # MIMEタイプスニッフィング対策
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# エラーページの設定
+ErrorDocument 404 /index.php
+
+# ディレクトリインデックスを有効化
+DirectoryIndex index.php index.html

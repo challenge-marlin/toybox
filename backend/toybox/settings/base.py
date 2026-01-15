@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'sharing',
     'adminpanel',
     'frontend',
+    'sso_integration',
 ]
 
 MIDDLEWARE = [
@@ -128,10 +129,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
 
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'sso_integration.backends.StudySphereBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 # Authentication URLs
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+# StudySphere SSO settings
+SSO_HUB_BASE_URL = os.environ.get('SSO_HUB_BASE_URL', '')
+SSO_API_BASE_URL = os.environ.get('SSO_API_BASE_URL', '')
+SSO_WEB_BASE_URL = os.environ.get('SSO_WEB_BASE_URL', '')
+SSO_SYSTEM_KEY = os.environ.get('SSO_SYSTEM_KEY', '')
+SSO_SERVICE_TOKEN = os.environ.get('SSO_SERVICE_TOKEN', '')
 
 # Admin URL (for security, customizable via environment variable)
 ADMIN_URL = os.environ.get('ADMIN_URL', 'admin')

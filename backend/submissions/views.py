@@ -428,6 +428,10 @@ class SubmitView(APIView):
             elif not isinstance(hashtags, list):
                 # If it's neither string nor list, convert to list
                 hashtags = [hashtags] if hashtags else []
+            
+            # ハッシュタグを正規化（空白を削除、大文字小文字は保持）
+            if isinstance(hashtags, list):
+                hashtags = [tag.strip() if isinstance(tag, str) else str(tag).strip() for tag in hashtags if tag and str(tag).strip()]
         
         # Handle thumbnail file upload (for games)
         thumbnail_file = request.FILES.get('thumbnail')
@@ -492,23 +496,21 @@ class FeedView(APIView):
                 )
             queryset = Submission.objects.filter(deleted_at__isnull=True)
             
-            # Filter by hashtag if provided
+            # Filter by hashtag if provided (大文字小文字を無視してフィルタリング)
             hashtag = request.query_params.get('hashtag')
             if hashtag and hashtag.strip():  # 空文字列や空白のみの場合はフィルタリングしない
-                hashtag = hashtag.strip()
-                # JSONFieldのhashtags配列に指定されたハッシュタグが含まれる投稿をフィルター
-                # PostgreSQLのJSONFieldではcontainsを使用（配列に要素が含まれるかチェック）
-                try:
-                    queryset = queryset.filter(hashtags__contains=[hashtag])
-                except Exception as e:
-                    # エラーが発生した場合は、Python側でフィルタリング
-                    logger.warning(f'Hashtag filter error: {str(e)}, falling back to Python filtering', exc_info=True)
-                    # Python側でフィルタリング（非効率だが安全）
-                    submission_ids = []
-                    for sub in queryset:
-                        if sub.hashtags and isinstance(sub.hashtags, list) and hashtag in sub.hashtags:
-                            submission_ids.append(sub.id)
-                    queryset = queryset.filter(id__in=submission_ids)
+                hashtag_query = hashtag.strip().lower()  # 検索用に小文字に変換
+                # PostgreSQLのJSONFieldでは大文字小文字を区別するため、Python側でフィルタリング
+                # 大文字小文字を無視して同じ綴りのハッシュタグを持つ投稿をすべて取得
+                submission_ids = []
+                for sub in queryset:
+                    if sub.hashtags and isinstance(sub.hashtags, list):
+                        # 大文字小文字を無視して比較（同じ綴りならすべて表示）
+                        for tag in sub.hashtags:
+                            if tag and isinstance(tag, str) and tag.strip().lower() == hashtag_query:
+                                submission_ids.append(sub.id)
+                                break  # 1つの投稿に複数の一致があっても1回だけ追加
+                queryset = queryset.filter(id__in=submission_ids)
             
             # Get pagination params
             try:
@@ -647,14 +649,15 @@ class HashtagsView(APIView):
                 deleted_at__isnull=True
             ).exclude(hashtags__isnull=True).exclude(hashtags=[])
             
-            # Count hashtag usage
+            # Count hashtag usage (大文字小文字を区別)
             hashtag_counts = {}
             for submission in submissions:
                 if submission.hashtags and isinstance(submission.hashtags, list):
                     for tag in submission.hashtags:
                         if tag and isinstance(tag, str) and tag.strip():
-                            tag = tag.strip()
-                            hashtag_counts[tag] = hashtag_counts.get(tag, 0) + 1
+                            # 大文字小文字を区別してカウント
+                            tag_normalized = tag.strip()
+                            hashtag_counts[tag_normalized] = hashtag_counts.get(tag_normalized, 0) + 1
             
             # Sort by count descending and get top N
             sorted_hashtags = sorted(
@@ -663,14 +666,14 @@ class HashtagsView(APIView):
                 reverse=True
             )[:limit]
             
-            # Format response
-            hashtags = [
-                {
-                    'tag': tag,
-                    'count': count
-                }
-                for tag, count in sorted_hashtags
-            ]
+            # Format response (大文字小文字を保持)
+            hashtags = []
+            for tag, count in sorted_hashtags:
+                if tag:  # 空文字列でない場合のみ追加
+                    hashtags.append({
+                        'tag': str(tag).strip(),
+                        'count': count
+                    })
             
             return Response({
                 'hashtags': hashtags

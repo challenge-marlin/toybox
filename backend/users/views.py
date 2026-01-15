@@ -187,17 +187,114 @@ class ProfileUpdateView(APIView):
         return Response(serializer.data)
 
 
-class ProfileUploadView(APIView):
-    """Upload profile image (header or avatar)."""
+class ProfileResetView(APIView):
+    """Reset profile image to default (header or avatar)."""
+    permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        """Upload profile image."""
+        """Reset profile image to default."""
+        reset_type = request.GET.get('type', 'avatar')  # 'avatar' or 'header'
+        
+        if reset_type == 'avatar':
+            # アバターをデフォルトに戻す（Noneに設定）
+            if request.user.avatar_url:
+                # ファイルを削除（オプション）
+                try:
+                    from django.conf import settings
+                    from pathlib import Path
+                    if request.user.avatar_url.startswith('/uploads/profiles/'):
+                        filename = request.user.avatar_url.split('/')[-1]
+                        file_path = Path(settings.MEDIA_ROOT) / 'profiles' / filename
+                        if file_path.exists():
+                            file_path.unlink()
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f'Failed to delete avatar file: {e}')
+            
+            request.user.avatar_url = None
+            request.user.save()
+            return Response({'ok': True, 'message': 'アバターをデフォルトに戻しました', 'avatarUrl': None})
+        else:  # header
+            # ヘッダーをデフォルトに戻す（Noneに設定）
+            meta, _ = UserMeta.objects.get_or_create(user=request.user)
+            if meta.header_url:
+                # ファイルを削除（オプション）
+                try:
+                    from django.conf import settings
+                    from pathlib import Path
+                    if meta.header_url.startswith('/uploads/profiles/'):
+                        filename = meta.header_url.split('/')[-1]
+                        file_path = Path(settings.MEDIA_ROOT) / 'profiles' / filename
+                        if file_path.exists():
+                            file_path.unlink()
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f'Failed to delete header file: {e}')
+            
+            meta.header_url = None
+            meta.save()
+            return Response({'ok': True, 'message': 'ヘッダーをデフォルトに戻しました', 'headerUrl': None})
+
+
+class ProfileUploadView(APIView):
+    """Upload profile image (header or avatar)."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Upload profile image or reset to default."""
         from django.core.files.storage import default_storage
         from django.conf import settings
         import os
         import uuid
         
         upload_type = request.GET.get('type', 'avatar')  # 'avatar' or 'header'
+        action = request.data.get('action', 'upload')  # 'upload' or 'reset'
+        
+        # リセット処理
+        if action == 'reset':
+            if upload_type == 'avatar':
+                # アバターをデフォルトに戻す（Noneに設定）
+                if request.user.avatar_url:
+                    # ファイルを削除（オプション）
+                    try:
+                        from pathlib import Path
+                        if request.user.avatar_url.startswith('/uploads/profiles/'):
+                            filename = request.user.avatar_url.split('/')[-1]
+                            file_path = Path(settings.MEDIA_ROOT) / 'profiles' / filename
+                            if file_path.exists():
+                                file_path.unlink()
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f'Failed to delete avatar file: {e}')
+                
+                request.user.avatar_url = None
+                request.user.save()
+                return Response({'ok': True, 'message': 'アバターをデフォルトに戻しました', 'avatarUrl': None})
+            else:  # header
+                # ヘッダーをデフォルトに戻す（Noneに設定）
+                meta, _ = UserMeta.objects.get_or_create(user=request.user)
+                if meta.header_url:
+                    # ファイルを削除（オプション）
+                    try:
+                        from pathlib import Path
+                        if meta.header_url.startswith('/uploads/profiles/'):
+                            filename = meta.header_url.split('/')[-1]
+                            file_path = Path(settings.MEDIA_ROOT) / 'profiles' / filename
+                            if file_path.exists():
+                                file_path.unlink()
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f'Failed to delete header file: {e}')
+                
+                meta.header_url = None
+                meta.save()
+                return Response({'ok': True, 'message': 'ヘッダーをデフォルトに戻しました', 'headerUrl': None})
+        
+        # アップロード処理
         file = request.FILES.get('file')
         
         if not file:
@@ -242,6 +339,61 @@ class ProfileUploadView(APIView):
             meta.header_url = file_url
             meta.save()
             return Response({'ok': True, 'headerUrl': meta.header_url})
+    
+    def patch(self, request):
+        """Reset profile image to default (header or avatar)."""
+        reset_type = request.GET.get('type', 'avatar')  # 'avatar' or 'header'
+        action = request.data.get('action', 'reset')  # 'reset' to set to default
+        
+        if action == 'reset':
+            if reset_type == 'avatar':
+                # アバターをデフォルトに戻す（Noneに設定）
+                if request.user.avatar_url:
+                    # ファイルを削除（オプション）
+                    try:
+                        from django.conf import settings
+                        from pathlib import Path
+                        if request.user.avatar_url.startswith('/uploads/profiles/'):
+                            filename = request.user.avatar_url.split('/')[-1]
+                            file_path = Path(settings.MEDIA_ROOT) / 'profiles' / filename
+                            if file_path.exists():
+                                file_path.unlink()
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f'Failed to delete avatar file: {e}')
+                
+                request.user.avatar_url = None
+                request.user.save()
+                return Response({'ok': True, 'message': 'アバターをデフォルトに戻しました', 'avatarUrl': None})
+            else:  # header
+                # ヘッダーをデフォルトに戻す（Noneに設定）
+                meta, _ = UserMeta.objects.get_or_create(user=request.user)
+                if meta.header_url:
+                    # ファイルを削除（オプション）
+                    try:
+                        from django.conf import settings
+                        from pathlib import Path
+                        if meta.header_url.startswith('/uploads/profiles/'):
+                            filename = meta.header_url.split('/')[-1]
+                            file_path = Path(settings.MEDIA_ROOT) / 'profiles' / filename
+                            if file_path.exists():
+                                file_path.unlink()
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f'Failed to delete header file: {e}')
+                
+                meta.header_url = None
+                meta.save()
+                return Response({'ok': True, 'message': 'ヘッダーをデフォルトに戻しました', 'headerUrl': None})
+        else:
+            return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request):
+        """Delete profile image (header or avatar) - alias for PATCH with reset action."""
+        # DELETEメソッドもサポート（後方互換性のため）
+        return self.patch(request)
 
 
 class ProfileGetView(APIView):
@@ -341,12 +493,15 @@ class ProfileGetView(APIView):
         if active_title:
             try:
                 from gamification.models import Title
+                from toybox.image_utils import get_image_url
                 title_obj = Title.objects.filter(name=active_title).first()
                 if title_obj:
-                    if title_obj.image:
-                        active_title_image_url = request.build_absolute_uri(title_obj.image.url)
-                    elif title_obj.image_url:
-                        active_title_image_url = title_obj.image_url
+                    active_title_image_url = get_image_url(
+                        image_field=title_obj.image,
+                        image_url_field=title_obj.image_url,
+                        request=request,
+                        verify_exists=False  # ファイルが存在しなくてもURLを返す
+                    )
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)

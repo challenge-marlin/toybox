@@ -45,10 +45,11 @@ class Command(BaseCommand):
             reader = csv.DictReader(f, delimiter='\t')
             
             for row in reader:
-                card_id = row.get('card_id', '').strip()
-                card_name = row.get('card_name', '').strip()
-                rarity_str = row.get('rarity', '-').strip()
-                image_url = row.get('image_url', '-').strip()
+                card_id = (row.get('card_id') or '').strip()
+                card_name = (row.get('card_name') or '').strip()
+                rarity_str = (row.get('rarity') or '-').strip()
+                image_url_raw = row.get('image_url') or '-'
+                image_url = image_url_raw.strip() if image_url_raw else '-'
                 
                 if not card_id or not card_name:
                     continue
@@ -72,10 +73,16 @@ class Command(BaseCommand):
                 
                 if created:
                     loaded_count += 1
-                    self.stdout.write(self.style.SUCCESS(f'Created: {card.code} - {card.name} ({rarity})'))
+                    try:
+                        self.stdout.write(self.style.SUCCESS(f'Created: {card.code} - {card.name} ({rarity})'))
+                    except UnicodeEncodeError:
+                        self.stdout.write(self.style.SUCCESS(f'Created: {card.code} ({rarity})'))
                 else:
                     updated_count += 1
-                    self.stdout.write(f'Updated: {card.code} - {card.name} ({rarity})')
+                    try:
+                        self.stdout.write(f'Updated: {card.code} - {card.name} ({rarity})')
+                    except UnicodeEncodeError:
+                        self.stdout.write(f'Updated: {card.code} ({rarity})')
         
         self.stdout.write(self.style.SUCCESS(
             f'\nLoaded {loaded_count} new cards, updated {updated_count} existing cards.'

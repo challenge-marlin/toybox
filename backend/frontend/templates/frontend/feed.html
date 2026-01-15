@@ -372,9 +372,12 @@
         loading = true;
         document.getElementById('loading-indicator').style.display = 'block';
         
-        // URLパラメータからハッシュタグを取得
+        // URLパラメータからハッシュタグを取得（大文字小文字を保持）
         const urlParams = new URLSearchParams(window.location.search);
-        const hashtag = urlParams.get('hashtag');
+        let hashtag = urlParams.get('hashtag');
+        if (hashtag) {
+            hashtag = hashtag.trim();
+        }
         
         let url = cursor 
             ? `/api/feed/?cursor=${encodeURIComponent(cursor)}`
@@ -840,17 +843,18 @@
                     } else {
                         lightboxCaption.style.display = 'none';
                     }
-                    // ハッシュタグを表示
+                    // ハッシュタグを表示（大文字小文字を保持）
                     lightboxHashtags.innerHTML = '';
                     if (data.hashtags && Array.isArray(data.hashtags) && data.hashtags.length > 0) {
                         data.hashtags.forEach(tag => {
                             if (tag && tag.trim()) {
+                                const tagNormalized = tag.trim();  // 大文字小文字を保持
                                 const tagEl = document.createElement('span');
-                                tagEl.textContent = `#${tag}`;
+                                tagEl.textContent = `#${tagNormalized}`;
                                 tagEl.style.cssText = 'display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-gold-500); color: black; font-size: 0.75rem; cursor: pointer; font-weight: 600;';
                                 tagEl.onclick = (e) => {
                                     e.stopPropagation();
-                                    filterByHashtag(tag);
+                                    filterByHashtag(tagNormalized);
                                     closeLightbox();
                                 };
                                 lightboxHashtags.appendChild(tagEl);
@@ -875,6 +879,8 @@
     
     // ハッシュタグで絞り込む関数
     function filterByHashtag(tag) {
+        // 大文字小文字を保持
+        tag = tag.trim();
         // URLパラメータにハッシュタグを追加してフィードページに遷移
         window.location.href = `/feed/?hashtag=${encodeURIComponent(tag)}`;
     }
@@ -1202,18 +1208,22 @@
                 
                 if (data.hashtags && data.hashtags.length > 0) {
                     hashtagsContainer.innerHTML = data.hashtags.map(hashtag => {
-                        // XSS対策: ハッシュタグをエスケープ
-                        const safeTag = hashtag.tag.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        // ハッシュタグを大文字小文字を保持して表示
+                        if (!hashtag || !hashtag.tag) return '';
+                        const tag = String(hashtag.tag).trim();
+                        if (!tag) return '';  // 空の場合はスキップ
+                        
+                        const safeTag = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                         return `
                             <button onclick="filterByHashtag('${safeTag}')" 
                                     style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; border-radius: 4px; background: var(--steam-iron-800); border: 1px solid var(--steam-iron-700); color: var(--steam-gold-300); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s;"
                                     onmouseover="this.style.background='var(--steam-iron-700)'; this.style.borderColor='var(--steam-gold-400)'"
                                     onmouseout="this.style.background='var(--steam-iron-800)'; this.style.borderColor='var(--steam-iron-700)'">
                                 <span>#${safeTag}</span>
-                                <span style="font-size: 0.75rem; color: var(--steam-iron-300); font-weight: normal;">(${hashtag.count})</span>
+                                <span style="font-size: 0.75rem; color: var(--steam-iron-300); font-weight: normal;">(${hashtag.count || 0})</span>
                             </button>
                         `;
-                    }).join('');
+                    }).filter(html => html).join('');  // 空の要素を除外
                 } else {
                     hashtagsContainer.innerHTML = '<div style="font-size: 0.875rem; color: var(--steam-iron-300);">ハッシュタグはまだありません</div>';
                 }

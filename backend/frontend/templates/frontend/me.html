@@ -790,6 +790,13 @@
             const titleElement = document.getElementById('profile-title');
             const titleUntilElement = document.getElementById('profile-title-until');
             
+            console.log('Title data:', {
+                activeTitle: data.activeTitle,
+                activeTitleUntil: data.activeTitleUntil,
+                activeTitleImageUrl: data.activeTitleImageUrl,
+                active_title_image_url: data.active_title_image_url
+            });
+            
             if (data.activeTitle && data.activeTitleUntil) {
                 const expiresAt = new Date(data.activeTitleUntil);
                 const now = new Date();
@@ -1629,15 +1636,30 @@
                 
                 // 称号バナー画像を表示
                 const titleBannerImage = document.getElementById('title-banner-image');
-                if (submitData.rewardTitleImageUrl) {
+                console.log('Title reward data:', {
+                    rewardTitle: submitData.rewardTitle,
+                    rewardTitleImageUrl: submitData.rewardTitleImageUrl,
+                    fullSubmitData: submitData
+                });
+                
+                // 画像URLをリセット（前回の画像が残らないように）
+                titleBannerImage.onerror = null;
+                
+                if (submitData.rewardTitleImageUrl && submitData.rewardTitleImageUrl.trim() !== '') {
+                    // 画像URLが設定されている場合
+                    console.log('Setting title banner image:', submitData.rewardTitleImageUrl);
                     titleBannerImage.src = submitData.rewardTitleImageUrl;
                     titleBannerImage.style.display = 'block';
                     titleBannerImage.onerror = function() {
                         console.warn('Failed to load title banner image:', submitData.rewardTitleImageUrl);
-                        this.style.display = 'none';
+                        console.warn('Falling back to default image');
+                        // 画像読み込みエラー時はデフォルト画像を表示
+                        this.src = "{% static 'frontend/hero/toybox-title.png' %}";
                     };
                 } else {
-                    // 画像URLがない場合はデフォルト画像を表示
+                    // 画像URLがない場合
+                    console.warn('No rewardTitleImageUrl provided, using default image');
+                    titleBannerImage.src = "{% static 'frontend/hero/toybox-title.png' %}";
                     titleBannerImage.style.display = 'block';
                 }
                 
@@ -1666,14 +1688,30 @@
         
         // 称号バナー画像を表示
         const titleBannerImage = document.getElementById('title-banner-image');
-        if (submitData.rewardTitleImageUrl) {
+        console.log('Title reward data (nextToTitle):', {
+            rewardTitle: submitData.rewardTitle,
+            rewardTitleImageUrl: submitData.rewardTitleImageUrl,
+            fullSubmitData: submitData
+        });
+        
+        // 画像URLをリセット（前回の画像が残らないように）
+        titleBannerImage.onerror = null;
+        
+        if (submitData.rewardTitleImageUrl && submitData.rewardTitleImageUrl.trim() !== '') {
+            // 画像URLが設定されている場合
+            console.log('Setting title banner image (nextToTitle):', submitData.rewardTitleImageUrl);
             titleBannerImage.src = submitData.rewardTitleImageUrl;
             titleBannerImage.style.display = 'block';
             titleBannerImage.onerror = function() {
-                console.warn('Failed to load title banner image:', submitData.rewardTitleImageUrl);
-                this.style.display = 'none';
+                console.warn('Failed to load title banner image (nextToTitle):', submitData.rewardTitleImageUrl);
+                console.warn('Falling back to default image');
+                // 画像読み込みエラー時はデフォルト画像を表示
+                this.src = "{% static 'frontend/hero/toybox-title.png' %}";
             };
         } else {
+            // 画像URLがない場合
+            console.warn('No rewardTitleImageUrl provided (nextToTitle), using default image');
+            titleBannerImage.src = "{% static 'frontend/hero/toybox-title.png' %}";
             titleBannerImage.style.display = 'block';
         }
         
@@ -1848,15 +1886,30 @@
             return;
         }
         
+        const inputWrapper = document.createElement('div');
+        inputWrapper.style.cssText = 'position: relative; width: 100%;';
+        
         const input = document.createElement('input');
         input.type = 'text';
         input.maxLength = 50;
         input.placeholder = `ハッシュタグ ${hashtagCount + 1}（任意）`;
         input.style.cssText = 'width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--steam-iron-700); background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem;';
         
-        // ハッシュタグ入力の検証: #が含まれている場合は警告を表示して入力をクリア
+        // サジェスト用のドロップダウン
+        const suggestDropdown = document.createElement('div');
+        suggestDropdown.id = `hashtag-suggest-${hashtagCount}`;
+        suggestDropdown.style.cssText = 'display: none; position: absolute; top: 100%; left: 0; right: 0; margin-top: 0.25rem; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700); border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);';
+        
+        inputWrapper.appendChild(input);
+        inputWrapper.appendChild(suggestDropdown);
+        
+        // ハッシュタグ入力の検証とサジェスト
+        let suggestTimeout = null;
+        
+        // inputイベントで#チェックとサジェスト表示
         input.addEventListener('input', function(e) {
             const value = e.target.value;
+            
             // #が含まれているかチェック
             if (value.includes('#')) {
                 // 警告メッセージを表示
@@ -1865,12 +1918,49 @@
                 e.target.value = value.replace(/#/g, '');
                 // フォーカスを維持して再入力を促す
                 e.target.focus();
+                return;
             }
+            
+            // サジェスト表示（入力がある場合）- 大文字小文字を保持して検索
+            const finalValue = e.target.value.trim();
+            if (finalValue.length > 0) {
+                clearTimeout(suggestTimeout);
+                suggestTimeout = setTimeout(() => {
+                    loadHashtagSuggestions(finalValue, suggestDropdown, input);
+                }, 300);
+            } else {
+                suggestDropdown.style.display = 'none';
+            }
+            
             updateHashtagsCount();
         });
         
+        // フォーカスアウト時にサジェストを非表示
+        input.addEventListener('blur', function() {
+            setTimeout(() => {
+                suggestDropdown.style.display = 'none';
+            }, 200);
+        });
+        
+        // サジェストアイテムをクリックしたときの処理
+        suggestDropdown.addEventListener('click', function(e) {
+            // クリックされた要素がサジェストアイテムまたはその子要素かチェック
+            const suggestItem = e.target.closest('.hashtag-suggest-item');
+            if (suggestItem) {
+                const tag = suggestItem.dataset.tag;
+                // ハッシュタグを小文字に統一してから設定
+                const tagLower = (tag || '').trim().toLowerCase();
+                input.value = tagLower;
+                suggestDropdown.style.display = 'none';
+                input.focus();
+                // inputイベントを発火して更新処理を実行
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                updateHashtagsCount();
+            }
+        });
+        
         // まずDOMに追加してからURL検証を設定
-        container.appendChild(input);
+        container.appendChild(inputWrapper);
         
         // URL検証を設定（DOMに追加された後）
         setupURLValidation(input);
@@ -1886,12 +1976,70 @@
     
     function updateHashtagsCount() {
         const container = document.getElementById('submit-hashtags');
-        const inputs = container.querySelectorAll('input');
+        const inputs = container.querySelectorAll('input[type="text"]');
         let count = 0;
         inputs.forEach(input => {
             if (input.value.trim()) count++;
         });
         document.getElementById('submit-hashtags-count').textContent = count;
+    }
+    
+    /**
+     * ハッシュタグのサジェストを読み込む
+     */
+    async function loadHashtagSuggestions(query, dropdown, input) {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+            
+            const response = await fetch('/api/feed/hashtags/?limit=10', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-CSRFToken': csrftoken
+                }
+            });
+            
+            if (!response.ok) return;
+            
+            const data = await response.json();
+            if (!data || !data.hashtags) return;
+            
+            // クエリに一致するハッシュタグをフィルタリング（小文字で比較）
+            const filtered = data.hashtags
+                .filter(item => {
+                    if (!item || !item.tag) return false;
+                    const tagLower = String(item.tag).trim().toLowerCase();
+                    return tagLower.includes(query.toLowerCase());
+                })
+                .slice(0, 5);  // 最大5件
+            
+            if (filtered.length === 0) {
+                dropdown.style.display = 'none';
+                return;
+            }
+            
+            // サジェストを表示（大文字小文字を保持）
+            dropdown.innerHTML = filtered.map(item => {
+                if (!item || !item.tag) return '';
+                const tag = String(item.tag).trim();
+                if (!tag) return '';  // 空の場合はスキップ
+                
+                const safeTag = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `
+                    <div class="hashtag-suggest-item" data-tag="${safeTag}" style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--steam-iron-700); transition: background 0.2s;" 
+                         onmouseover="this.style.background='var(--steam-iron-800)'" 
+                         onmouseout="this.style.background='transparent'">
+                        <span style="color: var(--steam-gold-300); font-weight: 600;">#${safeTag}</span>
+                        <span style="color: var(--steam-iron-400); font-size: 0.75rem; margin-left: 0.5rem;">(${item.count || 0})</span>
+                    </div>
+                `;
+            }).filter(html => html).join('');  // 空の要素を除外
+            
+            dropdown.style.display = 'block';
+        } catch (error) {
+            console.error('Failed to load hashtag suggestions:', error);
+            dropdown.style.display = 'none';
+        }
     }
     
     async function submitPost() {
@@ -1912,9 +2060,9 @@
         
         const title = document.getElementById('submit-title').value.trim();
         const caption = document.getElementById('submit-caption').value.trim();
-        const hashtagInputs = document.getElementById('submit-hashtags').querySelectorAll('input');
+        const hashtagInputs = document.getElementById('submit-hashtags').querySelectorAll('input[type="text"]');
         const hashtags = Array.from(hashtagInputs)
-            .map(input => input.value.trim())
+            .map(input => input.value.trim())  // 大文字小文字を保持
             .filter(tag => tag);
         
         const thumbnailFile = document.getElementById('submit-thumbnail-input')?.files[0];
@@ -1989,6 +2137,14 @@
             }
             
             const submitData = await submitRes.json();
+            
+            // デバッグログ: APIレスポンスを確認
+            console.log('Submission API response:', submitData);
+            console.log('Reward data:', {
+                rewardTitle: submitData.rewardTitle,
+                rewardTitleImageUrl: submitData.rewardTitleImageUrl,
+                rewardCard: submitData.rewardCard
+            });
             
             // ボタンの状態をリセット（成功時）
             submitBtn.disabled = false;
@@ -2125,17 +2281,18 @@
                     } else {
                         lightboxCaption.style.display = 'none';
                     }
-                    // ハッシュタグを表示
+                    // ハッシュタグを表示（大文字小文字を保持）
                     lightboxHashtags.innerHTML = '';
                     if (data.hashtags && Array.isArray(data.hashtags) && data.hashtags.length > 0) {
                         data.hashtags.forEach(tag => {
                             if (tag && tag.trim()) {
+                                const tagNormalized = tag.trim();  // 大文字小文字を保持
                                 const tagEl = document.createElement('span');
-                                tagEl.textContent = `#${tag}`;
+                                tagEl.textContent = `#${tagNormalized}`;
                                 tagEl.style.cssText = 'display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-gold-500); color: black; font-size: 0.75rem; cursor: pointer; font-weight: 600;';
                                 tagEl.onclick = (e) => {
                                     e.stopPropagation();
-                                    filterByHashtag(tag);
+                                    filterByHashtag(tagNormalized);
                                     closeLightbox();
                                 };
                                 lightboxHashtags.appendChild(tagEl);
@@ -2160,6 +2317,8 @@
     
     // ハッシュタグで絞り込む関数
     function filterByHashtag(tag) {
+        // 大文字小文字を保持
+        tag = (tag || '').trim();
         // URLパラメータにハッシュタグを追加してフィードページに遷移
         window.location.href = `/feed/?hashtag=${encodeURIComponent(tag)}`;
     }

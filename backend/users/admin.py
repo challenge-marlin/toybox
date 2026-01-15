@@ -20,9 +20,20 @@ User = get_user_model()
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     """ユーザー管理 - ユーザー情報の閲覧・編集・削除ができます。"""
-    list_display = ['email', 'display_id', 'role', 'is_suspended', 'warning_count', 'is_active', 'is_staff', 'is_superuser']
+    list_display = [
+        'email',
+        'display_id',
+        'role',
+        'studysphere_user_id',
+        'studysphere_login_code',
+        'is_suspended',
+        'warning_count',
+        'is_active',
+        'is_staff',
+        'is_superuser',
+    ]
     list_filter = ['role', 'groups', 'is_suspended', 'is_active', 'is_staff', 'is_superuser', 'created_at']
-    search_fields = ['email', 'display_id', 'old_id']
+    search_fields = ['email', 'display_id', 'old_id', 'studysphere_user_id', 'studysphere_login_code']
     readonly_fields = ['created_at', 'updated_at']
     ordering = ['email']
     list_editable = ['role', 'is_staff', 'is_superuser', 'is_active']  # 一覧画面で直接編集可能に（ロールも含む）
@@ -37,6 +48,10 @@ class UserAdmin(BaseUserAdmin):
         ('プロフィール情報', {
             'fields': ('display_id', 'role', 'avatar_url'),
             'description': 'ユーザーの表示名、役割、アバター画像を設定します。'
+        }),
+        ('StudySphere連携', {
+            'fields': ('studysphere_user_id', 'studysphere_login_code'),
+            'description': 'StudySphere連携用のIDとログインコードを設定します。'
         }),
         ('管理サイトアクセス権限', {
             'fields': ('is_staff', 'is_superuser', 'is_active'),

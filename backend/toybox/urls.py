@@ -70,9 +70,14 @@ urlpatterns += [
     # General API endpoints
     path('api/auth/', include('users.urls')),
     path('api/users/', include('users.urls')),
-    path('api/user/profile/', user_views.ProfileUpdateView.as_view(), name='user-profile'),
+    # Profile endpoints - specific paths first to avoid conflicts
+    # Accept both with and without trailing slash to avoid 301 -> GET redirects
+    path('api/user/profile/upload', user_views.ProfileUploadView.as_view(), name='user-profile-upload-noslash'),
+    path('api/user/profile/upload/', user_views.ProfileUploadView.as_view(), name='user-profile-upload'),
+    path('api/user/profile/reset', user_views.ProfileResetView.as_view(), name='user-profile-reset-noslash'),
+    path('api/user/profile/reset/', user_views.ProfileResetView.as_view(), name='user-profile-reset'),
     path('api/user/profile/<str:anon_id>/', user_views.ProfileGetView.as_view(), name='user-profile-get'),
-    path('api/user/profile/upload', user_views.ProfileUploadView.as_view(), name='user-profile-upload'),
+    path('api/user/profile/', user_views.ProfileUpdateView.as_view(), name='user-profile'),
     path('api/cards/', include('gamification.urls')),
     path('api/', include('submissions.urls')),
     path('api/', include('lottery.urls')),
@@ -85,6 +90,7 @@ urlpatterns += [
     path('api/', include('adminpanel.urls')),
     
     # Frontend (Django templates)
+    path('sso/', include('sso_integration.urls')),
     path('', include('frontend.urls')),
 ]
 
@@ -93,6 +99,13 @@ from toybox.media import get_media_urlpatterns
 urlpatterns += get_media_urlpatterns()
 
 # Static files serving (for static files only, not media)
+# In development, django.contrib.staticfiles automatically serves files from app static directories
+# Only add explicit static serving if STATIC_ROOT exists and is not empty
 if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    from django.contrib.staticfiles.finders import find
+    import os
+    # Try to find static files using staticfiles finder (works with app static directories)
+    # This ensures static files are served even without collectstatic
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+    urlpatterns += staticfiles_urlpatterns()
 

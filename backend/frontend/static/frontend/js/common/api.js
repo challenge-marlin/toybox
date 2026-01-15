@@ -49,7 +49,9 @@ async function apiCall(url, options = {}) {
     };
     
     // FormDataの場合はContent-Typeを削除（ブラウザが自動設定）
-    if (options.body instanceof FormData) {
+    // options.bodyまたはoptions内のbodyをチェック
+    const body = options.body;
+    if (body instanceof FormData) {
         delete headers['Content-Type'];
     }
     

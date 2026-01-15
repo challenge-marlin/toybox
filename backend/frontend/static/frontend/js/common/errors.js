@@ -9,8 +9,8 @@
  * @param {number} duration - 表示時間（ミリ秒）
  */
 function showToast(type, message, duration = 3000) {
-    // 既存のtoast関数がある場合はそれを使用
-    if (typeof window.showToast === 'function') {
+    // 既存のtoast関数がある場合はそれを使用（自己参照は除外）
+    if (typeof window.showToast === 'function' && window.showToast !== showToast) {
         window.showToast(type, message);
         return;
     }

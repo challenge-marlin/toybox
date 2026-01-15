@@ -181,10 +181,13 @@
         <div class="header-preview" id="header-preview">
             <div class="no-image">NO Image</div>
         </div>
-        <label class="file-input-label">
-            変更
-            <input type="file" id="header-input" class="file-input" accept="image/png,image/jpeg">
-        </label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <label class="file-input-label">
+                変更
+                <input type="file" id="header-input" class="file-input" accept="image/png,image/jpeg">
+            </label>
+            <button id="delete-header-btn" type="button" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-iron-800); border: 1px solid var(--steam-iron-700); color: var(--steam-iron-300); font-size: 0.75rem; cursor: pointer;" onclick="if (window.deleteHeader) { window.deleteHeader(); } else { alert('deleteHeader is not loaded'); }">削除</button>
+        </div>
     </section>
     
     <section class="profile-section">
@@ -193,10 +196,13 @@
             <div class="avatar-image" id="avatar-preview">
                 <span>未設定</span>
             </div>
-            <label class="file-input-label">
-                画像を選択
-                <input type="file" id="avatar-input" class="file-input" accept="image/png,image/jpeg">
-            </label>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label class="file-input-label">
+                    画像を選択
+                    <input type="file" id="avatar-input" class="file-input" accept="image/png,image/jpeg">
+                </label>
+                <button id="delete-avatar-btn" type="button" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-iron-800); border: 1px solid var(--steam-iron-700); color: var(--steam-iron-300); font-size: 0.75rem; cursor: pointer;" onclick="if (window.deleteAvatar) { window.deleteAvatar(); } else { alert('deleteAvatar is not loaded'); }">削除</button>
+            </div>
         </div>
     </section>
     
@@ -217,8 +223,72 @@
         <button id="save-button">変更を保存してマイページへ</button>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 {% load static %}
-<script src="{% static 'frontend/js/pages/profile.js' %}"></script>
+<!-- api.jsとutils.jsを明示的に読み込む（順序を保証） -->
+<script src="{% static 'frontend/js/common/api.js' %}?v=20260115-1"></script>
+<script src="{% static 'frontend/js/common/utils.js' %}?v=20260115-1"></script>
+<script src="{% static 'frontend/js/pages/profile.js' %}?v=20260115-1"></script>
+<script>
+    // Fallback handlers in case profile.js failed to load
+    (function() {
+        function getAccessTokenSafe() {
+            return (typeof getAccessToken === 'function' ? getAccessToken() : localStorage.getItem('access_token')) || '';
+        }
+        function getCsrfTokenSafe() {
+            const el = document.querySelector('[name=csrfmiddlewaretoken]');
+            return el ? el.value : '';
+        }
+        async function resetImage(type) {
+            const headers = {};
+            const token = getAccessTokenSafe();
+            const csrf = getCsrfTokenSafe();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            if (csrf) headers['X-CSRFToken'] = csrf;
+
+            const response = await fetch(`/api/user/profile/reset/?type=${type}`, {
+                method: 'POST',
+                headers
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'reset failed');
+            }
+            return response.json();
+        }
+        function updateHeaderPreview() {
+            const preview = document.getElementById('header-preview');
+            if (preview) {
+                preview.innerHTML = '<div class="no-image">NO Image</div>';
+            }
+        }
+        function updateAvatarPreview() {
+            const preview = document.getElementById('avatar-preview');
+            const nameInput = document.getElementById('display-name-input');
+            const displayName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'U';
+            const firstChar = displayName.charAt(0).toUpperCase();
+            if (preview) {
+                preview.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;">${firstChar}</span>`;
+            }
+        }
+
+        if (typeof window.deleteHeader !== 'function') {
+            window.deleteHeader = async function() {
+                if (!confirm('ヘッダー画像をデフォルトに戻しますか？')) return;
+                await resetImage('header');
+                updateHeaderPreview();
+            };
+        }
+        if (typeof window.deleteAvatar !== 'function') {
+            window.deleteAvatar = async function() {
+                if (!confirm('アバター画像をデフォルトに戻しますか？')) return;
+                await resetImage('avatar');
+                updateAvatarPreview();
+            };
+        }
+    })();
+</script>
 {% endblock %}
 

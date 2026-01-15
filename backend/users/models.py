@@ -64,6 +64,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     display_id = models.CharField('表示ID', max_length=100, db_index=True)
     role = models.CharField('役割', max_length=20, choices=Role.choices, default=Role.FREE_USER)
     avatar_url = models.URLField('アバターURL', max_length=500, blank=True, null=True)
+    studysphere_user_id = models.PositiveIntegerField(
+        'StudySphereユーザーID',
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+    studysphere_login_code = models.CharField(
+        'StudySphereログインコード',
+        max_length=255,
+        blank=True,
+        null=True,
+    )
     
     # Moderation fields
     is_suspended = models.BooleanField('アカウント停止', default=False)

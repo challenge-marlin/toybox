@@ -43,6 +43,30 @@ class MyCardsView(views.APIView):
                 rarity_str = rarity_map.get(card.rarity, 'N')
                 card_type = 'Effect' if card.code.startswith('E') else 'Character'
                 
+                # カード名が空の場合は、カードマスタから取得を試みる
+                card_name = card.name
+                if not card_name or card_name.strip() == '':
+                    # カードマスタから取得を試みる
+                    try:
+                        master_cards = load_card_master()
+                        for master_card in master_cards:
+                            if master_card.code == card_code:
+                                card_name = master_card.name
+                                # データベースも更新
+                                card.name = master_card.name
+                                if not card.image_url and master_card.image_url:
+                                    card.image_url = master_card.image_url
+                                card.save()
+                                break
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f'Failed to load card name from master for {card_code}: {e}')
+                    
+                    # それでも見つからない場合は、カードIDを表示
+                    if not card_name or card_name.strip() == '':
+                        card_name = card_code
+                
                 card_groups[card_code] = {
                     'id': card_code,
                     'obtainedAt': uc.obtained_at.isoformat() if uc.obtained_at else None,
@@ -50,7 +74,7 @@ class MyCardsView(views.APIView):
                     'meta': {
                         'card_id': card_code,
                         'card_type': card_type,
-                        'card_name': card.name,
+                        'card_name': card_name,
                         'rarity': rarity_str,
                         'image_url': card.image_url or f'/uploads/cards/{card.code}.png'
                     }

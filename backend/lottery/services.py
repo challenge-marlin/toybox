@@ -72,7 +72,7 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         if len(caption) > 140:
             raise ValueError('キャプションは140文字までです。')
     
-    # Process hashtags
+    # Process hashtags (大文字小文字を保持)
     processed_hashtags = []
     if hashtags is not None:
         if not isinstance(hashtags, list):
@@ -80,7 +80,7 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         # Filter out empty strings and validate
         for tag in hashtags:
             if tag and isinstance(tag, str) and tag.strip():
-                processed_hashtags.append(tag.strip())
+                processed_hashtags.append(tag.strip())  # 大文字小文字を保持
         if len(processed_hashtags) > 3:
             raise ValueError('ハッシュタグは3つまでです。')
     

@@ -800,17 +800,18 @@
                     } else {
                         lightboxCaption.style.display = 'none';
                     }
-                    // ハッシュタグを表示
+                    // ハッシュタグを表示（大文字小文字を保持）
                     lightboxHashtags.innerHTML = '';
                     if (data.hashtags && Array.isArray(data.hashtags) && data.hashtags.length > 0) {
                         data.hashtags.forEach(tag => {
                             if (tag && tag.trim()) {
+                                const tagNormalized = tag.trim();  // 大文字小文字を保持
                                 const tagEl = document.createElement('span');
-                                tagEl.textContent = `#${tag}`;
+                                tagEl.textContent = `#${tagNormalized}`;
                                 tagEl.style.cssText = 'display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-gold-500); color: black; font-size: 0.75rem; cursor: pointer; font-weight: 600;';
                                 tagEl.onclick = (e) => {
                                     e.stopPropagation();
-                                    filterByHashtag(tag);
+                                    filterByHashtag(tagNormalized);
                                     closeLightbox();
                                 };
                                 lightboxHashtags.appendChild(tagEl);
@@ -835,6 +836,8 @@
     
     // ハッシュタグで絞り込む関数
     function filterByHashtag(tag) {
+        // 大文字小文字を保持
+        tag = (tag || '').trim();
         // URLパラメータにハッシュタグを追加してフィードページに遷移
         window.location.href = `/feed/?hashtag=${encodeURIComponent(tag)}`;
     }

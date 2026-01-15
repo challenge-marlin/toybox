@@ -98,11 +98,38 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
         title_obj = Title.objects.filter(name=chosen_title).first()
         if title_obj:
             if title_obj.image:
-                title_image_url = title_obj.image.url
+                # ImageFieldの場合、/uploads/titles/形式に変換
+                # image.nameは'titles/xxx.png'のような形式
+                image_name = title_obj.image.name.split('/')[-1]  # ファイル名を取得
+                title_image_url = f'/uploads/titles/{image_name}'
+                logger.info(f'Title image from ImageField: {title_image_url}')
             elif title_obj.image_url:
+                # image_urlフィールドが設定されている場合
                 title_image_url = title_obj.image_url
+                # /media/titles/形式の場合は/uploads/titles/に変換
+                if title_image_url.startswith('/media/titles/'):
+                    image_name = title_image_url.split('/')[-1]
+                    title_image_url = f'/uploads/titles/{image_name}'
+                # 相対パスの場合はそのまま使用
+                elif not title_image_url.startswith('http'):
+                    # 既に/uploads/titles/形式の場合はそのまま
+                    pass
+                logger.info(f'Title image from image_url field: {title_image_url}')
+            else:
+                # どちらも設定されていない場合、デフォルトパスを試す
+                title_image_url = f'/uploads/titles/{chosen_title}.png'
+                logger.warning(f'Title image not set in DB, using default path: {title_image_url}')
+        else:
+            # 称号オブジェクトが存在しない場合
+            title_image_url = f'/uploads/titles/{chosen_title}.png'
+            logger.warning(f'Title object not found for {chosen_title}, using default path: {title_image_url}')
+        
+        # デバッグログ: 最終的な画像URLを出力
+        logger.info(f'Final title_image_url for {chosen_title}: {title_image_url}')
     except Exception as e:
-        logger.warning(f'Failed to get title image for {chosen_title}: {e}')
+        logger.warning(f'Failed to get title image for {chosen_title}: {e}', exc_info=True)
+        # エラー時もデフォルトパスを設定
+        title_image_url = f'/uploads/titles/{chosen_title}.png'
     
     # Draw card from card master
     card_meta = None
@@ -263,8 +290,12 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
     logger.info('reward.granted', extra={
         'user_id': meta.user_id,
         'title': chosen_title,
+        'title_image_url': title_image_url,
         'card_id': card_id
     })
+    
+    # デバッグログ: 返すデータを確認
+    logger.info(f'Returning reward data: title={chosen_title}, title_image_url={title_image_url}')
     
     return {
         'title': chosen_title,

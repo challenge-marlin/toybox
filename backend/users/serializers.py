@@ -152,7 +152,7 @@ class UserMetaSerializer(serializers.ModelSerializer):
                         image_field=title_obj.image,
                         image_url_field=title_obj.image_url,
                         request=request,
-                        verify_exists=True
+                        verify_exists=False  # ファイルが存在しなくてもURLを返す
                     )
                 else:
                     data['active_title_image_url'] = None

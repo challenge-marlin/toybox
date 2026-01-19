@@ -843,38 +843,49 @@ class UserSubmissionsView(APIView):
                     try:
                         if sub.game_url:
                             # ゲームの場合：サムネイルを優先
+                            from toybox.image_utils import build_https_absolute_uri
                             if sub.thumbnail:
                                 try:
-                                    display_image_url = request.build_absolute_uri(sub.thumbnail.url)
+                                    display_image_url = build_https_absolute_uri(request, sub.thumbnail.url)
                                     image_url = display_image_url
                                 except (ValueError, AttributeError):
                                     # thumbnail.urlが無効な場合のフォールバック
                                     if sub.image_url:
-                                        display_image_url = sub.image_url
-                                        image_url = sub.image_url
+                                        image_url_val = sub.image_url
+                                        if image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
+                                            image_url_val = image_url_val.replace('http://', 'https://', 1)
+                                        display_image_url = image_url_val
+                                        image_url = image_url_val
                                     elif sub.image:
                                         try:
-                                            display_image_url = request.build_absolute_uri(sub.image.url)
+                                            display_image_url = build_https_absolute_uri(request, sub.image.url)
                                             image_url = display_image_url
                                         except (ValueError, AttributeError):
                                             pass
                             elif sub.image_url:
-                                display_image_url = sub.image_url
-                                image_url = sub.image_url
+                                image_url_val = sub.image_url
+                                if image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
+                                    image_url_val = image_url_val.replace('http://', 'https://', 1)
+                                display_image_url = image_url_val
+                                image_url = image_url_val
                             elif sub.image:
                                 try:
-                                    display_image_url = request.build_absolute_uri(sub.image.url)
+                                    display_image_url = build_https_absolute_uri(request, sub.image.url)
                                     image_url = display_image_url
                                 except (ValueError, AttributeError):
                                     pass
                         else:
                             # 画像/動画の場合：従来通り
+                            from toybox.image_utils import build_https_absolute_uri
                             if sub.image_url:
-                                image_url = sub.image_url
-                                display_image_url = sub.image_url
+                                image_url_val = sub.image_url
+                                if image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
+                                    image_url_val = image_url_val.replace('http://', 'https://', 1)
+                                image_url = image_url_val
+                                display_image_url = image_url_val
                             elif sub.image:
                                 try:
-                                    image_url = request.build_absolute_uri(sub.image.url)
+                                    image_url = build_https_absolute_uri(request, sub.image.url)
                                     display_image_url = image_url
                                 except (ValueError, AttributeError):
                                     pass

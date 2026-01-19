@@ -188,8 +188,17 @@
 <script>
     // ページ読み込み時に認証チェック
     document.addEventListener('DOMContentLoaded', function() {
-        redirectIfAuthenticated();
+        // チケットがある場合はSSO処理を優先
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasTicket = urlParams.get('ticket');
+        
+        if (!hasTicket) {
+            // チケットがない場合のみ通常の認証チェック
+            redirectIfAuthenticated();
+        }
+        
         hideLoginPageNavigation();
+        checkSSOTicket(); // StudySphereからのチケットをチェック
     });
     
     // ログインページでヘッダーの「みんなの投稿」を非表示にする
@@ -201,7 +210,243 @@
         }
     }
     
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    // StudySphereからのSSOチケットをチェック
+    async function checkSSOTicket() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ticket = urlParams.get('ticket');
+        
+        // デバッグ用: 詳細な情報をログ出力
+        console.log('[SSO] ========== SSO Debug Info ==========');
+        console.log('[SSO] Current URL:', window.location.href);
+        console.log('[SSO] URL Search:', window.location.search);
+        console.log('[SSO] All URL Parameters:', Object.fromEntries(urlParams));
+        console.log('[SSO] Ticket value:', ticket);
+        console.log('[SSO] Ticket type:', typeof ticket);
+        console.log('[SSO] Ticket length:', ticket ? ticket.length : 0);
+        if (ticket) {
+            console.log('[SSO] Ticket preview (first 20 chars):', ticket.substring(0, 20) + '...');
+        }
+        console.log('[SSO] ====================================');
+        
+        if (!ticket) {
+            console.log('[SSO] No ticket found in URL parameters');
+            return; // チケットがない場合は通常のログイン画面
+        }
+        
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+        const submitBtn = document.getElementById('submitBtn');
+        const loginForm = document.getElementById('loginForm');
+        
+        // ローディング表示
+        if (loginForm) loginForm.style.display = 'none';
+        if (successDiv) {
+            successDiv.textContent = 'StudySphereから連携中...';
+            successDiv.style.display = 'block';
+        }
+        
+        try {
+            console.log('[SSO] Calling verify-and-check API...');
+            const response = await fetch('/sso/verify-and-check/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ticket: ticket })
+            });
+            
+            console.log('[SSO] API response status:', response.status);
+            const data = await response.json();
+            console.log('[SSO] API response data:', data);
+            
+            if (!response.ok) {
+                // エラー
+                console.error('[SSO] API error:', data.error);
+                if (errorDiv) {
+                    errorDiv.textContent = data.error || 'SSO認証に失敗しました';
+                    errorDiv.style.display = 'block';
+                }
+                if (successDiv) successDiv.style.display = 'none';
+                if (loginForm) loginForm.style.display = 'block';
+                return;
+            }
+            
+            if (data.has_account) {
+                // アカウントあり → IDフィールドに自動入力して、パスワードなしでログイン可能にする
+                console.log('[SSO] Account found, preparing login form...');
+                
+                // SSO情報をセッションストレージに保存（ログイン時に使用）
+                if (data.sso_data) {
+                    sessionStorage.setItem('sso_login_data', JSON.stringify({
+                        ticket: ticket,
+                        sso_data: data.sso_data
+                    }));
+                }
+                
+                // IDフィールドに自動入力
+                const displayIdInput = document.getElementById('display_id');
+                if (displayIdInput && data.sso_data && data.sso_data.studysphere_username) {
+                    // StudySphereのusernameを小文字・英数字・アンダースコアのみに変換して自動入力
+                    const suggestedId = data.sso_data.studysphere_username
+                        .toLowerCase()
+                        .replace(/[^a-z0-9_]/g, '_')
+                        .substring(0, 30);
+                    displayIdInput.value = suggestedId;
+                } else if (displayIdInput && data.user && data.user.username) {
+                    displayIdInput.value = data.user.username;
+                }
+                
+                // パスワードフィールドを非表示またはオプションにする
+                const passwordInput = document.getElementById('password');
+                const passwordLabel = passwordInput ? passwordInput.previousElementSibling : null;
+                if (passwordInput) {
+                    passwordInput.required = false;
+                    passwordInput.placeholder = 'パスワードは不要です（StudySphere経由）';
+                    passwordInput.style.opacity = '0.5';
+                }
+                if (passwordLabel) {
+                    passwordLabel.textContent = 'パスワード（StudySphere経由のため不要）';
+                }
+                
+                // フォームを表示
+                if (loginForm) loginForm.style.display = 'block';
+                if (successDiv) {
+                    successDiv.textContent = 'StudySphereアカウントが見つかりました。IDが自動入力されています。「ログイン」ボタンをクリックしてください。';
+                    successDiv.style.display = 'block';
+                }
+                
+                // フォーム送信時にSSOログインAPIを呼び出すように変更
+                const originalSubmitHandler = loginForm ? loginForm.onsubmit : null;
+                if (loginForm) {
+                    loginForm.onsubmit = async function(e) {
+                        e.preventDefault();
+                        await handleSSOLogin(e);
+                    };
+                }
+            } else if (data.sso_data) {
+                // アカウントなし → 登録画面へ
+                console.log('[SSO] No account found, redirecting to signup...');
+                console.log('[SSO] SSO data:', data.sso_data);
+                
+                // SSO情報をセッションストレージに保存
+                sessionStorage.setItem('sso_signup_data', JSON.stringify(data.sso_data));
+                console.log('[SSO] Saved to sessionStorage');
+                
+                if (successDiv) {
+                    successDiv.textContent = 'StudySphereアカウントが見つかりました。アカウント作成画面へ移動します...';
+                    successDiv.style.display = 'block';
+                }
+                
+                console.log('[SSO] Redirecting to /signup/?from=sso in 1.5s');
+                setTimeout(() => {
+                    console.log('[SSO] Executing redirect now');
+                    window.location.href = '/signup/?from=sso';
+                }, 1500);
+            } else {
+                console.error('[SSO] Unexpected response structure:', data);
+                if (errorDiv) {
+                    errorDiv.textContent = '予期しない応答形式です';
+                    errorDiv.style.display = 'block';
+                }
+                if (successDiv) successDiv.style.display = 'none';
+                if (loginForm) loginForm.style.display = 'block';
+            }
+        } catch (err) {
+            console.error('[SSO] check error:', err);
+            if (errorDiv) {
+                errorDiv.textContent = 'SSO認証中にエラーが発生しました: ' + err.message;
+                errorDiv.style.display = 'block';
+            }
+            if (successDiv) successDiv.style.display = 'none';
+            if (loginForm) loginForm.style.display = 'block';
+        }
+    }
+    
+    // SSO経由のログイン処理
+    async function handleSSOLogin(e) {
+        e.preventDefault();
+        
+        const ssoLoginDataStr = sessionStorage.getItem('sso_login_data');
+        if (!ssoLoginDataStr) {
+            // SSO情報がない場合は通常のログイン処理
+            handleNormalLogin(e);
+            return;
+        }
+        
+        const ssoLoginData = JSON.parse(ssoLoginDataStr);
+        const ticket = ssoLoginData.ticket;
+        const displayId = document.getElementById('display_id').value.trim();
+        
+        if (!displayId) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = 'IDを入力してください';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'ログイン中...';
+        
+        try {
+            const response = await fetch('/sso/login-with-ticket/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    display_id: displayId,
+                    ticket: ticket
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.access) {
+                setAccessToken(data.access);
+                if (data.refresh) {
+                    setRefreshToken(data.refresh);
+                }
+                
+                // SSO情報をクリア
+                sessionStorage.removeItem('sso_login_data');
+                
+                // 警告メッセージがある場合は表示
+                if (data.penalty && data.penalty.message) {
+                    showPenaltyModal(data.penalty.type, data.penalty.message);
+                } else {
+                    const redirectUrl = (data.user && data.user.role === 'FREE_USER') ? '/upgrade/' : '/me/';
+                    const redirectMessage = (data.user && data.user.role === 'FREE_USER') 
+                        ? 'ログイン成功！課金についてのページへ移動します...' 
+                        : 'ログイン成功！マイページへ移動します...';
+                    
+                    successDiv.textContent = redirectMessage;
+                    successDiv.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = redirectUrl;
+                    }, 1000);
+                }
+            } else {
+                errorDiv.textContent = data.error || 'ログインに失敗しました';
+                errorDiv.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'ログイン';
+            }
+        } catch (err) {
+            errorDiv.textContent = 'エラーが発生しました: ' + err.message;
+            errorDiv.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'ログイン';
+        }
+    }
+    
+    // 通常のログイン処理
+    async function handleNormalLogin(e) {
         e.preventDefault();
         
         const displayId = document.getElementById('display_id').value;
@@ -267,6 +512,16 @@
             errorDiv.style.display = 'block';
             submitBtn.disabled = false;
             submitBtn.textContent = 'ログイン';
+        }
+    }
+    
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        // SSO経由の場合はhandleSSOLogin、そうでない場合はhandleNormalLogin
+        const ssoLoginDataStr = sessionStorage.getItem('sso_login_data');
+        if (ssoLoginDataStr) {
+            await handleSSOLogin(e);
+        } else {
+            await handleNormalLogin(e);
         }
     });
     

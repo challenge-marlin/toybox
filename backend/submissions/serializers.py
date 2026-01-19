@@ -75,8 +75,13 @@ class SubmissionSerializer(serializers.ModelSerializer):
                         obj.save(update_fields=['thumbnail'])
                     else:
                         if request:
-                            return request.build_absolute_uri(obj.thumbnail.url)
-                        return obj.thumbnail.url
+                            from toybox.image_utils import build_https_absolute_uri
+                            return build_https_absolute_uri(request, obj.thumbnail.url)
+                        thumbnail_url = obj.thumbnail.url
+                        # HTTPをHTTPSに置き換え
+                        if thumbnail_url.startswith('http://'):
+                            thumbnail_url = thumbnail_url.replace('http://', 'https://', 1)
+                        return thumbnail_url
             except (ValueError, AttributeError, OSError) as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -121,8 +126,11 @@ class SubmissionSerializer(serializers.ModelSerializer):
                         obj.image_url = None
                         obj.save(update_fields=['image_url'])
                         return None
-                # 外部URLの場合はそのまま返す
-                return obj.image_url
+                # 外部URLの場合、HTTPをHTTPSに置き換え（同じドメインの場合のみ）
+                image_url = obj.image_url
+                if image_url.startswith('http://toybox.ayatori-inc.co.jp'):
+                    image_url = image_url.replace('http://', 'https://', 1)
+                return image_url
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -140,8 +148,13 @@ class SubmissionSerializer(serializers.ModelSerializer):
                         return None
                 
                 if request:
-                    return request.build_absolute_uri(obj.image.url)
-                return obj.image.url
+                    from toybox.image_utils import build_https_absolute_uri
+                    return build_https_absolute_uri(request, obj.image.url)
+                image_url = obj.image.url
+                # HTTPをHTTPSに置き換え
+                if image_url.startswith('http://'):
+                    image_url = image_url.replace('http://', 'https://', 1)
+                return image_url
             except (ValueError, AttributeError, OSError) as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -154,8 +167,13 @@ class SubmissionSerializer(serializers.ModelSerializer):
         if obj.thumbnail:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.thumbnail.url)
-            return obj.thumbnail.url
+                from toybox.image_utils import build_https_absolute_uri
+                return build_https_absolute_uri(request, obj.thumbnail.url)
+            thumbnail_url = obj.thumbnail.url
+            # HTTPをHTTPSに置き換え
+            if thumbnail_url.startswith('http://'):
+                thumbnail_url = thumbnail_url.replace('http://', 'https://', 1)
+            return thumbnail_url
         return None
     
     def get_thumbnail_url(self, obj):

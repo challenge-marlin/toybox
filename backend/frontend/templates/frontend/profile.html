@@ -182,10 +182,10 @@
             <div class="no-image">NO Image</div>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <label class="file-input-label">
-                変更
-                <input type="file" id="header-input" class="file-input" accept="image/png,image/jpeg">
-            </label>
+        <label class="file-input-label">
+            変更
+            <input type="file" id="header-input" class="file-input" accept="image/png,image/jpeg">
+        </label>
             <button id="delete-header-btn" type="button" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-iron-800); border: 1px solid var(--steam-iron-700); color: var(--steam-iron-300); font-size: 0.75rem; cursor: pointer;" onclick="if (window.deleteHeader) { window.deleteHeader(); } else { alert('deleteHeader is not loaded'); }">削除</button>
         </div>
     </section>
@@ -197,10 +197,10 @@
                 <span>未設定</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <label class="file-input-label">
-                    画像を選択
-                    <input type="file" id="avatar-input" class="file-input" accept="image/png,image/jpeg">
-                </label>
+            <label class="file-input-label">
+                画像を選択
+                <input type="file" id="avatar-input" class="file-input" accept="image/png,image/jpeg">
+            </label>
                 <button id="delete-avatar-btn" type="button" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-iron-800); border: 1px solid var(--steam-iron-700); color: var(--steam-iron-300); font-size: 0.75rem; cursor: pointer;" onclick="if (window.deleteAvatar) { window.deleteAvatar(); } else { alert('deleteAvatar is not loaded'); }">削除</button>
             </div>
         </div>

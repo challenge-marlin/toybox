@@ -66,7 +66,8 @@ if USE_S3:
 else:
     # Local media files
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-    MEDIA_URL = '/media/'
+    # Use HTTPS URL for media files to avoid mixed content errors
+    MEDIA_URL = 'https://toybox.ayatori-inc.co.jp/uploads/'
 
 # Logging
 LOGGING = {

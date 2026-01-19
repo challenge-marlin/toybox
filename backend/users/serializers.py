@@ -197,8 +197,11 @@ class RegisterSerializer(serializers.Serializer):
     """Registration serializer."""
     username = serializers.CharField(min_length=3, max_length=30, help_text="User ID (alphanumeric and underscore)")
     display_name = serializers.CharField(min_length=1, max_length=50, required=False, allow_blank=True)
-    password = serializers.CharField(min_length=8, max_length=128, write_only=True)
+    password = serializers.CharField(min_length=8, max_length=128, write_only=True, required=False, allow_blank=True)
     email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    # StudySphere SSO fields (optional)
+    studysphere_user_id = serializers.IntegerField(required=False, allow_null=True)
+    studysphere_login_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     
     def validate_username(self, value):
         """Validate username format."""
@@ -211,10 +214,23 @@ class RegisterSerializer(serializers.Serializer):
         """Validate registration data."""
         username = attrs.get('username')
         display_name = attrs.get('display_name', '').strip()
+        studysphere_user_id = attrs.get('studysphere_user_id')
+        password = attrs.get('password', '').strip()
+        
+        # SSO経由の場合はパスワードがなくてもOK、通常の場合はパスワード必須
+        if not studysphere_user_id and not password:
+            raise serializers.ValidationError({'password': 'パスワードは必須です。'})
         
         # Check if username already exists
         if User.objects.filter(display_id=username).exists():
             raise serializers.ValidationError({'username': 'This username is already taken.'})
+        
+        # Check if StudySphere user_id already exists
+        if studysphere_user_id:
+            if User.objects.filter(studysphere_user_id=studysphere_user_id).exists():
+                raise serializers.ValidationError({
+                    'studysphere_user_id': 'このStudySphereアカウントは既に登録されています。'
+                })
         
         # Use username as display_name if not provided
         if not display_name:
@@ -225,16 +241,31 @@ class RegisterSerializer(serializers.Serializer):
     def create(self, validated_data):
         """Create user and UserMeta."""
         username = validated_data['username']
-        password = validated_data['password']
+        password = validated_data.get('password', '').strip()
         display_name = validated_data.get('display_name', username)
         email = validated_data.get('email', '').strip() or None
+        studysphere_user_id = validated_data.get('studysphere_user_id')
+        studysphere_login_code = validated_data.get('studysphere_login_code', '').strip() or None
+        
+        # SSO経由の場合はパスワードなしでユーザーを作成
+        # パスワードがない場合は、ランダムなパスワードを設定（SSO認証のみでログインするため）
+        if not password and studysphere_user_id:
+            import secrets
+            password = secrets.token_urlsafe(32)  # ランダムなパスワードを生成（使用されない）
         
         # Create user
         user = User.objects.create_user(
             email=email,
             display_id=username,
-            password=password
+            password=password if password else None
         )
+        
+        # Set StudySphere fields if provided
+        if studysphere_user_id:
+            user.studysphere_user_id = studysphere_user_id
+        if studysphere_login_code:
+            user.studysphere_login_code = studysphere_login_code
+        user.save()
         
         # Create UserMeta with display_name in bio field (for now, until we add a proper display_name field)
         # Note: bio field is used to store display_name temporarily

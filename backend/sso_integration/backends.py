@@ -30,7 +30,9 @@ class StudySphereBackend(BaseBackend):
 
         user = User.objects.filter(studysphere_user_id=user_id).first()
         if not user:
-            user = User.objects.filter(display_id=username).first()
+            user = User.objects.filter(
+                Q(studysphere_login_code=username) | Q(display_id=username)
+            ).first()
 
         if not user:
             role = self._map_role(User, role_value)

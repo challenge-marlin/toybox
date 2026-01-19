@@ -83,6 +83,18 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=toybox.settings.dev
 
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_volume:/app/staticfiles:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   static_volume:

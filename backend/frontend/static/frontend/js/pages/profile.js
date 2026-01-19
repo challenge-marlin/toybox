@@ -423,7 +423,7 @@
             const data = await apiGetFunc('/api/users/me/meta/');
             
             const displayNameValue = data.display_name || data.displayName || data.display_id || data.anonId || '';
-
+            
             // 表示名
             const displayNameInput = document.getElementById(SELECTORS.DISPLAY_NAME_INPUT);
             if (displayNameInput) {
@@ -733,17 +733,17 @@
         
         const apiGetFunc = getFunction(apiGet, apiGetFallback);
         apiGetFunc('/api/users/me/')
-            .then(userData => {
-                if (userData.role === 'FREE_USER') {
-                    window.location.href = '/upgrade/';
-                    return;
-                }
-                initializeProfile();
-            })
-            .catch(err => {
-                console.error('Error fetching user data:', err);
-                initializeProfile();
-            });
+                .then(userData => {
+                    if (userData.role === 'FREE_USER') {
+                        window.location.href = '/upgrade/';
+                        return;
+                    }
+                    initializeProfile();
+                })
+                .catch(err => {
+                    console.error('Error fetching user data:', err);
+                    initializeProfile();
+                });
     });
     
     // ============================================================================

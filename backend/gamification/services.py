@@ -106,8 +106,11 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
             elif title_obj.image_url:
                 # image_urlフィールドが設定されている場合
                 title_image_url = title_obj.image_url
+                # HTTPをHTTPSに置き換え（同じドメインの場合のみ）
+                if title_image_url.startswith('http://toybox.ayatori-inc.co.jp'):
+                    title_image_url = title_image_url.replace('http://', 'https://', 1)
                 # /media/titles/形式の場合は/uploads/titles/に変換
-                if title_image_url.startswith('/media/titles/'):
+                elif title_image_url.startswith('/media/titles/'):
                     image_name = title_image_url.split('/')[-1]
                     title_image_url = f'/uploads/titles/{image_name}'
                 # 相対パスの場合はそのまま使用

@@ -10,6 +10,40 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def build_https_absolute_uri(request, path):
+    """
+    HTTPSを強制した絶対URLを構築する
+    
+    Args:
+        request: Django requestオブジェクト
+        path: 相対パスまたは絶対URL
+    
+    Returns:
+        HTTPSの絶対URL
+    """
+    try:
+        # まず通常の方法で絶対URLを構築
+        absolute_url = request.build_absolute_uri(path)
+        
+        # HTTPをHTTPSに置き換え
+        if absolute_url.startswith('http://'):
+            absolute_url = absolute_url.replace('http://', 'https://', 1)
+        
+        return absolute_url
+    except Exception as e:
+        logger.warning(f'Failed to build HTTPS absolute URI for {path}: {e}')
+        # フォールバック: 相対パスの場合、HTTPSベースURLを構築
+        if path.startswith('/'):
+            from django.conf import settings
+            # プロダクション設定からHTTPSベースURLを取得
+            if hasattr(settings, 'MEDIA_URL') and settings.MEDIA_URL.startswith('https://'):
+                base_url = settings.MEDIA_URL.rstrip('/')
+                return f"{base_url}{path}"
+            # デフォルトのHTTPS URL
+            return f"https://toybox.ayatori-inc.co.jp{path}"
+        return path
+
+
 def get_image_url(
     image_field=None,
     image_url_field: Optional[str] = None,
@@ -37,7 +71,7 @@ def get_image_url(
                     return None
             
             if request:
-                return request.build_absolute_uri(image_field.url)
+                return build_https_absolute_uri(request, image_field.url)
             return image_field.url
         except (ValueError, AttributeError, OSError) as e:
             logger.warning(f'Failed to get image URL from ImageField: {e}')
@@ -60,10 +94,12 @@ def get_image_url(
                         return None
                 
                 if request:
-                    return request.build_absolute_uri(image_url)
+                    return build_https_absolute_uri(request, image_url)
                 return image_url
             else:
-                # 既に絶対URLの場合
+                # 既に絶対URLの場合、HTTPをHTTPSに置き換え（同じドメインの場合のみ）
+                if image_url.startswith('http://toybox.ayatori-inc.co.jp'):
+                    return image_url.replace('http://', 'https://', 1)
                 return image_url
         except Exception as e:
             logger.warning(f'Failed to process image_url: {e}')

@@ -97,7 +97,7 @@ def normalize_url_path(path):
 
 def build_file_url(request, relative_path, base_path='/uploads/'):
     """
-    ファイルURLを構築する（相対URLと絶対URLの両方をサポート）
+    ファイルURLを構築する（相対URLと絶対URLの両方をサポート、HTTPSを強制）
     
     Args:
         request: Django requestオブジェクト
@@ -105,8 +105,10 @@ def build_file_url(request, relative_path, base_path='/uploads/'):
         base_path: URLベースパス（デフォルト: '/uploads/'）
     
     Returns:
-        str: ファイルURL（絶対URL）
+        str: ファイルURL（HTTPSの絶対URL）
     """
+    from toybox.image_utils import build_https_absolute_uri
+    
     # パスを正規化
     relative_path = normalize_url_path(relative_path)
     
@@ -117,9 +119,9 @@ def build_file_url(request, relative_path, base_path='/uploads/'):
         # base_pathを追加
         url_path = base_path.rstrip('/') + '/' + relative_path.lstrip('/')
     
-    # 絶対URLを構築
+    # HTTPSを強制した絶対URLを構築
     try:
-        absolute_url = request.build_absolute_uri(url_path)
+        absolute_url = build_https_absolute_uri(request, url_path)
         return absolute_url
     except Exception as e:
         logger.error(f'Failed to build absolute URL for {url_path}: {str(e)}', exc_info=True)
@@ -188,14 +190,20 @@ def get_submission_file_url(submission, request=None):
         'thumbnailUrl': None
     }
     
+    from toybox.image_utils import build_https_absolute_uri
+    
     # サムネイル（ゲームの場合）
     if submission.thumbnail:
         try:
             if request:
-                result['thumbnailUrl'] = request.build_absolute_uri(submission.thumbnail.url)
+                result['thumbnailUrl'] = build_https_absolute_uri(request, submission.thumbnail.url)
                 result['displayImageUrl'] = result['thumbnailUrl']
             else:
-                result['thumbnailUrl'] = submission.thumbnail.url
+                thumbnail_url = submission.thumbnail.url
+                # HTTPをHTTPSに置き換え
+                if thumbnail_url.startswith('http://'):
+                    thumbnail_url = thumbnail_url.replace('http://', 'https://', 1)
+                result['thumbnailUrl'] = thumbnail_url
                 result['displayImageUrl'] = result['thumbnailUrl']
         except Exception as e:
             logger.error(f'Failed to get thumbnail URL: {str(e)}', exc_info=True)
@@ -204,11 +212,15 @@ def get_submission_file_url(submission, request=None):
     if submission.image:
         try:
             if request:
-                result['imageUrl'] = request.build_absolute_uri(submission.image.url)
+                result['imageUrl'] = build_https_absolute_uri(request, submission.image.url)
                 if not result['displayImageUrl']:
                     result['displayImageUrl'] = result['imageUrl']
             else:
-                result['imageUrl'] = submission.image.url
+                image_url = submission.image.url
+                # HTTPをHTTPSに置き換え
+                if image_url.startswith('http://'):
+                    image_url = image_url.replace('http://', 'https://', 1)
+                result['imageUrl'] = image_url
                 if not result['displayImageUrl']:
                     result['displayImageUrl'] = result['imageUrl']
         except Exception as e:
@@ -216,9 +228,13 @@ def get_submission_file_url(submission, request=None):
     
     # image_url（レガシーまたは外部URL）
     if submission.image_url:
-        result['imageUrl'] = submission.image_url
+        image_url = submission.image_url
+        # HTTPをHTTPSに置き換え（同じドメインの場合のみ）
+        if image_url.startswith('http://toybox.ayatori-inc.co.jp'):
+            image_url = image_url.replace('http://', 'https://', 1)
+        result['imageUrl'] = image_url
         if not result['displayImageUrl']:
-            result['displayImageUrl'] = submission.image_url
+            result['displayImageUrl'] = image_url
     
     # 動画
     if submission.video_url:

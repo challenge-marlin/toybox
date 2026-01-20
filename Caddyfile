@@ -13,7 +13,7 @@ toybox.ayatori-inc.co.jp {
 		}
 	}
 
-	# アップロードファイル
+	# アップロードファイル（Django経由で配信）
 	handle /uploads/* {
 		reverse_proxy web:8000 {
 			header_up X-Forwarded-Proto {scheme}
@@ -23,6 +23,11 @@ toybox.ayatori-inc.co.jp {
 				write_timeout 60s
 			}
 		}
+	}
+
+	# ファビコン
+	handle /favicon.ico {
+		reverse_proxy web:8000
 	}
 
 	# ヘルスチェック

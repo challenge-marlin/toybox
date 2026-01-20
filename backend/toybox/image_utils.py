@@ -48,7 +48,8 @@ def get_image_url(
     image_field=None,
     image_url_field: Optional[str] = None,
     request=None,
-    verify_exists: bool = True
+    verify_exists: bool = True,
+    use_optimized: bool = True
 ) -> Optional[str]:
     """
     画像URLを取得する（統一的な処理）
@@ -58,6 +59,7 @@ def get_image_url(
         image_url_field: 画像URL文字列（相対パスまたは絶対URL）
         request: Django requestオブジェクト（絶対URL生成用）
         verify_exists: ファイルの存在確認を行うか
+        use_optimized: 最適化された画像を使用するか（デフォルトTrue）
     
     Returns:
         画像URL（絶対URL）またはNone
@@ -70,9 +72,25 @@ def get_image_url(
                     logger.warning(f'Image file not found: {image_field.path}')
                     return None
             
+            image_url = image_field.url
+            # 最適化された画像を使用する場合
+            if use_optimized:
+                try:
+                    from toybox.image_optimizer import get_optimized_image_url
+                    optimized_url = get_optimized_image_url(
+                        image_url,
+                        max_width=None,
+                        max_height=None,
+                        quality=85
+                    )
+                    if optimized_url:
+                        image_url = optimized_url
+                except Exception as e:
+                    logger.debug(f'Failed to get optimized image URL: {e}')
+            
             if request:
-                return build_https_absolute_uri(request, image_field.url)
-            return image_field.url
+                return build_https_absolute_uri(request, image_url)
+            return image_url
         except (ValueError, AttributeError, OSError) as e:
             logger.warning(f'Failed to get image URL from ImageField: {e}')
             return None
@@ -80,9 +98,22 @@ def get_image_url(
     # 2. image_urlフィールドを確認
     if image_url_field:
         try:
-            image_url = image_url_field.strip()
+            image_url = image_url_field.strip() if isinstance(image_url_field, str) else str(image_url_field)
             if not image_url:
+                logger.debug(f'Empty image_url_field: {image_url_field}')
                 return None
+            
+            logger.debug(f'Processing image_url_field: {image_url}')
+            
+            # 既に絶対URLの場合、HTTPをHTTPSに置き換え（同じドメインの場合のみ）
+            if image_url.startswith('http://') or image_url.startswith('https://'):
+                # HTTPをHTTPSに置き換え（同じドメインの場合のみ）
+                if image_url.startswith('http://toybox.ayatori-inc.co.jp'):
+                    result_url = image_url.replace('http://', 'https://', 1)
+                    logger.debug(f'Converted HTTP to HTTPS: {result_url}')
+                    return result_url
+                logger.debug(f'Returning absolute URL as-is: {image_url}')
+                return image_url
             
             # 相対パスの場合、絶対URLに変換
             if image_url.startswith('/'):
@@ -94,15 +125,43 @@ def get_image_url(
                         return None
                 
                 if request:
-                    return build_https_absolute_uri(request, image_url)
-                return image_url
+                    result_url = build_https_absolute_uri(request, image_url)
+                    logger.debug(f'Built absolute URL from request: {result_url}')
+                    return result_url
+                else:
+                    # requestがNoneの場合でも絶対URLを返す
+                    # settings.MEDIA_URLを使用するか、デフォルトのHTTPS URLを構築
+                    try:
+                        if hasattr(settings, 'MEDIA_URL') and settings.MEDIA_URL:
+                            base_url = str(settings.MEDIA_URL).rstrip('/')
+                            # MEDIA_URLが既にパスを含んでいる場合（例: https://toybox.ayatori-inc.co.jp/uploads/）、重複を避ける
+                            if base_url.endswith('/uploads') and image_url.startswith('/uploads/'):
+                                # /uploads/ を削除して結合
+                                relative_path = image_url.replace('/uploads/', '')
+                                result_url = f"{base_url}/{relative_path}"
+                                logger.debug(f'Built URL with MEDIA_URL (stripped): {result_url}')
+                                return result_url
+                            # 通常の結合（相対パスが / で始まる場合）
+                            if image_url.startswith('/'):
+                                result_url = f"{base_url}{image_url}"
+                                logger.debug(f'Built URL with MEDIA_URL: {result_url}')
+                                return result_url
+                            # 相対パスが / で始まらない場合
+                            result_url = f"{base_url}/{image_url}"
+                            logger.debug(f'Built URL with MEDIA_URL (added slash): {result_url}')
+                            return result_url
+                    except Exception as e:
+                        logger.warning(f'Failed to build absolute URL from MEDIA_URL: {e}')
+                    # フォールバック: デフォルトのHTTPS URL
+                    result_url = f"https://toybox.ayatori-inc.co.jp{image_url}"
+                    logger.debug(f'Using fallback URL: {result_url}')
+                    return result_url
             else:
-                # 既に絶対URLの場合、HTTPをHTTPSに置き換え（同じドメインの場合のみ）
-                if image_url.startswith('http://toybox.ayatori-inc.co.jp'):
-                    return image_url.replace('http://', 'https://', 1)
-                return image_url
+                # 相対パスでも / で始まらない場合（通常は発生しない）
+                logger.warning(f'Unexpected image_url format: {image_url}')
+                return None
         except Exception as e:
-            logger.warning(f'Failed to process image_url: {e}')
+            logger.warning(f'Failed to process image_url: {e}', exc_info=True)
             return None
     
     return None
@@ -129,13 +188,15 @@ def _get_file_path_from_url(url: str) -> Optional[Path]:
         if url.startswith('/uploads/'):
             # /uploads/ を削除
             relative_path = url.replace('/uploads/', '')
-            return settings.MEDIA_ROOT / relative_path
+            media_root = Path(settings.MEDIA_ROOT)
+            return media_root / relative_path
         
         # 相対パスの場合
         if url.startswith('/'):
             # 先頭の / を削除
             relative_path = url.lstrip('/')
-            return settings.MEDIA_ROOT / relative_path
+            media_root = Path(settings.MEDIA_ROOT)
+            return media_root / relative_path
         
         return None
     except Exception as e:

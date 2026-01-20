@@ -305,10 +305,25 @@ class ProfileUploadView(APIView):
         if file.content_type not in allowed_types:
             return Response({'error': 'Invalid file type'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Save file
-        file_ext = os.path.splitext(file.name)[1] or '.jpg'
-        filename = f'{upload_type}_{request.user.id}_{uuid.uuid4().hex[:8]}{file_ext}'
-        filepath = default_storage.save(f'profiles/{filename}', file)
+        # 画像をJPGに変換して最適化
+        from toybox.image_optimizer import optimize_image_to_jpg
+        optimized_image = optimize_image_to_jpg(
+            file,
+            max_width=1920 if upload_type == 'header' else 512,  # ヘッダーは1920px、アバターは512px
+            max_height=1920 if upload_type == 'header' else 512,
+            quality=85
+        )
+        
+        if optimized_image:
+            # 最適化された画像を保存
+            filename = f'{upload_type}_{request.user.id}_{uuid.uuid4().hex[:8]}.jpg'
+            from django.core.files.base import ContentFile
+            filepath = default_storage.save(f'profiles/{filename}', ContentFile(optimized_image.read()))
+        else:
+            # 最適化に失敗した場合は元のファイルを保存
+            file_ext = os.path.splitext(file.name)[1] or '.jpg'
+            filename = f'{upload_type}_{request.user.id}_{uuid.uuid4().hex[:8]}{file_ext}'
+            filepath = default_storage.save(f'profiles/{filename}', file)
         
         # Verify file was saved
         full_path = default_storage.path(filepath)
@@ -417,116 +432,121 @@ class ProfileGetView(APIView):
                 'activeTitleUntil': None,
                 'updatedAt': None
             })
+        except Exception as e:
+            logger.error(f'[ProfileGetView] Error finding user {anon_id}: {e}', exc_info=True)
+            return Response({
+                'error': 'プロフィールの取得に失敗しました',
+                'anonId': anon_id
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        # Get or create UserMeta
-        meta, _ = UserMeta.objects.get_or_create(user=user)
-        
-        # Check title expiration
-        active_title = meta.active_title
-        active_title_until = meta.expires_at
-        if active_title and active_title_until:
-            if active_title_until <= timezone.now():
-                active_title = None
-                active_title_until = None
-        
-        # Get display_name from display_name field, fallback to bio, then display_id
-        display_name = meta.display_name or meta.bio or user.display_id
-        
-        # アバターURLの存在確認
-        avatar_url = user.avatar_url
-        if avatar_url:
+        try:
+            # Get or create UserMeta
+            meta, _ = UserMeta.objects.get_or_create(user=user)
+            
+            # Check title expiration
+            active_title = meta.active_title
+            active_title_until = meta.expires_at
+            if active_title and active_title_until:
+                if active_title_until <= timezone.now():
+                    active_title = None
+                    active_title_until = None
+            
+            # Get display_name from display_name field, fallback to bio, then display_id
+            display_name = meta.display_name or meta.bio or user.display_id
+            
+            # アバターURLの取得（絶対URLに変換）
+            avatar_url = None
             try:
-                # URLからファイルパスを抽出
-                if avatar_url.startswith('http'):
-                    # 絶対URLの場合、パス部分を抽出
-                    from urllib.parse import urlparse
-                    parsed = urlparse(avatar_url)
-                    file_path = parsed.path
-                else:
-                    # 相対パスの場合
-                    file_path = avatar_url
-                
-                # /uploads/profiles/ から始まる場合、ファイルの存在確認
-                if file_path.startswith('/uploads/profiles/'):
-                    filename = file_path.replace('/uploads/profiles/', '')
-                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
-                    if not full_path.exists():
-                        # ファイルが存在しない場合はNoneを返す
-                        avatar_url = None
-                        # データベースも更新（オプション）
-                        user.avatar_url = None
-                        user.save(update_fields=['avatar_url'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to verify avatar URL for user {user.id}: {e}')
-        
-        # ヘッダーURLの存在確認
-        header_url = meta.header_url
-        if header_url:
-            try:
-                # URLからファイルパスを抽出
-                if header_url.startswith('http'):
-                    from urllib.parse import urlparse
-                    parsed = urlparse(header_url)
-                    file_path = parsed.path
-                else:
-                    file_path = header_url
-                
-                # /uploads/profiles/ から始まる場合、ファイルの存在確認
-                if file_path.startswith('/uploads/profiles/'):
-                    filename = file_path.replace('/uploads/profiles/', '')
-                    full_path = settings.MEDIA_ROOT / 'profiles' / filename
-                    if not full_path.exists():
-                        # ファイルが存在しない場合はNoneを返す
-                        header_url = None
-                        # データベースも更新（オプション）
-                        meta.header_url = None
-                        meta.save(update_fields=['header_url'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to verify header URL for user {user.id}: {e}')
-        
-        # 称号のバナー画像URLを取得
-        active_title_image_url = None
-        if active_title:
-            try:
-                from gamification.models import Title
                 from toybox.image_utils import get_image_url
-                title_obj = Title.objects.filter(name=active_title).first()
-                if title_obj:
-                    active_title_image_url = get_image_url(
-                        image_field=title_obj.image,
-                        image_url_field=title_obj.image_url,
+                profile_logger = logging.getLogger(__name__)
+                avatar_url_raw = user.avatar_url
+                profile_logger.info(f'[Profile Image Debug] ProfileGetView - User {user.id} avatar_url from DB: {avatar_url_raw}')
+                if avatar_url_raw:
+                    avatar_url = get_image_url(
+                        image_url_field=avatar_url_raw,
                         request=request,
-                        verify_exists=False  # ファイルが存在しなくてもURLを返す
+                        verify_exists=False  # 存在確認を行わない
                     )
+                    profile_logger.info(f'[Profile Image Debug] ProfileGetView - User {user.id} avatar_url after get_image_url: {avatar_url}')
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to get title image for {active_title}: {e}')
-        
-        # 獲得したいいねの合計を計算
-        from submissions.models import Reaction
-        total_likes = Reaction.objects.filter(
-            submission__author=user,
-            submission__deleted_at__isnull=True,
-            type=Reaction.Type.SUBMIT_MEDAL
-        ).count()
-        
-        return Response({
-            'anonId': user.display_id,
-            'displayName': display_name,
-            'avatarUrl': avatar_url,
-            'headerUrl': header_url,
-            'bio': meta.bio,
-            'activeTitle': active_title,
-            'activeTitleImageUrl': active_title_image_url,
-            'activeTitleUntil': active_title_until.isoformat() if active_title_until else None,
-            'updatedAt': meta.updated_at.isoformat() if meta.updated_at else None,
-            'totalLikes': total_likes
-        })
+                profile_logger = logging.getLogger(__name__)
+                profile_logger.error(f'[Profile Image Debug] ProfileGetView - Error getting avatar_url for user {user.id}: {e}', exc_info=True)
+                avatar_url = None
+            
+            # ヘッダーURLの取得（絶対URLに変換）
+            header_url = None
+            try:
+                from toybox.image_utils import get_image_url
+                profile_logger = logging.getLogger(__name__)
+                header_url_raw = meta.header_url
+                profile_logger.info(f'[Profile Image Debug] ProfileGetView - User {user.id} header_url from DB: {header_url_raw}')
+                if header_url_raw:
+                    header_url = get_image_url(
+                        image_url_field=header_url_raw,
+                        request=request,
+                        verify_exists=False  # 存在確認を行わない
+                    )
+                    profile_logger.info(f'[Profile Image Debug] ProfileGetView - User {user.id} header_url after get_image_url: {header_url}')
+            except Exception as e:
+                profile_logger = logging.getLogger(__name__)
+                profile_logger.error(f'[Profile Image Debug] ProfileGetView - Error getting header_url for user {user.id}: {e}', exc_info=True)
+                header_url = None
+            
+            # 称号のバナー画像URLを取得
+            active_title_image_url = None
+            if active_title:
+                try:
+                    from gamification.models import Title
+                    from toybox.image_utils import get_image_url
+                    profile_logger = logging.getLogger(__name__)
+                    title_obj = Title.objects.filter(name=active_title).first()
+                    if title_obj:
+                        active_title_image_url = get_image_url(
+                            image_field=title_obj.image,
+                            image_url_field=title_obj.image_url,
+                            request=request,
+                            verify_exists=False  # ファイルが存在しなくてもURLを返す
+                        )
+                except Exception as e:
+                    profile_logger = logging.getLogger(__name__)
+                    profile_logger.warning(f'Failed to get title image for {active_title}: {e}')
+            
+            # 獲得したいいねの合計を計算
+            total_likes = 0
+            try:
+                from submissions.models import Reaction
+                total_likes = Reaction.objects.filter(
+                    submission__author=user,
+                    submission__deleted_at__isnull=True,
+                    type=Reaction.Type.SUBMIT_MEDAL
+                ).count()
+            except Exception as e:
+                profile_logger = logging.getLogger(__name__)
+                profile_logger.warning(f'Failed to get total_likes for user {user.id}: {e}')
+            
+            return Response({
+                'anonId': user.display_id,
+                'displayName': display_name,
+                'avatarUrl': avatar_url,
+                'headerUrl': header_url,
+                'bio': meta.bio,
+                'activeTitle': active_title,
+                'activeTitleImageUrl': active_title_image_url,
+                'activeTitleUntil': active_title_until.isoformat() if active_title_until else None,
+                'updatedAt': meta.updated_at.isoformat() if meta.updated_at else None,
+                'totalLikes': total_likes
+            })
+        except Exception as e:
+            profile_logger = logging.getLogger(__name__)
+            profile_logger.error(f'[ProfileGetView] Error processing profile for user {user.id}: {e}', exc_info=True)
+            import traceback
+            error_traceback = traceback.format_exc()
+            profile_logger.error(f'[ProfileGetView] Traceback: {error_traceback}')
+            return Response({
+                'error': 'プロフィールの取得に失敗しました',
+                'anonId': user.display_id if user else anon_id,
+                'details': str(e) if settings.DEBUG else None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class NotificationListView(APIView):

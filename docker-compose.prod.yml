@@ -1,0 +1,22 @@
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./backend/public/uploads:/app/public/uploads:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - backend_default
+
+networks:
+  backend_default:
+    external: true
+
+volumes:
+  caddy-data:
+  caddy-config:

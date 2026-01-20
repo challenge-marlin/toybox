@@ -501,6 +501,16 @@
                 
                 // プロフィール情報を表示
                 // APIレスポンスはキャメルケース（headerUrl, avatarUrl）で返される
+                console.log('[Profile Image Debug] profile_view.html - API Response:', {
+                    headerUrl: metaData.headerUrl,
+                    header_url: metaData.header_url,
+                    avatarUrl: metaData.avatarUrl,
+                    avatar_url: metaData.avatar_url,
+                    displayName: metaData.displayName,
+                    anonId: metaData.anonId,
+                    fullData: metaData
+                });
+                
                 const headerUrl = metaData.headerUrl || metaData.header_url;
                 const avatarUrl = metaData.avatarUrl || metaData.avatar_url;
                 const displayName = metaData.displayName || metaData.display_name;
@@ -508,16 +518,25 @@
                 const activeTitle = metaData.activeTitle || metaData.active_title;
                 const activeTitleUntil = metaData.activeTitleUntil || metaData.active_title_until;
                 
+                console.log('[Profile Image Debug] profile_view.html - Extracted URLs:', {
+                    headerUrl: headerUrl,
+                    avatarUrl: avatarUrl
+                });
+                
                 if (headerUrl) {
-                    document.getElementById('header-image').innerHTML = `<img src="${headerUrl}" alt="header">`;
+                    console.log('[Profile Image Debug] profile_view.html - Setting header image:', headerUrl);
+                    document.getElementById('header-image').innerHTML = `<img src="${headerUrl}" alt="header" onerror="console.error('[Profile Image Debug] profile_view.html - Header image load error:', '${headerUrl}');">`;
                 } else {
+                    console.log('[Profile Image Debug] profile_view.html - No header URL, showing fallback');
                     document.getElementById('header-image').innerHTML = '<div class="no-image">ヘッダー画像なし</div>';
                 }
                 
                 if (avatarUrl) {
                     const firstChar = (displayName || anonId || 'U').charAt(0).toUpperCase();
-                    document.getElementById('avatar-image').innerHTML = `<img src="${avatarUrl}" alt="avatar" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 2rem; font-weight: 600;\\'>${firstChar}</span>';">`;
+                    console.log('[Profile Image Debug] profile_view.html - Setting avatar image:', avatarUrl);
+                    document.getElementById('avatar-image').innerHTML = `<img src="${avatarUrl}" alt="avatar" onerror="console.error('[Profile Image Debug] profile_view.html - Avatar image load error:', '${avatarUrl}'); this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 2rem; font-weight: 600;\\'>${firstChar}</span>';">`;
                 } else {
+                    console.log('[Profile Image Debug] profile_view.html - No avatar URL, showing fallback');
                     const firstChar = (displayName || anonId || 'U').charAt(0).toUpperCase();
                     document.getElementById('avatar-image').innerHTML = `<span style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 2rem; font-weight: 600;">${firstChar}</span>`;
                 }

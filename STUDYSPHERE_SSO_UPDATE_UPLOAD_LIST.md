@@ -6,7 +6,7 @@ StudySphereからの連携で、パスワードなしでログイン・登録で
 
 ## アップロードが必要なファイル
 
-以下の6つのファイルをWinSCPでアップロードしてください。
+以下の7つのファイルをWinSCPでアップロードしてください。
 
 ### 1. バックエンド - シリアライザー
 **ファイルパス**: `backend/users/serializers.py`  
@@ -17,8 +17,10 @@ StudySphereからの連携で、パスワードなしでログイン・登録で
 **ファイルパス**: `backend/sso_integration/views.py`  
 **サーバー上のパス**: `/var/www/toybox/backend/sso_integration/views.py`  
 **変更内容**: 
+- `sso_callback`を修正してアカウントがない場合もチケットを保持
 - `sso_verify_and_check`に`sso_data`を追加
 - `sso_login_with_ticket`エンドポイントを追加（IDとチケットでログイン）
+- `sso_dispatch`を修正してローディングページを表示
 
 ### 3. バックエンド - SSO URL設定
 **ファイルパス**: `backend/sso_integration/urls.py`  
@@ -39,7 +41,14 @@ StudySphereからの連携で、パスワードなしでログイン・登録で
 - SSO経由の場合、パスワードフィールドを非表示
 - パスワードなしでアカウント作成可能に
 
-### 6. StudySphere側への指示書（参考用）
+### 6. フロントエンド - SSOディスパッチページ（新規）
+**ファイルパス**: `backend/frontend/templates/frontend/sso_dispatch.html`  
+**サーバー上のパス**: `/var/www/toybox/backend/frontend/templates/frontend/sso_dispatch.html`  
+**変更内容**: 
+- SSOディスパッチ入口ページを新規作成
+- ローディング表示とエラーハンドリングを実装
+
+### 7. StudySphere側への指示書（参考用）
 **ファイルパス**: `STUDYSPHERE_SIDE_SETUP_INSTRUCTIONS.md`  
 **サーバー上のパス**: アップロード不要（StudySphere側に渡すためのドキュメント）  
 **変更内容**: 
@@ -58,10 +67,13 @@ StudySphereからの連携で、パスワードなしでログイン・登録で
 左側（ローカル）から右側（サーバー）に、以下のファイルをドラッグ&ドロップでアップロード：
 
 1. `backend/users/serializers.py` → `/var/www/toybox/backend/users/serializers.py`
-2. `backend/sso_integration/views.py` → `/var/www/toybox/backend/sso_integration/views.py` ⚠️ **重要**: `sso_callback`を修正してアカウントがない場合もチケットを保持
+2. `backend/sso_integration/views.py` → `/var/www/toybox/backend/sso_integration/views.py` ⚠️ **重要**: 
+   - `sso_callback`を修正してアカウントがない場合もチケットを保持
+   - `sso_dispatch`を修正してローディングページを表示
 3. `backend/sso_integration/urls.py` → `/var/www/toybox/backend/sso_integration/urls.py`
 4. `backend/frontend/templates/frontend/login.html` → `/var/www/toybox/backend/frontend/templates/frontend/login.html`
 5. `backend/frontend/templates/frontend/signup.html` → `/var/www/toybox/backend/frontend/templates/frontend/signup.html`
+6. `backend/frontend/templates/frontend/sso_dispatch.html` → `/var/www/toybox/backend/frontend/templates/frontend/sso_dispatch.html` ⚠️ **新規ファイル**
 
 **注意**: 
 - 既存のファイルを上書きするか確認されますが、「はい」を選択してください
@@ -149,6 +161,7 @@ backend/sso_integration/views.py
 backend/sso_integration/urls.py
 backend/frontend/templates/frontend/login.html
 backend/frontend/templates/frontend/signup.html
+backend/frontend/templates/frontend/sso_dispatch.html
 ```
 
 ## StudySphere側への指示書

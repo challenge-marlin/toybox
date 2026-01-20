@@ -196,20 +196,47 @@ class SubmitUploadView(APIView):
         # Generate filename
         import os
         if is_video:
+            # 動画はそのまま保存
             default_ext = '.mp4'
-        elif file.content_type == 'image/webp':
-            default_ext = '.webp'
-        elif file.content_type in ['image/jpeg', 'image/jpg']:
-            default_ext = '.jpg'
+            file_ext = os.path.splitext(file.name)[1] or default_ext
+            filename = f'submissions/{request.user.id}_{int(timezone.now().timestamp())}{file_ext}'
+            
+            # Save file safely
+            from submissions.utils import save_file_safely, build_file_url
+            success, saved_path, error_message = save_file_safely(file, filename)
         else:
-            default_ext = '.png'
-        file_ext = os.path.splitext(file.name)[1] or default_ext
-        filename = f'submissions/{request.user.id}_{int(timezone.now().timestamp())}{file_ext}'
-        
-        # Save file safely
-        from submissions.utils import save_file_safely, build_file_url
-        
-        success, saved_path, error_message = save_file_safely(file, filename)
+            # 画像はJPGに変換して最適化
+            from toybox.image_optimizer import optimize_image_to_jpg
+            from django.core.files.base import ContentFile
+            
+            optimized_image = optimize_image_to_jpg(
+                file,
+                max_width=1920,  # 投稿画像は1920pxまで
+                max_height=1920,
+                quality=85
+            )
+            
+            if optimized_image:
+                # 最適化された画像を保存
+                filename = f'submissions/{request.user.id}_{int(timezone.now().timestamp())}.jpg'
+                from submissions.utils import build_file_url
+                from django.core.files.storage import default_storage
+                saved_path = default_storage.save(filename, ContentFile(optimized_image.read()))
+                success = True
+                error_message = None
+            else:
+                # 最適化に失敗した場合は元のファイルを保存
+                if file.content_type == 'image/webp':
+                    default_ext = '.webp'
+                elif file.content_type in ['image/jpeg', 'image/jpg']:
+                    default_ext = '.jpg'
+                else:
+                    default_ext = '.png'
+                file_ext = os.path.splitext(file.name)[1] or default_ext
+                filename = f'submissions/{request.user.id}_{int(timezone.now().timestamp())}{file_ext}'
+                
+                from submissions.utils import save_file_safely, build_file_url
+                success, saved_path, error_message = save_file_safely(file, filename)
         
         if not success:
             logger.error(f'File upload failed: {error_message}')

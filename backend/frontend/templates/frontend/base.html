@@ -275,15 +275,31 @@
                 .then(res => res.json())
                 .then(data => {
                     // ユーザーアバター画像を設定
+                    console.log('[Profile Image Debug] base.html - API Response:', {
+                        avatar_url: data.avatar_url,
+                        fullData: data
+                    });
+                    
                     const avatarImg = document.getElementById('user-avatar-img');
                     const avatarIcon = document.getElementById('user-avatar-icon');
-                    if (data.avatar_url && avatarImg && avatarIcon) {
-                        avatarImg.src = data.avatar_url;
+                    const avatarUrl = data.avatar_url;
+                    console.log('[Profile Image Debug] base.html - Avatar URL:', avatarUrl);
+                    
+                    if (avatarUrl && avatarImg && avatarIcon) {
+                        console.log('[Profile Image Debug] base.html - Setting header avatar image:', avatarUrl);
+                        avatarImg.src = avatarUrl;
                         avatarImg.style.display = 'block';
                         avatarIcon.style.display = 'none';
+                        avatarImg.onerror = function() {
+                            console.error('[Profile Image Debug] base.html - Header avatar image load error:', avatarUrl);
+                            avatarImg.style.display = 'none';
+                            avatarIcon.style.display = 'block';
+                        };
+                    } else {
+                        console.log('[Profile Image Debug] base.html - No avatar URL or elements not found');
                     }
                 })
-                .catch(err => console.error('Failed to load user info:', err));
+                .catch(err => console.error('[Profile Image Debug] base.html - Failed to load user info:', err));
                 
                 // テーマの初期化
                 initializeTheme();

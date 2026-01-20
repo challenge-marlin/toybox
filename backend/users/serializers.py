@@ -75,11 +75,25 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """User serializer."""
+    avatar_url = serializers.SerializerMethodField()
     
     class Meta:
         model = User
         fields = ['id', 'email', 'display_id', 'role', 'avatar_url', 'is_suspended', 'banned_at', 'warning_count']
         read_only_fields = ['id', 'role', 'is_suspended', 'banned_at', 'warning_count']
+    
+    def get_avatar_url(self, obj):
+        """Get absolute URL for avatar."""
+        from toybox.image_utils import get_image_url
+        request = self.context.get('request')
+        avatar_url_raw = obj.avatar_url if hasattr(obj, 'avatar_url') else None
+        if avatar_url_raw:
+            return get_image_url(
+                image_url_field=avatar_url_raw,
+                request=request,
+                verify_exists=False
+            )
+        return None
 
 
 class UserMetaSerializer(serializers.ModelSerializer):
@@ -96,39 +110,41 @@ class UserMetaSerializer(serializers.ModelSerializer):
         """Override to check title expiry and add title image URL."""
         data = super().to_representation(instance)
         
-        # アバターURLとヘッダーURLの取得と検証（統一ユーティリティを使用）
-        from toybox.image_utils import get_image_url, verify_image_file_exists
+        # アバターURLとヘッダーURLの取得（存在確認は行わず、URLをそのまま返す）
+        from toybox.image_utils import get_image_url
+        import logging
+        logger = logging.getLogger(__name__)
         request = self.context.get('request')
         
         # ユーザーのアバターURL（Userモデルから取得）
         user = instance.user
+        avatar_url_raw = getattr(user, 'avatar_url', None)
+        logger.info(f'[Profile Image Debug] UserMetaSerializer - User {user.id} avatar_url from DB: {avatar_url_raw}')
+        
         avatar_url = None
-        if hasattr(user, 'avatar_url') and user.avatar_url:
-            if verify_image_file_exists(user.avatar_url):
-                avatar_url = get_image_url(
-                    image_url_field=user.avatar_url,
-                    request=request,
-                    verify_exists=False  # 既に検証済み
-                )
-            else:
-                # ファイルが存在しない場合はデータベースをクリア
-                user.avatar_url = None
-                user.save(update_fields=['avatar_url'])
+        if avatar_url_raw:
+            avatar_url = get_image_url(
+                image_url_field=avatar_url_raw,
+                request=request,
+                verify_exists=False  # 存在確認を行わない
+            )
+            logger.info(f'[Profile Image Debug] UserMetaSerializer - User {user.id} avatar_url after get_image_url: {avatar_url}')
         
         data['avatar_url'] = avatar_url
         
-        # ヘッダーURLの取得と検証
-        header_url = data.get('header_url')
-        if header_url:
-            if verify_image_file_exists(header_url):
-                header_url = get_image_url(
-                    image_url_field=header_url,
-                    request=request,
-                    verify_exists=False  # 既に検証済み
-                )
-            else:
-                # ファイルが存在しない場合はNoneを返す（データベース更新は行わない）
-                header_url = None
+        # ヘッダーURLの取得
+        header_url_raw = data.get('header_url')
+        logger.info(f'[Profile Image Debug] UserMetaSerializer - User {user.id} header_url from DB: {header_url_raw}')
+        
+        if header_url_raw:
+            header_url = get_image_url(
+                image_url_field=header_url_raw,
+                request=request,
+                verify_exists=False  # 存在確認を行わない
+            )
+            logger.info(f'[Profile Image Debug] UserMetaSerializer - User {user.id} header_url after get_image_url: {header_url}')
+        else:
+            header_url = None
         
         data['header_url'] = header_url
         
@@ -254,10 +270,12 @@ class RegisterSerializer(serializers.Serializer):
             password = secrets.token_urlsafe(32)  # ランダムなパスワードを生成（使用されない）
         
         # Create user
+        role = User.Role.PAID_USER if studysphere_user_id else User.Role.FREE_USER
         user = User.objects.create_user(
             email=email,
             display_id=username,
-            password=password if password else None
+            password=password if password else None,
+            role=role,
         )
         
         # Set StudySphere fields if provided

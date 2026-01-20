@@ -45,7 +45,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DJANGO_SETTINGS_MODULE=toybox.settings.dev
+      - DJANGO_SETTINGS_MODULE=toybox.settings.prod
 
   worker:
     build:
@@ -64,7 +64,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DJANGO_SETTINGS_MODULE=toybox.settings.dev
+      - DJANGO_SETTINGS_MODULE=toybox.settings.prod
 
   beat:
     build:
@@ -81,7 +81,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DJANGO_SETTINGS_MODULE=toybox.settings.dev
+      - DJANGO_SETTINGS_MODULE=toybox.settings.prod
 
   nginx:
     image: nginx:alpine

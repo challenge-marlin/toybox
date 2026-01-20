@@ -775,12 +775,27 @@
             }
             
             // アバター画像を表示
+            console.log('[Profile Image Debug] me.html - API Response:', {
+                avatarUrl: data.avatarUrl,
+                avatar_url: data.avatar_url,
+                headerUrl: data.headerUrl,
+                header_url: data.header_url,
+                displayName: data.displayName,
+                anonId: data.anonId,
+                fullData: data
+            });
+            
             const avatarDiv = document.getElementById('profile-avatar');
-            if (data.avatarUrl) {
+            const avatarUrl = data.avatarUrl || data.avatar_url;
+            console.log('[Profile Image Debug] me.html - Avatar URL:', avatarUrl);
+            
+            if (avatarUrl) {
                 const displayName = data.displayName || data.anonId || 'U';
                 const firstChar = displayName.charAt(0).toUpperCase();
-                avatarDiv.innerHTML = `<img src="${data.avatarUrl}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;\\'>${firstChar}</span>';">`;
+                console.log('[Profile Image Debug] me.html - Setting avatar image:', avatarUrl);
+                avatarDiv.innerHTML = `<img src="${avatarUrl}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;" onerror="console.error('[Profile Image Debug] me.html - Avatar image load error:', '${avatarUrl}'); this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;\\'>${firstChar}</span>';">`;
             } else {
+                console.log('[Profile Image Debug] me.html - No avatar URL, showing fallback');
                 const displayName = data.displayName || data.anonId || 'U';
                 const firstChar = displayName.charAt(0).toUpperCase();
                 avatarDiv.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;">${firstChar}</span>`;

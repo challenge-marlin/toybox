@@ -1,0 +1,161 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}SSO連携中 - ToyBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sso-dispatch-container {
+        max-width: 600px;
+        margin: 4rem auto;
+        padding: 2rem;
+        background: var(--steam-iron-900);
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        text-align: center;
+    }
+    
+    .sso-dispatch-container h1 {
+        font-size: 1.5rem;
+        color: var(--steam-gold-300);
+        margin-bottom: 1.5rem;
+    }
+    
+    .sso-dispatch-container .loading-spinner {
+        width: 48px;
+        height: 48px;
+        margin: 2rem auto;
+        border: 4px solid var(--steam-iron-700);
+        border-top-color: var(--steam-gold-500);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .sso-dispatch-container .message {
+        color: var(--steam-iron-200);
+        font-size: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .sso-dispatch-container .target-system {
+        color: var(--steam-gold-400);
+        font-weight: 600;
+        font-size: 1.125rem;
+        margin: 1rem 0;
+    }
+    
+    .sso-dispatch-container .error {
+        color: #dc2626;
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: 4px;
+        background: rgba(220, 38, 38, 0.1);
+        border: 1px solid rgba(220, 38, 38, 0.3);
+    }
+    
+    .sso-dispatch-container .back-link {
+        margin-top: 2rem;
+    }
+    
+    .sso-dispatch-container .back-link a {
+        color: var(--steam-gold-300);
+        text-decoration: none;
+    }
+    
+    .sso-dispatch-container .back-link a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sso-dispatch-container">
+    <h1>SSO連携中</h1>
+    <div class="loading-spinner" id="loadingSpinner"></div>
+    <div class="message" id="message">連携先システムに接続しています...</div>
+    <div class="target-system" id="targetSystem"></div>
+    <div class="error" id="error" style="display: none;"></div>
+    <div class="back-link" id="backLink" style="display: none;">
+        <a href="/me/">マイページに戻る</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 認証チェック
+        if (!hasValidToken()) {
+            window.location.href = '/login/';
+            return;
+        }
+        
+        // URLパラメータからtarget_systemを取得
+        const pathParts = window.location.pathname.split('/');
+        const targetSystemIndex = pathParts.indexOf('dispatch');
+        const targetSystem = targetSystemIndex !== -1 && pathParts[targetSystemIndex + 1] 
+            ? pathParts[targetSystemIndex + 1] 
+            : null;
+        
+        console.log('[SSO Dispatch] Target system:', targetSystem);
+        
+        if (!targetSystem) {
+            showError('連携先システムが指定されていません。');
+            return;
+        }
+        
+        // ターゲットシステム名を表示
+        const targetSystemDiv = document.getElementById('targetSystem');
+        if (targetSystemDiv) {
+            const systemNames = {
+                'studysphere': 'StudySphere',
+                'toybox_prod': 'TOYBOX',
+            };
+            targetSystemDiv.textContent = systemNames[targetSystem] || targetSystem;
+        }
+        
+        // SSOディスパッチを実行
+        dispatchToTargetSystem(targetSystem);
+    });
+    
+    async function dispatchToTargetSystem(targetSystem) {
+        const messageDiv = document.getElementById('message');
+        const errorDiv = document.getElementById('error');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const backLink = document.getElementById('backLink');
+        
+        try {
+            messageDiv.textContent = 'チケットを生成しています...';
+            
+            // サーバー側でリダイレクトが行われるため、少し待ってからリダイレクト
+            // これにより、ローディング画面が表示される
+            setTimeout(() => {
+                // GETリクエストで直接リダイレクト（サーバー側で処理）
+                // サーバー側でチケット生成とリダイレクトが行われる
+                window.location.href = `/sso/dispatch/${targetSystem}/?redirect=true`;
+            }, 500);
+            
+        } catch (err) {
+            console.error('[SSO Dispatch] Error:', err);
+            showError('SSO連携中にエラーが発生しました: ' + err.message);
+            if (loadingSpinner) loadingSpinner.style.display = 'none';
+            if (backLink) backLink.style.display = 'block';
+        }
+    }
+    
+    function showError(message) {
+        const errorDiv = document.getElementById('error');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const messageDiv = document.getElementById('message');
+        
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        if (loadingSpinner) loadingSpinner.style.display = 'none';
+        if (messageDiv) messageDiv.style.display = 'none';
+    }
+</script>
+{% endblock %}

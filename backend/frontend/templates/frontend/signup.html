@@ -548,14 +548,56 @@
     // StudySphereからのSSO情報をチェック
     function checkSSOSignupData() {
         const urlParams = new URLSearchParams(window.location.search);
-        const fromSSO = urlParams.get('from') === 'sso';
+        const ticket = urlParams.get('ticket');
         
-        console.log('[SSO Signup] checkSSOSignupData called, fromSSO:', fromSSO);
+        console.log('[SSO Signup] checkSSOSignupData called, ticket:', ticket ? ticket.substring(0, 20) + '...' : null);
         
-        if (!fromSSO) {
-            console.log('[SSO Signup] Not from SSO, normal signup');
-            return; // 通常のサインアップ
+        // セッションストレージにSSO情報がある場合は再検証しない
+        const ssoDataStr = sessionStorage.getItem('sso_signup_data');
+        if (ssoDataStr) {
+            console.log('[SSO Signup] Using sessionStorage data');
+            try {
+                ssoSignupData = JSON.parse(ssoDataStr);
+            } catch (err) {
+                console.error('[SSO Signup] Failed to parse sessionStorage data:', err);
+                ssoSignupData = null;
+            }
+            if (ssoSignupData) {
+                // 既存の表示処理を再利用
+                const signupMessage = document.getElementById('signup-message');
+                if (signupMessage && ssoSignupData.studysphere_username) {
+                    signupMessage.textContent = `StudySphere（${ssoSignupData.studysphere_username}）との連携でアカウントを作成します`;
+                    signupMessage.style.display = 'block';
+                }
+                const usernameInput = document.getElementById('username');
+                if (usernameInput && ssoSignupData.studysphere_username) {
+                    const suggestedUsername = ssoSignupData.studysphere_username
+                        .toLowerCase()
+                        .replace(/[^a-z0-9_]/g, '_')
+                        .substring(0, 30);
+                    usernameInput.value = suggestedUsername;
+                }
+                const passwordField = document.getElementById('password-field');
+                const passwordInput = document.getElementById('password');
+                const passwordLabel = document.getElementById('password-label');
+                if (passwordField && passwordInput && passwordLabel) {
+                    passwordInput.required = false;
+                    passwordInput.style.display = 'none';
+                    passwordLabel.style.display = 'none';
+                    passwordField.style.display = 'none';
+                }
+                return;
+            }
         }
+
+        // チケットがある場合は検証してSSO情報を取得
+        if (ticket) {
+            console.log('[SSO Signup] Ticket found, verifying...');
+            verifyTicketForSignup(ticket);
+            return;
+        }
+        
+        console.log('[SSO Signup] No ticket found, normal signup');
         
         // セッションストレージからSSO情報を取得
         const ssoDataStr = sessionStorage.getItem('sso_signup_data');
@@ -603,6 +645,114 @@
             }
         } catch (err) {
             console.error('[SSO Signup] Failed to parse SSO signup data:', err);
+        }
+    }
+    
+    // チケットを検証してSSO情報を取得
+    async function verifyTicketForSignup(ticket) {
+        const signupMessage = document.getElementById('signup-message');
+        const errorDiv = document.getElementById('signup-error');
+        
+        try {
+            console.log('[SSO Signup] Calling verify-and-check API...');
+            const response = await fetch(`/sso/verify-and-check/?ticket=${encodeURIComponent(ticket)}`, {
+                method: 'GET',
+            });
+            
+            const data = await response.json();
+            console.log('[SSO Signup] API response:', data);
+            
+            if (!response.ok) {
+                console.error('[SSO Signup] API error:', data.error);
+                if (errorDiv) {
+                    errorDiv.textContent = data.error || 'SSO認証に失敗しました';
+                    errorDiv.style.display = 'block';
+                }
+                return;
+            }
+            
+            if (data.has_account) {
+                // アカウントがある場合はログイン済みとしてトップへ
+                if (data.logged_in) {
+                    console.log('[SSO Signup] Account found and logged in, redirecting to home...');
+                    window.location.href = '/';
+                    return;
+                }
+                console.log('[SSO Signup] Account found but not logged in, redirecting to login...');
+                window.location.href = `/login/?ticket=${ticket}`;
+                return;
+            }
+            
+            if (data.sso_data) {
+                // SSO情報をセッションストレージに保存
+                sessionStorage.setItem('sso_signup_data', JSON.stringify(data.sso_data));
+                console.log('[SSO Signup] SSO data saved to sessionStorage:', data.sso_data);
+                
+                // SSO情報を表示
+                ssoSignupData = data.sso_data;
+                
+                if (signupMessage && data.sso_data.studysphere_username) {
+                    signupMessage.textContent = `StudySphere（${data.sso_data.studysphere_username}）との連携でアカウントを作成します`;
+                    signupMessage.style.display = 'block';
+                    console.log('[SSO Signup] Message displayed');
+                }
+                
+                // ユーザーIDフィールドに自動入力
+                const usernameInput = document.getElementById('username');
+                if (usernameInput && data.sso_data.studysphere_username) {
+                    const suggestedUsername = data.sso_data.studysphere_username
+                        .toLowerCase()
+                        .replace(/[^a-z0-9_]/g, '_')
+                        .substring(0, 30);
+                    usernameInput.value = suggestedUsername;
+                    console.log('[SSO Signup] Username auto-filled:', suggestedUsername);
+                }
+                
+                // パスワードフィールドを非表示
+                const passwordField = document.getElementById('password-field');
+                const passwordInput = document.getElementById('password');
+                const passwordLabel = document.getElementById('password-label');
+                if (passwordField && passwordInput && passwordLabel) {
+                    passwordInput.required = false;
+                    passwordInput.style.display = 'none';
+                    passwordLabel.style.display = 'none';
+                    passwordField.style.display = 'none';
+                    console.log('[SSO Signup] Password field hidden');
+                }
+                
+                // フォームにSSO情報を追加（hidden input）
+                const signupForm = document.getElementById('signup-form');
+                if (signupForm) {
+                    // 既存のhidden inputを削除
+                    const existingHidden = signupForm.querySelectorAll('input[type="hidden"][name^="studysphere"]');
+                    existingHidden.forEach(input => input.remove());
+                    
+                    // SSO情報をhidden inputとして追加
+                    if (data.sso_data.studysphere_user_id) {
+                        const userIdInput = document.createElement('input');
+                        userIdInput.type = 'hidden';
+                        userIdInput.name = 'studysphere_user_id';
+                        userIdInput.value = data.sso_data.studysphere_user_id;
+                        signupForm.appendChild(userIdInput);
+                    }
+                    if (data.sso_data.studysphere_login_code) {
+                        const loginCodeInput = document.createElement('input');
+                        loginCodeInput.type = 'hidden';
+                        loginCodeInput.name = 'studysphere_login_code';
+                        loginCodeInput.value = data.sso_data.studysphere_login_code;
+                        signupForm.appendChild(loginCodeInput);
+                    }
+                    console.log('[SSO Signup] SSO data added to form as hidden inputs');
+                }
+            } else {
+                console.warn('[SSO Signup] No SSO data in response');
+            }
+        } catch (err) {
+            console.error('[SSO Signup] verifyTicketForSignup error:', err);
+            if (errorDiv) {
+                errorDiv.textContent = 'SSO認証中にエラーが発生しました: ' + err.message;
+                errorDiv.style.display = 'block';
+            }
         }
     }
     

@@ -1,6 +1,7 @@
 """
 Lottery services.
 """
+import uuid
 from django.utils import timezone
 from django.db import models
 from datetime import datetime
@@ -101,9 +102,24 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
     if caption is not None:
         submission_data['caption'] = caption
     if thumbnail is not None:
-        # サムネイルファイルを保存（FileFieldに直接設定するため、事前保存は不要）
-        # DjangoのFileFieldは自動的に保存されるため、ここではファイルオブジェクトをそのまま設定
-        submission_data['thumbnail'] = thumbnail
+        # サムネイルをJPGに変換して最適化
+        from toybox.image_optimizer import optimize_image_to_jpg
+        from django.core.files.base import ContentFile
+        optimized_thumbnail = optimize_image_to_jpg(
+            thumbnail,
+            max_width=1024,  # サムネイルは1024pxまで
+            max_height=1024,
+            quality=85
+        )
+        
+        if optimized_thumbnail:
+            # 最適化されたサムネイルをContentFileとして設定
+            thumbnail_file = ContentFile(optimized_thumbnail.read())
+            thumbnail_file.name = f'thumbnail_{user.id}_{uuid.uuid4().hex[:8]}.jpg'
+            submission_data['thumbnail'] = thumbnail_file
+        else:
+            # 最適化に失敗した場合は元のファイルを使用
+            submission_data['thumbnail'] = thumbnail
         logger.info('submission.thumbnail_set', extra={'user_id': user.id})
     
     submission_data['hashtags'] = processed_hashtags

@@ -22,6 +22,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
 
+# CSRF trusted origins (SSO)
+CSRF_TRUSTED_ORIGINS = [
+    'https://toybox.ayatori-inc.co.jp',
+    'https://studysphere.ayatori-inc.co.jp',
+]
+
 # Database
 DATABASES = {
     'default': {
@@ -65,7 +71,7 @@ if USE_S3:
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN or AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/'
 else:
     # Local media files
-    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'public', 'uploads')
     # Use HTTPS URL for media files to avoid mixed content errors
     MEDIA_URL = 'https://toybox.ayatori-inc.co.jp/uploads/'
 

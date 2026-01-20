@@ -10,7 +10,7 @@ from users.models import UserMeta
 class SubmissionSerializer(serializers.ModelSerializer):
     """Submission serializer."""
     author_display_id = serializers.CharField(source='author.display_id', read_only=True)
-    author_avatar_url = serializers.CharField(source='author.avatar_url', read_only=True)
+    author_avatar_url = serializers.SerializerMethodField()
     active_title = serializers.SerializerMethodField()
     title_color = serializers.SerializerMethodField()
     reactions_count = serializers.SerializerMethodField()
@@ -32,6 +32,19 @@ class SubmissionSerializer(serializers.ModelSerializer):
             'created_at', 'deleted_at'
         ]
         read_only_fields = ['id', 'author', 'created_at', 'deleted_at', 'status']
+    
+    def get_author_avatar_url(self, obj):
+        """Get absolute URL for author avatar."""
+        from toybox.image_utils import get_image_url
+        request = self.context.get('request')
+        avatar_url_raw = obj.author.avatar_url if hasattr(obj.author, 'avatar_url') else None
+        if avatar_url_raw:
+            return get_image_url(
+                image_url_field=avatar_url_raw,
+                request=request,
+                verify_exists=False
+            )
+        return None
     
     def get_image(self, obj):
         """Get absolute URL for image field (統一ユーティリティを使用)."""
@@ -165,15 +178,28 @@ class SubmissionSerializer(serializers.ModelSerializer):
     def get_thumbnail(self, obj):
         """Get absolute URL for thumbnail field."""
         if obj.thumbnail:
+            from toybox.image_utils import get_image_url
             request = self.context.get('request')
-            if request:
-                from toybox.image_utils import build_https_absolute_uri
-                return build_https_absolute_uri(request, obj.thumbnail.url)
-            thumbnail_url = obj.thumbnail.url
-            # HTTPをHTTPSに置き換え
-            if thumbnail_url.startswith('http://'):
-                thumbnail_url = thumbnail_url.replace('http://', 'https://', 1)
-            return thumbnail_url
+            try:
+                # ImageFieldからURLを取得
+                thumbnail_url = get_image_url(
+                    image_field=obj.thumbnail,
+                    request=request,
+                    verify_exists=False
+                )
+                return thumbnail_url
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to get thumbnail URL for submission {obj.id}: {e}')
+                # フォールバック: 直接URLを取得
+                if request:
+                    from toybox.image_utils import build_https_absolute_uri
+                    return build_https_absolute_uri(request, obj.thumbnail.url)
+                thumbnail_url = obj.thumbnail.url
+                if thumbnail_url.startswith('http://'):
+                    thumbnail_url = thumbnail_url.replace('http://', 'https://', 1)
+                return thumbnail_url
         return None
     
     def get_thumbnail_url(self, obj):

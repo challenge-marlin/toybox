@@ -72,10 +72,15 @@ urlpatterns += [
     path('api/users/', include('users.urls')),
     # Profile endpoints - specific paths first to avoid conflicts
     # Accept both with and without trailing slash to avoid 301 -> GET redirects
-    path('api/user/profile/upload', user_views.ProfileUploadView.as_view(), name='user-profile-upload-noslash'),
+    # IMPORTANT: Order matters - more specific paths must come before parameterized paths
+    path('api/user/profile/set-studysphere-token/', user_views.ProfileSetStudySphereTokenView.as_view(), name='user-profile-set-studysphere-token'),
+    path('api/user/profile/set-studysphere-token', user_views.ProfileSetStudySphereTokenView.as_view(), name='user-profile-set-studysphere-token-noslash'),
+    path('api/user/profile/link-studysphere/', user_views.ProfileLinkStudySphereView.as_view(), name='user-profile-link-studysphere'),
+    path('api/user/profile/link-studysphere', user_views.ProfileLinkStudySphereView.as_view(), name='user-profile-link-studysphere-noslash'),
     path('api/user/profile/upload/', user_views.ProfileUploadView.as_view(), name='user-profile-upload'),
-    path('api/user/profile/reset', user_views.ProfileResetView.as_view(), name='user-profile-reset-noslash'),
+    path('api/user/profile/upload', user_views.ProfileUploadView.as_view(), name='user-profile-upload-noslash'),
     path('api/user/profile/reset/', user_views.ProfileResetView.as_view(), name='user-profile-reset'),
+    path('api/user/profile/reset', user_views.ProfileResetView.as_view(), name='user-profile-reset-noslash'),
     path('api/user/profile/<str:anon_id>/', user_views.ProfileGetView.as_view(), name='user-profile-get'),
     path('api/user/profile/', user_views.ProfileUpdateView.as_view(), name='user-profile'),
     path('api/cards/', include('gamification.urls')),

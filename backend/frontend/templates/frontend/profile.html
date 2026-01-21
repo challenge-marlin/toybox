@@ -219,6 +219,20 @@
         </div>
     </section>
     
+    <section class="profile-section">
+        <h2>StudySphere連携</h2>
+        <div id="studysphere-status" style="margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--steam-iron-300);"></div>
+        <div id="studysphere-token-container" style="display: none;">
+            <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+                <input type="text" id="studysphere-token-input" class="form-input" placeholder="StudySphereトークンを入力" style="flex: 1;">
+                <button id="link-studysphere-button" type="button" onclick="if (typeof linkStudySphere === 'function') { linkStudySphere(); } else { alert('linkStudySphere is not loaded'); }" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-gold-500); border: none; color: #000; font-size: 0.875rem; font-weight: 600; cursor: pointer;">保存</button>
+            </div>
+        </div>
+        <button id="show-token-input-button" type="button" onclick="if (typeof showTokenInput === 'function') { showTokenInput(); } else { alert('showTokenInput is not loaded'); }" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-gold-500); border: none; color: #000; font-size: 0.875rem; font-weight: 600; cursor: pointer;">トークンを入力</button>
+        <div id="studysphere-error" style="margin-top: 0.5rem; font-size: 0.75rem; color: #fecaca; display: none;"></div>
+        <div id="studysphere-success" style="margin-top: 0.5rem; font-size: 0.75rem; color: #16a34a; display: none;"></div>
+    </section>
+    
     <div class="save-button">
         <button id="save-button">変更を保存してマイページへ</button>
     </div>
@@ -286,6 +300,98 @@
                 if (!confirm('アバター画像をデフォルトに戻しますか？')) return;
                 await resetImage('avatar');
                 updateAvatarPreview();
+            };
+        }
+        if (typeof window.showTokenInput !== 'function') {
+            window.showTokenInput = function() {
+                const tokenContainer = document.getElementById('studysphere-token-container');
+                const showButton = document.getElementById('show-token-input-button');
+                
+                if (tokenContainer) {
+                    tokenContainer.style.display = 'block';
+                }
+                if (showButton) {
+                    showButton.style.display = 'none';
+                }
+            };
+        }
+        if (typeof window.linkStudySphere !== 'function') {
+            window.linkStudySphere = async function() {
+                const tokenInput = document.getElementById('studysphere-token-input');
+                const linkButton = document.getElementById('link-studysphere-button');
+                const errorDiv = document.getElementById('studysphere-error');
+                const successDiv = document.getElementById('studysphere-success');
+                
+                if (!tokenInput || !linkButton) {
+                    alert('必要な要素が見つかりません');
+                    return;
+                }
+                
+                const token = tokenInput.value.trim();
+                if (!token) {
+                    alert('トークンを入力してください');
+                    return;
+                }
+                
+                linkButton.disabled = true;
+                linkButton.textContent = '保存中…';
+                
+                try {
+                    const headers = {};
+                    const token_auth = getAccessTokenSafe();
+                    const csrf = getCsrfTokenSafe();
+                    if (token_auth) headers['Authorization'] = `Bearer ${token_auth}`;
+                    if (csrf) headers['X-CSRFToken'] = csrf;
+                    headers['Content-Type'] = 'application/json';
+                    
+                    const response = await fetch('/api/user/profile/set-studysphere-token/', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ token: token })
+                    });
+                    
+                    let result;
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        result = await response.json();
+                    } else {
+                        const text = await response.text();
+                        try {
+                            result = JSON.parse(text);
+                        } catch (e) {
+                            throw new Error(text || `HTTP ${response.status}`);
+                        }
+                    }
+                    
+                    if (response.ok && result && result.ok !== false) {
+                        alert('保存しました');
+                        tokenInput.value = '';
+                        if (successDiv) {
+                            successDiv.textContent = result.message || 'StudySphereトークンを保存しました';
+                            successDiv.style.display = 'block';
+                        }
+                        if (errorDiv) {
+                            errorDiv.style.display = 'none';
+                        }
+                    } else {
+                        const errorMsg = result?.error || result?.message || '保存に失敗しました';
+                        throw new Error(errorMsg);
+                    }
+                } catch (error) {
+                    console.error('StudySphere token save error:', error);
+                    const errorMessage = error.message || 'トークンの保存に失敗しました';
+                    alert(`エラー: ${errorMessage}`);
+                    if (errorDiv) {
+                        errorDiv.textContent = errorMessage;
+                        errorDiv.style.display = 'block';
+                    }
+                    if (successDiv) {
+                        successDiv.style.display = 'none';
+                    }
+                } finally {
+                    linkButton.disabled = false;
+                    linkButton.textContent = '保存';
+                }
             };
         }
     })();

@@ -150,12 +150,46 @@
         background: var(--steam-gold-500);
         color: #000;
     }
+    
+    .login-divider {
+        display: flex;
+        align-items: center;
+        margin: 1.5rem 0;
+        text-align: center;
+    }
+    
+    .login-divider::before,
+    .login-divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid var(--steam-iron-700);
+    }
+    
+    .login-divider span {
+        padding: 0 1rem;
+        color: var(--steam-iron-400);
+        font-size: 0.875rem;
+    }
+    
+    .studysphere-login-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--steam-iron-700);
+    }
+    
+    .studysphere-login-section h2 {
+        font-size: 1rem;
+        color: var(--steam-gold-300);
+        margin-bottom: 0.75rem;
+        text-align: center;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="login-container">
     <h1>ToyBox</h1>
+    {% csrf_token %}
     <form id="loginForm">
         <div class="form-group">
             <label for="display_id">ID</label>
@@ -169,6 +203,24 @@
         <div id="success" class="success" style="display: none;"></div>
         <button type="submit" class="btn btn-primary" id="submitBtn" style="width: 100%; padding: 0.75rem;">ログイン</button>
     </form>
+    
+    <div class="login-divider">
+        <span>または</span>
+    </div>
+    
+    <div class="studysphere-login-section">
+        <h2>StudySphereでログイン</h2>
+        <form id="studysphereLoginForm">
+            <div class="form-group">
+                <label for="studysphere_token">StudySphereトークン</label>
+                <input type="text" id="studysphere_token" name="studysphere_token" placeholder="StudySphereトークンを入力" autocomplete="off">
+            </div>
+            <div id="studysphere-error" class="error" style="display: none;"></div>
+            <div id="studysphere-success" class="success" style="display: none;"></div>
+            <button type="submit" class="btn btn-primary" id="studysphereSubmitBtn" style="width: 100%; padding: 0.75rem; background: var(--steam-gold-500); color: #000;">StudySphereでログイン</button>
+        </form>
+    </div>
+    
     <div class="back-link">
         <a href="/">トップページに戻る</a>
     </div>
@@ -566,6 +618,105 @@
             await handleNormalLogin(e);
         }
     });
+    
+    // StudySphereトークンでログイン
+    async function handleStudySphereTokenLogin(e) {
+        e.preventDefault();
+        
+        const token = document.getElementById('studysphere_token').value.trim();
+        const errorDiv = document.getElementById('studysphere-error');
+        const successDiv = document.getElementById('studysphere-success');
+        const submitBtn = document.getElementById('studysphereSubmitBtn');
+        
+        if (!token) {
+            if (errorDiv) {
+                errorDiv.textContent = 'トークンを入力してください';
+                errorDiv.style.display = 'block';
+            }
+            if (successDiv) {
+                successDiv.style.display = 'none';
+            }
+            return;
+        }
+        
+        // CSRFトークンを取得
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        
+        // デバッグログ
+        console.log('[StudySphere Token Login] Attempting login with token:', token.substring(0, 20) + '...', 'length:', token.length);
+        console.log('[StudySphere Token Login] CSRF token:', csrfToken ? csrfToken.substring(0, 20) + '...' : 'not found');
+        
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'ログイン中...';
+        
+        try {
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            // CSRFトークンをヘッダーに追加
+            if (csrfToken) {
+                headers['X-CSRFToken'] = csrfToken;
+            }
+            
+            const response = await fetch('/api/auth/login-with-studysphere-token/', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    token: token
+                })
+            });
+            
+            console.log('[StudySphere Token Login] Response status:', response.status);
+            const data = await response.json();
+            console.log('[StudySphere Token Login] Response data:', data);
+            
+            if (response.ok && data.access) {
+                setAccessToken(data.access);
+                if (data.refresh) {
+                    setRefreshToken(data.refresh);
+                }
+                
+                // 警告メッセージがある場合は表示
+                if (data.penalty && data.penalty.message) {
+                    showPenaltyModal(data.penalty.type, data.penalty.message);
+                } else {
+                    const redirectUrl = (data.user && data.user.role === 'FREE_USER') ? '/upgrade/' : '/me/';
+                    const redirectMessage = (data.user && data.user.role === 'FREE_USER') 
+                        ? 'ログイン成功！課金についてのページへ移動します...' 
+                        : 'ログイン成功！マイページへ移動します...';
+                    
+                    if (successDiv) {
+                        successDiv.textContent = redirectMessage;
+                        successDiv.style.display = 'block';
+                    }
+                    setTimeout(() => {
+                        window.location.href = redirectUrl;
+                    }, 1000);
+                }
+            } else {
+                console.error('[StudySphere Token Login] Login failed:', data);
+                if (errorDiv) {
+                    errorDiv.textContent = data.error || 'ログインに失敗しました';
+                    errorDiv.style.display = 'block';
+                }
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'StudySphereでログイン';
+            }
+        } catch (err) {
+            console.error('[StudySphere Token Login] Error:', err);
+            if (errorDiv) {
+                errorDiv.textContent = 'エラーが発生しました: ' + err.message;
+                errorDiv.style.display = 'block';
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'StudySphereでログイン';
+        }
+    }
+    
+    document.getElementById('studysphereLoginForm').addEventListener('submit', handleStudySphereTokenLogin);
     
     function showPenaltyModal(type, message) {
         const modal = document.getElementById('penaltyModal');

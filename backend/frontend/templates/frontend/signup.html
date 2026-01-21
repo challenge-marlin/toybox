@@ -598,54 +598,6 @@
         }
         
         console.log('[SSO Signup] No ticket found, normal signup');
-        
-        // セッションストレージからSSO情報を取得
-        const ssoDataStr = sessionStorage.getItem('sso_signup_data');
-        console.log('[SSO Signup] sessionStorage data:', ssoDataStr);
-        
-        if (!ssoDataStr) {
-            console.warn('[SSO Signup] SSO signup data not found in sessionStorage');
-            return;
-        }
-        
-        try {
-            ssoSignupData = JSON.parse(ssoDataStr);
-            console.log('[SSO Signup] Parsed SSO data:', ssoSignupData);
-            
-            // SSO情報がある場合、メッセージを表示
-            const signupMessage = document.getElementById('signup-message');
-            if (signupMessage && ssoSignupData.studysphere_username) {
-                signupMessage.textContent = `StudySphere（${ssoSignupData.studysphere_username}）との連携でアカウントを作成します`;
-                signupMessage.style.display = 'block';
-                console.log('[SSO Signup] Message displayed');
-            }
-            
-            // ユーザーIDフィールドにStudySphereのusernameを自動入力（オプション）
-            const usernameInput = document.getElementById('username');
-            if (usernameInput && ssoSignupData.studysphere_username) {
-                // 小文字・英数字・アンダースコアのみに変換
-                const suggestedUsername = ssoSignupData.studysphere_username
-                    .toLowerCase()
-                    .replace(/[^a-z0-9_]/g, '_')
-                    .substring(0, 30);
-                usernameInput.value = suggestedUsername;
-                console.log('[SSO Signup] Username auto-filled:', suggestedUsername);
-            }
-            
-            // SSO経由の場合はパスワードフィールドを非表示またはオプションにする
-            const passwordField = document.getElementById('password-field');
-            const passwordInput = document.getElementById('password');
-            const passwordLabel = document.getElementById('password-label');
-            if (passwordField && passwordInput && passwordLabel) {
-                passwordInput.required = false;
-                passwordInput.style.display = 'none';
-                passwordLabel.style.display = 'none';
-                passwordField.style.display = 'none';
-                console.log('[SSO Signup] Password field hidden for SSO signup');
-            }
-        } catch (err) {
-            console.error('[SSO Signup] Failed to parse SSO signup data:', err);
-        }
     }
     
     // チケットを検証してSSO情報を取得
@@ -762,22 +714,46 @@
         const agreeButton = document.getElementById('terms-agree-button');
         const termsModal = document.getElementById('terms-agree-modal');
         const signupFormContainer = document.getElementById('signup-form-container');
+        const termsContent = document.getElementById('terms-content');
+        
+        if (!termsContentWrapper || !scrollIndicator || !agreeButton) {
+            console.error('[Terms Agreement] Required elements not found');
+            return;
+        }
         
         let hasScrolledToBottom = false;
         
-        // スクロール検知
-        termsContentWrapper.addEventListener('scroll', function() {
+        function checkScrollPosition() {
             const scrollTop = termsContentWrapper.scrollTop;
             const scrollHeight = termsContentWrapper.scrollHeight;
             const clientHeight = termsContentWrapper.clientHeight;
             
-            // 最後までスクロールしたかチェック（10pxの余裕を持たせる）
-            if (scrollTop + clientHeight >= scrollHeight - 10) {
+            // スクロール位置が最後に到達したかチェック（50pxの余裕を持たせる）
+            // scroll-indicatorがstickyでbottom:0にあるため、余裕を多めに取る
+            const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
+            
+            // または、実際のコンテンツの最後の要素が表示領域に入っているかチェック
+            let contentBottomVisible = false;
+            if (termsContent) {
+                const contentRect = termsContent.getBoundingClientRect();
+                const wrapperRect = termsContentWrapper.getBoundingClientRect();
+                // コンテンツの下端がラッパーの下端より上にある（または近い）場合
+                contentBottomVisible = contentRect.bottom <= wrapperRect.bottom + 50;
+            }
+            
+            if (isAtBottom || contentBottomVisible) {
                 if (!hasScrolledToBottom) {
                     hasScrolledToBottom = true;
                     scrollIndicator.style.display = 'none';
                     agreeButton.classList.add('enabled');
                     agreeButton.disabled = false;
+                    console.log('[Terms Agreement] Scrolled to bottom, button enabled', {
+                        scrollTop: scrollTop,
+                        scrollHeight: scrollHeight,
+                        clientHeight: clientHeight,
+                        isAtBottom: isAtBottom,
+                        contentBottomVisible: contentBottomVisible
+                    });
                 }
             } else {
                 if (hasScrolledToBottom) {
@@ -785,21 +761,49 @@
                     scrollIndicator.style.display = 'block';
                     agreeButton.classList.remove('enabled');
                     agreeButton.disabled = true;
+                    console.log('[Terms Agreement] Not at bottom, button disabled', {
+                        scrollTop: scrollTop,
+                        scrollHeight: scrollHeight,
+                        clientHeight: clientHeight
+                    });
                 }
             }
+        }
+        
+        // スクロール検知（throttleなしで即座にチェック）
+        termsContentWrapper.addEventListener('scroll', checkScrollPosition, { passive: true });
+        
+        // ウィンドウリサイズ時にもチェック
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(checkScrollPosition, 100);
         });
         
         // 初期状態で既に最後までスクロールされている場合
-        if (termsContentWrapper.scrollHeight <= termsContentWrapper.clientHeight) {
-            hasScrolledToBottom = true;
-            scrollIndicator.style.display = 'none';
-            agreeButton.classList.add('enabled');
-            agreeButton.disabled = false;
-        }
+        // 複数回チェックして確実に検知
+        setTimeout(checkScrollPosition, 50);
+        setTimeout(checkScrollPosition, 200);
+        setTimeout(checkScrollPosition, 500);
+        
+        // スクロール可能な距離が0または非常に小さい場合（コンテンツが短い場合）
+        setTimeout(function() {
+            if (termsContentWrapper.scrollHeight <= termsContentWrapper.clientHeight + 50) {
+                hasScrolledToBottom = true;
+                scrollIndicator.style.display = 'none';
+                agreeButton.classList.add('enabled');
+                agreeButton.disabled = false;
+                console.log('[Terms Agreement] Content fits in viewport, button enabled');
+            }
+        }, 100);
         
         // 同意ボタンのクリック処理
         agreeButton.addEventListener('click', function() {
             if (!hasScrolledToBottom || agreeButton.disabled) {
+                console.log('[Terms Agreement] Button click ignored:', {
+                    hasScrolledToBottom: hasScrolledToBottom,
+                    disabled: agreeButton.disabled
+                });
                 return;
             }
             

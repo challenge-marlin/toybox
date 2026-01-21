@@ -74,6 +74,13 @@
         text-decoration: underline;
     }
     
+    /* 称号を非表示（みんなの投稿では表示しない） */
+    .feed-item-header .feed-item-title,
+    .feed-item-ring .feed-item-title,
+    .feed-item .feed-item-title {
+        display: none !important;
+    }
+    
     .feed-item-image {
         width: 100%;
         height: 100%;
@@ -495,6 +502,12 @@
         }
         
         popularFeed.innerHTML = popularItems.map(item => renderFeedItem(item)).join('');
+        
+        // 称号要素を完全に削除（念のため）- feed-item-ring内も含む
+        popularFeed.querySelectorAll('.feed-item-title').forEach(el => el.remove());
+        popularFeed.querySelectorAll('.feed-item-ring .feed-item-title').forEach(el => el.remove());
+        // feed-item-ring内の画像要素で称号画像の可能性があるものも削除
+        popularFeed.querySelectorAll('.feed-item-ring img[alt*="称号"], .feed-item-ring img[alt*="title"]').forEach(el => el.remove());
     }
     
     function renderFeedItem(item) {
@@ -503,7 +516,10 @@
         const itemClass = isGame ? 'game' : (isVideo ? 'video' : '');
         
         let content = '';
-        const displayImageUrl = item.displayImageUrl || item.imageUrl;
+        // サムネイルURLを優先的に使用（画像投稿の場合）
+        const thumbnailUrl = item.imageThumbnailUrl || item.displayImageUrl;
+        const originalImageUrl = item.imageUrl || item.displayImageUrl;
+        const displayImageUrl = thumbnailUrl || originalImageUrl;
         if (isGame) {
             // サムネイル画像があれば表示、なければアイコンを表示
             if (displayImageUrl) {
@@ -535,21 +551,27 @@
                 </div>
             `;
         } else {
-            content = `<img src="${item.imageUrl || item.displayImageUrl || ''}" alt="投稿画像" class="feed-item-image" onclick="openLightbox('${item.imageUrl || item.displayImageUrl || ''}', 'image', '${item.id}')" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; color: var(--steam-iron-300); font-size: 0.875rem;\\'>画像を読み込めませんでした</div>';">`;
+            // 画像投稿の場合：サムネイルを表示、クリック時は元画像を表示
+            const imageSrc = thumbnailUrl || originalImageUrl || '';
+            // ライトボックスでは必ず元画像URLを使用（imageUrlを最優先、なければdisplayImageUrl）
+            const lightboxImageSrc = item.imageUrl || item.image_url || item.displayImageUrl || item.display_image_url || imageSrc;
+            content = `<img src="${imageSrc}" alt="投稿画像" class="feed-item-image" onclick="openLightbox('${lightboxImageSrc}', 'image', '${item.id}')" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; color: var(--steam-iron-300); font-size: 0.875rem;\\'>画像を読み込めませんでした</div>';">`;
         }
         
+        // NOTE: 「みんなの投稿」では称号を表示しない（投稿画像に重なるため）
+        
         return `
-            <div class="feed-item ${itemClass}">
+            <div class="feed-item ${itemClass}" data-submission-id="${item.id}">
                 <div class="feed-item-ring"></div>
                 <div class="feed-item-header">
-                    <a href="/profile/view/?user=${encodeURIComponent(item.anonId || 'unknown')}">${item.displayName || item.anonId || 'Unknown'}</a>
+                    <a href="/profile/view/?user=${encodeURIComponent(item.anonUrlId || item.anonId || 'unknown')}">${item.displayName || item.anonId || 'Unknown'}</a>
                 </div>
                 ${content}
-                <button class="feed-like-btn ${item.liked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${item.liked || false})">
+                <button class="feed-like-btn ${item.liked ? 'liked' : ''}" data-submission-id="${item.id}" onclick="toggleLike('${item.id}', ${item.liked || false})">
                     <svg viewBox="0 0 24 24" fill="${item.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
                     </svg>
-                    <span>${item.likesCount || 0}</span>
+                    <span class="feed-like-count">${item.likesCount || 0}</span>
                 </button>
                 ${isGame ? `
                     <a href="${item.gameUrl}" target="_blank" rel="noreferrer" class="feed-game-link" title="ゲームを開く" onclick="event.stopPropagation()">
@@ -573,11 +595,42 @@
         
         feed.innerHTML = items.map(item => renderFeedItem(item)).join('');
         
+        // 称号要素を完全に削除（念のため）- feed-item-ring内も含む
+        feed.querySelectorAll('.feed-item-title').forEach(el => el.remove());
+        feed.querySelectorAll('.feed-item-ring .feed-item-title').forEach(el => el.remove());
+        // feed-item-ring内の画像要素で称号画像の可能性があるものも削除
+        feed.querySelectorAll('.feed-item-ring img[alt*="称号"], .feed-item-ring img[alt*="title"]').forEach(el => el.remove());
+        
         // 最初のいいねボタンにIDを追加（オンボーディング用）
         const firstLikeBtn = feed.querySelector('.feed-like-btn');
         if (firstLikeBtn && !firstLikeBtn.id) {
             firstLikeBtn.id = 'like-button-entry';
         }
+    }
+    
+    // いいねボタンとカウントだけを更新する関数（画像は再読み込みしない）
+    function updateLikeButton(submissionId, liked, likesCount) {
+        // 通常フィードと人気フィードの両方から該当するボタンを探す
+        const feedButtons = document.querySelectorAll(`.feed-like-btn[data-submission-id="${submissionId}"]`);
+        feedButtons.forEach(btn => {
+            const countSpan = btn.querySelector('.feed-like-count');
+            const svg = btn.querySelector('svg');
+            
+            if (countSpan) {
+                countSpan.textContent = likesCount || 0;
+            }
+            
+            if (liked) {
+                btn.classList.add('liked');
+                if (svg) svg.setAttribute('fill', 'currentColor');
+            } else {
+                btn.classList.remove('liked');
+                if (svg) svg.setAttribute('fill', 'none');
+            }
+            
+            // onclick属性も更新（次回クリック時の状態を正しく反映）
+            btn.setAttribute('onclick', `toggleLike('${submissionId}', ${liked})`);
+        });
     }
     
     function toggleLike(submissionId, currentLiked) {
@@ -624,9 +677,8 @@
             }
         }
         
-        // 両方のレンダリングを更新
-        renderFeed();
-        renderPopularFeed();
+        // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+        updateLikeButton(submissionId, newLiked, itemInFeed ? itemInFeed.likesCount : (itemInPopular ? itemInPopular.likesCount : 0));
         
         const method = currentLiked ? 'DELETE' : 'POST';
         fetch(`/api/submissions/${encodeURIComponent(submissionId)}/like/`, {
@@ -669,9 +721,8 @@
                     }
                 }
                 
-                // 両方のレンダリングを更新
-                renderFeed();
-                renderPopularFeed();
+                // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+                updateLikeButton(submissionId, newLikedState, newLikesCount);
             }
         })
         .catch(err => {
@@ -702,9 +753,9 @@
                 }
             }
             
-            // 両方のレンダリングを更新
-            renderFeed();
-            renderPopularFeed();
+            // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+            const rollbackCount = itemInFeed ? itemInFeed.likesCount : (itemInPopular ? itemInPopular.likesCount : 0);
+            updateLikeButton(submissionId, currentLiked, rollbackCount);
             console.error('Failed to toggle like:', err);
         });
     }
@@ -795,6 +846,14 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    
+                    // 画像の場合は、APIから取得した元画像URLを使用（サムネイルではなく）
+                    if (type === 'image' && lightboxImage) {
+                        const originalImageUrl = data.imageUrl || data.image_url || data.displayImageUrl || data.display_image_url || src;
+                        if (originalImageUrl && originalImageUrl !== src) {
+                            lightboxImage.src = originalImageUrl;
+                        }
+                    }
                     
                     // カード上のデータがない場合のみ、APIから取得したデータを使用
                     if (!cardItem && likeBtn && likeCount) {
@@ -968,9 +1027,8 @@
             itemInPopular.likesCount = newCount;
         }
         
-        // レンダリングを更新
-        renderFeed();
-        renderPopularFeed();
+        // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+        updateLikeButton(currentLightboxAssetId, newLiked, newCount);
         
         // API呼び出し
         try {
@@ -1009,8 +1067,8 @@
                     itemInPopular.likesCount = serverCount;
                 }
                 
-                renderFeed();
-                renderPopularFeed();
+                // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+                updateLikeButton(currentLightboxAssetId, serverLiked, serverCount);
             }
         } catch (err) {
             console.error('Failed to toggle like:', err);
@@ -1033,8 +1091,8 @@
                 itemInPopular.likesCount = currentCount;
             }
             
-            renderFeed();
-            renderPopularFeed();
+            // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+            updateLikeButton(currentLightboxAssetId, isCurrentlyLiked, currentCount);
         }
     }
     

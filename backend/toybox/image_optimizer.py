@@ -153,6 +153,150 @@ def convert_and_save_image(
         return False, None
 
 
+def generate_thumbnail(
+    image_file,
+    max_size: int = 300,
+    quality: int = 80
+) -> Optional[BytesIO]:
+    """
+    サムネイル画像を生成する（300px程度にリサイズ）
+    
+    Args:
+        image_file: 画像ファイルオブジェクト（ファイルパス、BytesIO、またはファイルオブジェクト）
+        max_size: 最大サイズ（幅・高さの最大値、デフォルト300px）
+        quality: JPG品質（1-100、デフォルト80）
+    
+    Returns:
+        BytesIO: サムネイル画像データ、またはNone（エラー時）
+    """
+    return optimize_image_to_jpg(
+        image_file,
+        max_width=max_size,
+        max_height=max_size,
+        quality=quality,
+        preserve_alpha=False
+    )
+
+
+def create_thumbnail_from_path(
+    source_path: str,
+    thumbnail_path: str,
+    max_size: int = 300,
+    quality: int = 80
+) -> Tuple[bool, Optional[str]]:
+    """
+    元画像からサムネイルを生成して保存する
+    
+    Args:
+        source_path: 元の画像ファイルパス（MEDIA_ROOTからの相対パスまたは絶対パス）
+        thumbnail_path: サムネイル保存先パス（MEDIA_ROOTからの相対パス）
+        max_size: 最大サイズ（幅・高さの最大値、デフォルト300px）
+        quality: JPG品質（デフォルト80）
+    
+    Returns:
+        tuple: (success: bool, saved_path: str or None)
+    """
+    return convert_and_save_image(
+        source_path,
+        thumbnail_path,
+        max_width=max_size,
+        max_height=max_size,
+        quality=quality,
+        preserve_original=True
+    )
+
+
+def get_thumbnail_url(
+    original_url: str,
+    max_size: int = 300,
+    quality: int = 80
+) -> Optional[str]:
+    """
+    サムネイルURLを取得する（存在しない場合は生成）
+    
+    Args:
+        original_url: 元の画像URL
+        max_size: 最大サイズ（幅・高さの最大値、デフォルト300px）
+        quality: JPG品質（デフォルト80）
+    
+    Returns:
+        str: サムネイルURL、またはNone（元のURLを返す）
+    """
+    try:
+        from urllib.parse import urlparse
+        from toybox.image_utils import _get_file_path_from_url
+        
+        # URLからファイルパスを取得
+        parsed = urlparse(original_url)
+        original_path = parsed.path
+        
+        # ファイルパスを解決
+        file_path = _get_file_path_from_url(original_path)
+        if not file_path or not file_path.exists():
+            logger.debug(f'Original file not found: {original_path}')
+            return None
+        
+        # サムネイルファイルのパスを生成
+        thumbnail_filename = f"{file_path.stem}_thumb.jpg"
+        thumbnail_relative_path = file_path.relative_to(Path(settings.MEDIA_ROOT))
+        thumbnail_dir = thumbnail_relative_path.parent
+        thumbnail_path = thumbnail_dir / thumbnail_filename
+        
+        # サムネイルファイルが存在するか確認
+        thumbnail_full_path = Path(settings.MEDIA_ROOT) / thumbnail_path
+        if thumbnail_full_path.exists():
+            # 既に存在する場合はURLを返す
+            # URLのパス部分を置換
+            parsed_path = parsed.path
+            if parsed_path.endswith(file_path.name):
+                thumbnail_url = parsed_path.replace(file_path.name, thumbnail_filename)
+            else:
+                thumbnail_url = f"{parsed_path.rsplit('/', 1)[0]}/{thumbnail_filename}"
+            
+            # スキームとホストを追加
+            if parsed.scheme and parsed.netloc:
+                thumbnail_url = f"{parsed.scheme}://{parsed.netloc}{thumbnail_url}"
+            elif thumbnail_url.startswith('/'):
+                # 相対パスの場合は元のURLのベースを使用
+                base_url = original_url.rsplit('/', 1)[0]
+                thumbnail_url = f"{base_url}/{thumbnail_filename}"
+            
+            return thumbnail_url
+        
+        # サムネイルを生成
+        success, saved_path = create_thumbnail_from_path(
+            str(file_path),
+            str(thumbnail_path),
+            max_size=max_size,
+            quality=quality
+        )
+        
+        if success:
+            # URLのパス部分を置換
+            parsed_path = parsed.path
+            if parsed_path.endswith(file_path.name):
+                thumbnail_url = parsed_path.replace(file_path.name, thumbnail_filename)
+            else:
+                thumbnail_url = f"{parsed_path.rsplit('/', 1)[0]}/{thumbnail_filename}"
+            
+            # スキームとホストを追加
+            if parsed.scheme and parsed.netloc:
+                thumbnail_url = f"{parsed.scheme}://{parsed.netloc}{thumbnail_url}"
+            elif thumbnail_url.startswith('/'):
+                # 相対パスの場合は元のURLのベースを使用
+                base_url = original_url.rsplit('/', 1)[0]
+                thumbnail_url = f"{base_url}/{thumbnail_filename}"
+            
+            return thumbnail_url
+        
+        # サムネイル生成に失敗した場合は元のURLを返す
+        return original_url
+    
+    except Exception as e:
+        logger.debug(f'Failed to get thumbnail URL: {e}')
+        return None
+
+
 def get_optimized_image_url(
     original_url: str,
     max_width: Optional[int] = None,

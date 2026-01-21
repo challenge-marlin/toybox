@@ -744,13 +744,12 @@
             
             console.log('Profile data received:', data);
             
-            // ユーザー名を表示
-            if (data.displayName) {
-                document.getElementById('profile-name').textContent = data.displayName;
-                console.log('Set profile name to:', data.displayName);
-            } else if (data.anonId) {
-                document.getElementById('profile-name').textContent = data.anonId;
-                console.log('Set profile name to anonId:', data.anonId);
+            // ユーザー名を表示（displayNameを優先、なければanonId）
+            const profileNameElement = document.getElementById('profile-name');
+            if (profileNameElement) {
+                const displayName = data.displayName || data.display_name || data.anonId || 'Unknown';
+                profileNameElement.textContent = displayName;
+                console.log('Set profile name to:', displayName);
             }
             
             // プロフィール文を表示
@@ -787,13 +786,17 @@
             
             const avatarDiv = document.getElementById('profile-avatar');
             const avatarUrl = data.avatarUrl || data.avatar_url;
-            console.log('[Profile Image Debug] me.html - Avatar URL:', avatarUrl);
+            const avatarThumbnailUrl = data.avatarThumbnailUrl || data.avatar_thumbnail_url;
+            console.log('[Profile Image Debug] me.html - Avatar URL:', avatarUrl, 'Thumbnail:', avatarThumbnailUrl);
             
-            if (avatarUrl) {
+            // サムネイルがあればそれを使用、なければ元画像を使用
+            const avatarDisplayUrl = avatarThumbnailUrl || avatarUrl;
+            
+            if (avatarDisplayUrl) {
                 const displayName = data.displayName || data.anonId || 'U';
                 const firstChar = displayName.charAt(0).toUpperCase();
-                console.log('[Profile Image Debug] me.html - Setting avatar image:', avatarUrl);
-                avatarDiv.innerHTML = `<img src="${avatarUrl}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;" onerror="console.error('[Profile Image Debug] me.html - Avatar image load error:', '${avatarUrl}'); this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;\\'>${firstChar}</span>';">`;
+                console.log('[Profile Image Debug] me.html - Setting avatar image:', avatarDisplayUrl);
+                avatarDiv.innerHTML = `<img src="${avatarDisplayUrl}" alt="avatar" style="height: 100%; width: 100%; object-fit: cover;" onerror="console.error('[Profile Image Debug] me.html - Avatar image load error:', '${avatarDisplayUrl}'); this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;\\'>${firstChar}</span>';">`;
             } else {
                 console.log('[Profile Image Debug] me.html - No avatar URL, showing fallback');
                 const displayName = data.displayName || data.anonId || 'U';
@@ -1007,7 +1010,10 @@
                     const isGame = item.gameUrl;
                     const isVideo = item.videoUrl;
                     const itemClass = isGame ? 'game' : (isVideo ? 'video' : '');
-                    const imageUrl = item.displayImageUrl || item.imageUrl;
+                    // サムネイルURLを優先的に使用（画像投稿の場合）
+                    const thumbnailUrl = item.imageThumbnailUrl || item.displayImageUrl;
+                    const originalImageUrl = item.imageUrl || item.displayImageUrl;
+                    const imageUrl = thumbnailUrl || originalImageUrl;
                     
                     let content = '';
                     let onClickHandler = '';
@@ -1031,10 +1037,13 @@
                         onClickHandler = `onclick="openLightbox('${assetUrl}', 'video', '${item.id}')"`;
                         content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; position: relative;" ${onClickHandler}><video src="${assetUrl}" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px;" muted preload="metadata"></video><div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><div style="height: 3rem; width: 3rem; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></div></div></div>`;
                     } else {
-                        assetUrl = imageUrl || '';
+                        // 画像投稿の場合：サムネイルを表示、クリック時は元画像を表示
+                        const imageSrc = thumbnailUrl || originalImageUrl || imageUrl || '';
+                        const lightboxImageSrc = originalImageUrl || imageSrc;
+                        assetUrl = lightboxImageSrc;
                         assetType = 'image';
-                        onClickHandler = `onclick="openLightbox('${assetUrl}', 'image', '${item.id}')"`;
-                        content = `<img src="${assetUrl}" alt="submission" style="width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; cursor: zoom-in;" ${onClickHandler}>`;
+                        onClickHandler = `onclick="openLightbox('${lightboxImageSrc}', 'image', '${item.id}')"`;
+                        content = `<img src="${imageSrc}" alt="submission" style="width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; cursor: zoom-in;" ${onClickHandler}>`;
                     }
                     
                     return `
@@ -1093,7 +1102,7 @@
         
         return `<li class="timeline-item">
             ${avatarHtml}
-            <a href="/profile/view/?user=${encodeURIComponent(item.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
+            <a href="/profile/view/?user=${encodeURIComponent(item.anonUrlId || item.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
             <span>さんが${typeText}を投稿しました。</span>
         </li>`;
     }
@@ -1206,8 +1215,9 @@
                 }
                 list.innerHTML = uniqueSubmitters.map(s => {
                     const displayName = s.displayName || s.anonId;
+                    const urlId = s.anonUrlId || s.anonId;
                     return `<li style="display: flex; align-items: center; gap: 0.5rem;">
-                        <a href="/profile/view/?user=${encodeURIComponent(s.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
+                        <a href="/profile/view/?user=${encodeURIComponent(urlId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
                     </li>`;
                 }).join('');
             } else {
@@ -1243,8 +1253,9 @@
             if (data.ranking && data.ranking.length > 0) {
                 list.innerHTML = data.ranking.map((r, index) => {
                     const displayName = r.displayName || r.anonId;
+                    const urlId = r.anonUrlId || r.anonId;
                     return `<li style="display: flex; align-items: center; gap: 0.5rem;">
-                        <a href="/profile/view/?user=${encodeURIComponent(r.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
+                        <a href="/profile/view/?user=${encodeURIComponent(urlId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
                         <span style="color: var(--steam-iron-300); font-size: 0.75rem;">(${r.count}件)</span>
                     </li>`;
                 }).join('');

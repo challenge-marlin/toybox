@@ -245,6 +245,31 @@ class SubmitUploadView(APIView):
                 'detail': error_message
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+        # 画像の場合、サムネイルを生成
+        thumbnail_url = None
+        if not is_video:
+            try:
+                from toybox.image_optimizer import generate_thumbnail
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                from django.conf import settings
+                import os
+                
+                full_path = default_storage.path(saved_path)
+                if os.path.exists(full_path):
+                    thumbnail_data = generate_thumbnail(full_path, max_size=300, quality=80)
+                    if thumbnail_data:
+                        # サムネイルファイル名を生成（元ファイル名に_thumbを追加）
+                        base_name = os.path.basename(saved_path)
+                        name_without_ext = os.path.splitext(base_name)[0]
+                        thumbnail_filename = f'{name_without_ext}_thumb.jpg'
+                        thumbnail_filepath = default_storage.save(f'submissions/{thumbnail_filename}', ContentFile(thumbnail_data.read()))
+                        thumbnail_url_path = f'/uploads/submissions/{thumbnail_filename}'
+                        thumbnail_url = build_file_url(request, thumbnail_url_path, base_path='/uploads/submissions/')
+                        logger.info(f'Generated thumbnail: {thumbnail_filepath}')
+            except Exception as e:
+                logger.warning(f'Failed to generate thumbnail: {e}')
+        
         # URLを構築（/uploads/submissions/パスを使用）
         url_path = f'/uploads/submissions/{os.path.basename(saved_path)}'
         absolute_url = build_file_url(request, url_path, base_path='/uploads/submissions/')
@@ -255,7 +280,8 @@ class SubmitUploadView(APIView):
         return Response({
             'imageUrl': absolute_url if not is_video else None,
             'videoUrl': absolute_url if is_video else None,
-            'displayImageUrl': absolute_url
+            'displayImageUrl': thumbnail_url or absolute_url,  # サムネイルがあればそれを使用
+            'thumbnailUrl': thumbnail_url
         })
 
 
@@ -577,7 +603,9 @@ class FeedView(APIView):
                     item_data = serializer.data
                     
                     # Get image URL (シリアライザーのdisplay_image_urlを使用、サムネイル優先)
-                    image_url = item_data.get('display_image_url') or item_data.get('image') or item_data.get('image_url')
+                    image_url = item_data.get('image') or item_data.get('image_url')
+                    display_image_url = item_data.get('display_image_url') or image_url  # サムネイル優先
+                    image_thumbnail_url = item_data.get('image_thumbnail_url') or None
                     
                     # Get reactions_count from serializer (it will use annotated field if available)
                     reactions_count = item_data.get('reactions_count', 0)
@@ -606,18 +634,23 @@ class FeedView(APIView):
                     feed_items.append({
                         'id': str(item_data.get('id', '')),
                         'anonId': item_data.get('author_display_id') or 'unknown',
+                        'anonUrlId': item_data.get('author_url_id') or item_data.get('author_display_id') or 'unknown',  # URL用のID
                         'displayName': display_name,
                         'avatarUrl': avatar_url,
                         'createdAt': item_data.get('created_at', ''),
-                        'imageUrl': image_url,
+                        'imageUrl': image_url,  # 元画像URL
+                        'imageThumbnailUrl': image_thumbnail_url,  # サムネイルURL
                         'videoUrl': item_data.get('video_url'),
-                        'displayImageUrl': image_url,  # サムネイルが含まれる
+                        'displayImageUrl': display_image_url,  # 表示用（サムネイル優先）
                         'title': title,
                         'caption': item_data.get('caption'),
                         'hashtags': item_data.get('hashtags', []),
                         'gameUrl': item_data.get('game_url'),
                         'likesCount': reactions_count or 0,
                         'liked': item_data.get('user_reacted', False),
+                        'activeTitle': item_data.get('active_title'),  # 称号
+                        'activeTitleImageUrl': item_data.get('active_title_image_url'),  # 称号の画像URL
+                        'titleColor': item_data.get('title_color'),  # 称号の色
                     })
                 except Exception as e:
                     logger.error(f'Error serializing submission {getattr(item, "id", "unknown")}: {str(e)}', exc_info=True)
@@ -813,10 +846,21 @@ class UserSubmissionsView(APIView):
         logger = logging.getLogger(__name__)
         
         try:
-            try:
-                user = User.objects.get(display_id=display_id)
-            except User.DoesNotExist:
-                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            # StudySphere経由のユーザーの場合、「StudySphereUser」が渡される可能性がある
+            # その場合は認証済みユーザーの投稿を返す
+            if display_id == 'StudySphereUser' and request.user.is_authenticated:
+                user = request.user
+            else:
+                # display_idまたはstudysphere_login_codeで検索
+                user = None
+                try:
+                    user = User.objects.get(display_id=display_id)
+                except User.DoesNotExist:
+                    # display_idで見つからない場合、studysphere_login_codeで検索
+                    try:
+                        user = User.objects.get(studysphere_login_code=display_id)
+                    except User.DoesNotExist:
+                        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
             
             queryset = Submission.objects.filter(
                 author=user,
@@ -902,18 +946,23 @@ class UserSubmissionsView(APIView):
                                 except (ValueError, AttributeError):
                                     pass
                         else:
-                            # 画像/動画の場合：従来通り
+                            # 画像/動画の場合：元画像URLとサムネイルURLを取得
                             from toybox.image_utils import build_https_absolute_uri
+                            from toybox.image_optimizer import get_thumbnail_url
                             if sub.image_url:
                                 image_url_val = sub.image_url
                                 if image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
                                     image_url_val = image_url_val.replace('http://', 'https://', 1)
                                 image_url = image_url_val
-                                display_image_url = image_url_val
+                                # サムネイルURLを取得
+                                thumbnail_url = get_thumbnail_url(image_url, max_size=300, quality=80)
+                                display_image_url = thumbnail_url if (thumbnail_url and thumbnail_url != image_url) else image_url
                             elif sub.image:
                                 try:
                                     image_url = build_https_absolute_uri(request, sub.image.url)
-                                    display_image_url = image_url
+                                    # サムネイルURLを取得
+                                    thumbnail_url = get_thumbnail_url(image_url, max_size=300, quality=80)
+                                    display_image_url = thumbnail_url if (thumbnail_url and thumbnail_url != image_url) else image_url
                                 except (ValueError, AttributeError):
                                     pass
                     except Exception as e:
@@ -935,10 +984,55 @@ class UserSubmissionsView(APIView):
                     except (AttributeError, ValueError, TypeError):
                         created_at_str = None
                     
+                    # サムネイルURLを取得
+                    image_thumbnail_url = None
+                    if image_url and not game_url:
+                        try:
+                            from toybox.image_optimizer import get_thumbnail_url
+                            thumbnail_url = get_thumbnail_url(image_url, max_size=300, quality=80)
+                            if thumbnail_url and thumbnail_url != image_url:
+                                image_thumbnail_url = thumbnail_url
+                        except Exception:
+                            pass
+                    
+                    # 称号情報を取得
+                    active_title = None
+                    active_title_image_url = None
+                    title_color = None
+                    try:
+                        from users.models import UserMeta
+                        from django.utils import timezone
+                        meta = UserMeta.objects.get(user=sub.author)
+                        if meta.active_title:
+                            # 有効期限をチェック
+                            if meta.expires_at and meta.expires_at > timezone.now():
+                                active_title = meta.active_title
+                                title_color = meta.title_color
+                                
+                                # 称号の画像URLを取得
+                                try:
+                                    from gamification.models import Title
+                                    from toybox.image_utils import get_image_url
+                                    title_obj = Title.objects.filter(name=meta.active_title).first()
+                                    if title_obj:
+                                        active_title_image_url = get_image_url(
+                                            image_field=title_obj.image,
+                                            image_url_field=title_obj.image_url,
+                                            request=request,
+                                            verify_exists=False
+                                        )
+                                except Exception as e:
+                                    logger.warning(f'Failed to get title image for {meta.active_title}: {e}')
+                    except UserMeta.DoesNotExist:
+                        pass
+                    except Exception as e:
+                        logger.warning(f'Failed to get title info for submission {sub.id}: {e}')
+                    
                     items.append({
                         'id': str(sub.id),
-                        'imageUrl': image_url,
-                        'displayImageUrl': display_image_url or image_url,
+                        'imageUrl': image_url,  # 元画像URL
+                        'imageThumbnailUrl': image_thumbnail_url,  # サムネイルURL
+                        'displayImageUrl': display_image_url or image_url,  # 表示用（サムネイル優先）
                         'videoUrl': video_url,
                         'gameUrl': game_url,
                         'title': title,
@@ -946,6 +1040,9 @@ class UserSubmissionsView(APIView):
                         'createdAt': created_at_str,
                         'likesCount': likes_count,
                         'liked': liked,
+                        'activeTitle': active_title,  # 称号
+                        'activeTitleImageUrl': active_title_image_url,  # 称号の画像URL
+                        'titleColor': title_color,  # 称号の色
                     })
                 except Exception as e:
                     logger.error(f'Error processing submission {sub.id}: {str(e)}', exc_info=True)
@@ -1016,14 +1113,20 @@ class SubmittersTodayView(APIView):
                 meta = getattr(user, 'meta', None)
                 
                 # Get display name from display_name field, fallback to display_id
+                # StudySphere経由のユーザーの場合、IDを非表示にする
+                anon_id = 'StudySphereUser' if (user.studysphere_user_id or user.studysphere_login_code) else user.display_id
                 display_name = None
                 if meta and meta.display_name:
                     display_name = meta.display_name
                 else:
-                    display_name = user.display_id
+                    display_name = anon_id
+                
+                # URL用のID（StudySphereユーザーの場合はトークン）
+                url_id = user.studysphere_login_code if (user.studysphere_user_id or user.studysphere_login_code) else anon_id
                 
                 submitters.append({
-                    'anonId': user.display_id,
+                    'anonId': anon_id,
+                    'anonUrlId': url_id,  # URL用のID
                     'displayName': display_name
                 })
             except User.DoesNotExist:
@@ -1063,14 +1166,20 @@ class RankingDailyView(APIView):
                 meta = getattr(user, 'meta', None)
                 
                 # Get display name from display_name field, fallback to display_id
+                # StudySphere経由のユーザーの場合、IDを非表示にする
+                anon_id = 'StudySphereUser' if (user.studysphere_user_id or user.studysphere_login_code) else user.display_id
                 display_name = None
                 if meta and meta.display_name:
                     display_name = meta.display_name
                 else:
-                    display_name = user.display_id
+                    display_name = anon_id
+                
+                # URL用のID（StudySphereユーザーの場合はトークン）
+                url_id = user.studysphere_login_code if (user.studysphere_user_id or user.studysphere_login_code) else anon_id
                 
                 ranking.append({
-                    'anonId': user.display_id,
+                    'anonId': anon_id,
+                    'anonUrlId': url_id,  # URL用のID
                     'displayName': display_name,
                     'count': count
                 })
@@ -1126,11 +1235,14 @@ class TimelineView(APIView):
                         meta = None
                     
                     # Get display name from display_name field, fallback to display_id
+                    # StudySphere経由のユーザーの場合、IDを非表示にする
+                    author = sub.author
+                    anon_id = 'StudySphereUser' if (author.studysphere_user_id or author.studysphere_login_code) else author.display_id
                     display_name = None
                     if meta and hasattr(meta, 'display_name') and meta.display_name:
                         display_name = meta.display_name
                     else:
-                        display_name = sub.author.display_id
+                        display_name = anon_id
                     
                     # Determine submission type
                     submission_type = '画像'
@@ -1146,9 +1258,13 @@ class TimelineView(APIView):
                     if hasattr(sub.author, 'avatar_url') and sub.author.avatar_url:
                         avatar_url = sub.author.avatar_url
                     
+                    # URL用のID（StudySphereユーザーの場合はトークン）
+                    url_id = author.studysphere_login_code if (author.studysphere_user_id or author.studysphere_login_code) else anon_id
+                    
                     timeline_items.append({
                         'id': str(sub.id),
-                        'anonId': sub.author.display_id,
+                        'anonId': anon_id,
+                        'anonUrlId': url_id,  # URL用のID
                         'displayName': display_name,
                         'avatarUrl': avatar_url,
                         'type': submission_type,

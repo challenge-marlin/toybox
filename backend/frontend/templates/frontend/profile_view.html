@@ -497,6 +497,7 @@
                 }
                 
                 const metaData = await profileRes.json();
+                // URLパラメータから取得したIDをそのまま使用（StudySphereユーザーの場合はトークン）
                 currentUserId = targetDisplayId;
                 
                 // プロフィール情報を表示
@@ -513,14 +514,20 @@
                 
                 const headerUrl = metaData.headerUrl || metaData.header_url;
                 const avatarUrl = metaData.avatarUrl || metaData.avatar_url;
+                const avatarThumbnailUrl = metaData.avatarThumbnailUrl || metaData.avatar_thumbnail_url;
                 const displayName = metaData.displayName || metaData.display_name;
                 const anonId = metaData.anonId || metaData.display_id;
                 const activeTitle = metaData.activeTitle || metaData.active_title;
                 const activeTitleUntil = metaData.activeTitleUntil || metaData.active_title_until;
                 
+                // アバターはサムネイルがあればそれを使用、ヘッダーは元画像を使用
+                const avatarDisplayUrl = avatarThumbnailUrl || avatarUrl;
+                
                 console.log('[Profile Image Debug] profile_view.html - Extracted URLs:', {
                     headerUrl: headerUrl,
-                    avatarUrl: avatarUrl
+                    avatarUrl: avatarUrl,
+                    avatarThumbnailUrl: avatarThumbnailUrl,
+                    avatarDisplayUrl: avatarDisplayUrl
                 });
                 
                 if (headerUrl) {
@@ -531,10 +538,10 @@
                     document.getElementById('header-image').innerHTML = '<div class="no-image">ヘッダー画像なし</div>';
                 }
                 
-                if (avatarUrl) {
+                if (avatarDisplayUrl) {
                     const firstChar = (displayName || anonId || 'U').charAt(0).toUpperCase();
-                    console.log('[Profile Image Debug] profile_view.html - Setting avatar image:', avatarUrl);
-                    document.getElementById('avatar-image').innerHTML = `<img src="${avatarUrl}" alt="avatar" onerror="console.error('[Profile Image Debug] profile_view.html - Avatar image load error:', '${avatarUrl}'); this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 2rem; font-weight: 600;\\'>${firstChar}</span>';">`;
+                    console.log('[Profile Image Debug] profile_view.html - Setting avatar image:', avatarDisplayUrl);
+                    document.getElementById('avatar-image').innerHTML = `<img src="${avatarDisplayUrl}" alt="avatar" onerror="console.error('[Profile Image Debug] profile_view.html - Avatar image load error:', '${avatarDisplayUrl}'); this.style.display='none'; this.parentElement.innerHTML='<span style=\\'display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 2rem; font-weight: 600;\\'>${firstChar}</span>';">`;
                 } else {
                     console.log('[Profile Image Debug] profile_view.html - No avatar URL, showing fallback');
                     const firstChar = (displayName || anonId || 'U').charAt(0).toUpperCase();
@@ -552,13 +559,37 @@
                 }
                 
                 const activeTitleImageUrl = metaData.activeTitleImageUrl || metaData.active_title_image_url;
-                if (activeTitle) {
+                console.log('Title data in profile_view.html:', {
+                    activeTitle: activeTitle,
+                    activeTitleUntil: activeTitleUntil,
+                    activeTitleImageUrl: activeTitleImageUrl
+                });
+                
+                // 称号を表示（期限切れチェック）
+                if (activeTitle && activeTitleUntil) {
+                    const expiresAt = new Date(activeTitleUntil);
+                    const now = new Date();
+                    
+                    if (expiresAt > now) {
+                        // 有効期限内
+                        if (activeTitleImageUrl) {
+                            document.getElementById('profile-title').innerHTML = `<img src="${activeTitleImageUrl}" alt="${activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300);\\'>称号: ${activeTitle}</span>';">`;
+                        } else {
+                            document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${activeTitle}</span>`;
+                        }
+                    } else {
+                        // 期限切れ
+                        document.getElementById('profile-title').innerHTML = '';
+                    }
+                } else if (activeTitle) {
+                    // expires_atがない場合は表示
                     if (activeTitleImageUrl) {
                         document.getElementById('profile-title').innerHTML = `<img src="${activeTitleImageUrl}" alt="${activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300);\\'>称号: ${activeTitle}</span>';">`;
                     } else {
                         document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${activeTitle}</span>`;
                     }
                 } else {
+                    // 称号がない場合
                     document.getElementById('profile-title').innerHTML = '';
                 }
                 
@@ -624,7 +655,10 @@
         grid.innerHTML = submissions.map(s => {
             const isGame = s.gameUrl;
             const isVideo = s.videoUrl;
-            const imageUrl = s.displayImageUrl || s.imageUrl;
+            // サムネイルURLを優先的に使用（画像投稿の場合）
+            const thumbnailUrl = s.imageThumbnailUrl || s.displayImageUrl;
+            const originalImageUrl = s.imageUrl || s.displayImageUrl;
+            const imageUrl = thumbnailUrl || originalImageUrl;
             const videoUrl = s.videoUrl;
             const gameUrl = s.gameUrl;
             
@@ -656,17 +690,20 @@
                     </div>
                 `;
             } else {
-                content = `<img src="${imageUrl}" alt="submission" onclick="openLightbox('${imageUrl}', 'image', '${s.id}')">`;
+                // 画像投稿の場合：サムネイルを表示、クリック時は元画像を表示
+                const imageSrc = thumbnailUrl || originalImageUrl || imageUrl;
+                const lightboxImageSrc = originalImageUrl || imageSrc;
+                content = `<img src="${imageSrc}" alt="submission" onclick="openLightbox('${lightboxImageSrc}', 'image', '${s.id}')">`;
             }
             
             return `
-                <div class="profile-view-submission-item ${isGame ? 'game' : (isVideo ? 'video' : '')}">
+                <div class="profile-view-submission-item ${isGame ? 'game' : (isVideo ? 'video' : '')}" data-submission-id="${s.id}">
                     ${content}
-                    <button class="like-button ${s.liked ? 'liked' : ''}" onclick="toggleLike('${s.id}', ${s.liked || false})" style="pointer-events: auto;">
+                    <button class="like-button ${s.liked ? 'liked' : ''}" data-submission-id="${s.id}" onclick="toggleLike('${s.id}', ${s.liked || false})" style="pointer-events: auto;">
                         <svg viewBox="0 0 24 24" fill="${s.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
                         </svg>
-                        <span>${s.likesCount || 0}</span>
+                        <span class="profile-like-count">${s.likesCount || 0}</span>
                     </button>
                     ${isGame && gameUrl ? `
                         <div class="game-link" onclick="openLightbox('${gameUrl}', 'game', '${s.id}')" style="cursor: pointer;">
@@ -686,6 +723,30 @@
         loadSubmissions();
     }
     
+    // いいねボタンとカウントだけを更新する関数（画像は再読み込みしない）
+    function updateProfileLikeButton(submissionId, liked, likesCount) {
+        const likeButtons = document.querySelectorAll(`.like-button[data-submission-id="${submissionId}"]`);
+        likeButtons.forEach(btn => {
+            const countSpan = btn.querySelector('.profile-like-count');
+            const svg = btn.querySelector('svg');
+            
+            if (countSpan) {
+                countSpan.textContent = likesCount || 0;
+            }
+            
+            if (liked) {
+                btn.classList.add('liked');
+                if (svg) svg.setAttribute('fill', 'currentColor');
+            } else {
+                btn.classList.remove('liked');
+                if (svg) svg.setAttribute('fill', 'none');
+            }
+            
+            // onclick属性も更新（次回クリック時の状態を正しく反映）
+            btn.setAttribute('onclick', `toggleLike('${submissionId}', ${liked})`);
+        });
+    }
+    
     async function toggleLike(submissionId, currentLiked) {
         const item = submissions.find(s => s.id === submissionId);
         if (!item) return;
@@ -697,7 +758,9 @@
         const newCount = Math.max(0, currentCount + (currentLiked ? -1 : 1));
         item.likesCount = newCount;
         item.likes_count = newCount;
-        renderSubmissions();
+        
+        // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+        updateProfileLikeButton(submissionId, item.liked, newCount);
         
         try {
             const method = currentLiked ? 'DELETE' : 'POST';
@@ -716,7 +779,9 @@
                 item.liked = data.liked || false;
                 item.likesCount = data.likesCount || 0;
                 item.likes_count = data.likesCount || 0;
-                renderSubmissions();
+                
+                // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+                updateProfileLikeButton(submissionId, item.liked, item.likesCount);
             }
         } catch (err) {
             // エラー時は元に戻す
@@ -725,7 +790,9 @@
             const rollbackCount = Math.max(0, currentCount + (currentLiked ? 1 : -1));
             item.likesCount = rollbackCount;
             item.likes_count = rollbackCount;
-            renderSubmissions();
+            
+            // いいねボタンとカウントだけを更新（画像は再読み込みしない）
+            updateProfileLikeButton(submissionId, currentLiked, rollbackCount);
             console.error('Failed to toggle like:', err);
         }
     }

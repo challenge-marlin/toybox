@@ -269,12 +269,29 @@
             handleUnauthorized();
         }
         
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        // レスポンスをJSONとしてパースを試みる
+        let responseData;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            responseData = await response.json();
+        } else {
+            const text = await response.text();
+            try {
+                responseData = JSON.parse(text);
+            } catch (e) {
+                responseData = { error: text || `HTTP ${response.status}` };
+            }
         }
         
-        return await response.json();
+        if (!response.ok) {
+            const errorMsg = responseData.error || responseData.message || `HTTP ${response.status}`;
+            const error = new Error(errorMsg);
+            error.response = response;
+            error.responseData = responseData;
+            throw error;
+        }
+        
+        return responseData;
     }
     
     /**
@@ -422,7 +439,19 @@
             const apiGetFunc = getFunction(apiGet, apiGetFallback);
             const data = await apiGetFunc('/api/users/me/meta/');
             
-            const displayNameValue = data.display_name || data.displayName || data.display_id || data.anonId || '';
+            // 表示名：display_nameが明示的に設定されている場合はそれを使用、空の場合は空文字列
+            // display_nameが存在しない場合は、display_idやanonIdをフォールバックとして使用
+            let displayNameValue = '';
+            if (data.display_name !== undefined && data.display_name !== null) {
+                // display_nameが明示的に設定されている場合（空文字列も含む）
+                displayNameValue = data.display_name;
+            } else if (data.displayName !== undefined && data.displayName !== null) {
+                // displayNameが存在する場合
+                displayNameValue = data.displayName;
+            } else {
+                // display_nameが存在しない場合は、display_idやanonIdをフォールバック
+                displayNameValue = data.display_id || data.anonId || '';
+            }
             
             // 表示名
             const displayNameInput = document.getElementById(SELECTORS.DISPLAY_NAME_INPUT);
@@ -549,7 +578,8 @@
         const setLoadingStateFunc = getFunction(setLoadingState, setLoadingStateFallback);
         const hideMessageFunc = getFunction(hideMessage, hideMessageFallback);
         
-        if (displayName.length < VALIDATION.DISPLAY_NAME_MIN || displayName.length > VALIDATION.DISPLAY_NAME_MAX) {
+        // 表示名は空文字列でも許可（削除可能）、設定する場合は1〜50文字
+        if (displayName.length > 0 && (displayName.length < VALIDATION.DISPLAY_NAME_MIN || displayName.length > VALIDATION.DISPLAY_NAME_MAX)) {
             showMessageFunc(messageDiv, `表示名は${VALIDATION.DISPLAY_NAME_MIN}〜${VALIDATION.DISPLAY_NAME_MAX}文字で入力してください`, true);
             return;
         }
@@ -651,6 +681,132 @@
         }
     }
     
+    /**
+     * StudySphere連携状態を読み込み
+     */
+    async function loadStudySphereStatus() {
+        try {
+            const apiGetFunc = getFunction(apiGet, apiGetFallback);
+            const userData = await apiGetFunc('/api/users/me/');
+            
+            const statusDiv = document.getElementById('studysphere-status');
+            if (statusDiv) {
+                if (userData.studysphere_user_id) {
+                    statusDiv.textContent = `連携済み（StudySphere ID: ${userData.studysphere_user_id}）`;
+                    statusDiv.style.color = 'var(--steam-gold-300)';
+                } else {
+                    statusDiv.textContent = '未連携';
+                    statusDiv.style.color = 'var(--steam-iron-400)';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load StudySphere status:', error);
+        }
+    }
+    
+    /**
+     * StudySphereトークン入力欄を表示
+     */
+    function showTokenInput() {
+        const tokenContainer = document.getElementById('studysphere-token-container');
+        const showButton = document.getElementById('show-token-input-button');
+        
+        if (tokenContainer) {
+            tokenContainer.style.display = 'block';
+        }
+        if (showButton) {
+            showButton.style.display = 'none';
+        }
+    }
+    
+    /**
+     * StudySphereトークンを保存
+     */
+    async function linkStudySphere() {
+        const tokenInput = document.getElementById('studysphere-token-input');
+        const linkButton = document.getElementById('link-studysphere-button');
+        const errorDiv = document.getElementById('studysphere-error');
+        const successDiv = document.getElementById('studysphere-success');
+        
+        if (!tokenInput || !linkButton) {
+            return;
+        }
+        
+        const token = tokenInput.value.trim();
+        if (!token) {
+            if (errorDiv) {
+                errorDiv.textContent = 'トークンを入力してください';
+                errorDiv.style.display = 'block';
+            }
+            if (successDiv) {
+                successDiv.style.display = 'none';
+            }
+            return;
+        }
+        
+        const setLoadingStateFunc = getFunction(setLoadingState, setLoadingStateFallback);
+        setLoadingStateFunc(linkButton, true, '保存中…', '保存');
+        
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+        if (successDiv) {
+            successDiv.style.display = 'none';
+        }
+        
+        try {
+            const apiPostFunc = getFunction(apiPost, apiPostFallback);
+            const result = await apiPostFunc('/api/user/profile/set-studysphere-token/', {
+                token: token
+            });
+            
+            console.log('StudySphere token save result:', result);
+            
+            // レスポンスのokフィールドを確認
+            if (result && result.ok !== false) {
+                // 成功メッセージをポップアップで表示
+                alert('保存しました');
+                
+                if (successDiv) {
+                    successDiv.textContent = result.message || 'StudySphereトークンを保存しました';
+                    successDiv.style.display = 'block';
+                }
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                }
+                tokenInput.value = '';
+                await loadStudySphereStatus();
+            } else {
+                const errorMsg = result?.error || result?.message || '保存に失敗しました';
+                throw new Error(errorMsg);
+            }
+        } catch (error) {
+            console.error('StudySphere token save error:', error);
+            let errorMessage = 'トークンの保存に失敗しました';
+            
+            // エラーメッセージを抽出
+            if (error.responseData) {
+                // apiPostFallbackから投げられたエラーの場合
+                errorMessage = error.responseData.error || error.responseData.message || error.message || errorMessage;
+            } else if (error.message) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
+            alert(`エラー: ${errorMessage}`);
+            if (errorDiv) {
+                errorDiv.textContent = errorMessage;
+                errorDiv.style.display = 'block';
+            }
+            if (successDiv) {
+                successDiv.style.display = 'none';
+            }
+        } finally {
+            setLoadingStateFunc(linkButton, false, '保存中…', '保存');
+        }
+    }
+    
     // ============================================================================
     // 初期化
     // ============================================================================
@@ -660,6 +816,7 @@
      */
     function initializeProfile() {
         loadProfile();
+        loadStudySphereStatus();
         
         // プロフィール文の文字数カウント
         const bioInput = document.getElementById(SELECTORS.BIO_INPUT);
@@ -686,6 +843,9 @@
         const saveButton = document.getElementById(SELECTORS.SAVE_BUTTON);
         const deleteHeaderBtn = document.getElementById(SELECTORS.DELETE_HEADER_BTN);
         const deleteAvatarBtn = document.getElementById(SELECTORS.DELETE_AVATAR_BTN);
+        const linkStudySphereButton = document.getElementById('link-studysphere-button');
+        const showTokenInputButton = document.getElementById('show-token-input-button');
+        const studysphereTokenInput = document.getElementById('studysphere-token-input');
         
         if (headerInput) {
             headerInput.addEventListener('change', handleHeaderChange);
@@ -701,6 +861,20 @@
         }
         if (deleteAvatarBtn) {
             deleteAvatarBtn.addEventListener('click', deleteAvatar);
+        }
+        if (linkStudySphereButton) {
+            linkStudySphereButton.addEventListener('click', linkStudySphere);
+        }
+        if (showTokenInputButton) {
+            showTokenInputButton.addEventListener('click', showTokenInput);
+        }
+        if (studysphereTokenInput) {
+            studysphereTokenInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    linkStudySphere();
+                }
+            });
         }
     }
     
@@ -754,4 +928,6 @@
     window.saveProfile = saveProfile;
     window.deleteHeader = deleteHeader;
     window.deleteAvatar = deleteAvatar;
+    window.linkStudySphere = linkStudySphere;
+    window.showTokenInput = showTokenInput;
 })();

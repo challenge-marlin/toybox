@@ -76,11 +76,20 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """User serializer."""
     avatar_url = serializers.SerializerMethodField()
+    avatar_thumbnail_url = serializers.SerializerMethodField()
+    display_id = serializers.SerializerMethodField()
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'display_id', 'role', 'avatar_url', 'is_suspended', 'banned_at', 'warning_count']
-        read_only_fields = ['id', 'role', 'is_suspended', 'banned_at', 'warning_count']
+        fields = ['id', 'email', 'display_id', 'role', 'avatar_url', 'avatar_thumbnail_url', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id']
+        read_only_fields = ['id', 'role', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id']
+    
+    def get_display_id(self, obj):
+        """Get display_id, but return 'StudySphereUser' for StudySphere users."""
+        # StudySphere経由のユーザーの場合、IDを非表示にする
+        if obj.studysphere_user_id or obj.studysphere_login_code:
+            return 'StudySphereUser'
+        return obj.display_id
     
     def get_avatar_url(self, obj):
         """Get absolute URL for avatar."""
@@ -94,17 +103,47 @@ class UserSerializer(serializers.ModelSerializer):
                 verify_exists=False
             )
         return None
+    
+    def get_avatar_thumbnail_url(self, obj):
+        """Get thumbnail URL for avatar."""
+        avatar_url = self.get_avatar_url(obj)
+        if avatar_url:
+            from toybox.image_optimizer import get_thumbnail_url
+            thumbnail_url = get_thumbnail_url(avatar_url, max_size=300, quality=80)
+            if thumbnail_url and thumbnail_url != avatar_url:
+                return thumbnail_url
+        return None
 
 
 class UserMetaSerializer(serializers.ModelSerializer):
     """UserMeta serializer."""
-    display_id = serializers.CharField(source='user.display_id', read_only=True)
+    display_id = serializers.SerializerMethodField()
+    url_id = serializers.SerializerMethodField()  # URL用のID（StudySphereユーザーの場合はトークン）
     display_name = serializers.SerializerMethodField()
     avatar_url = serializers.URLField(source='user.avatar_url', read_only=True)
     
+    def get_display_id(self, obj):
+        """Get display_id, but return 'StudySphereUser' for StudySphere users."""
+        user = obj.user
+        # StudySphere経由のユーザーの場合、IDを非表示にする
+        if user.studysphere_user_id or user.studysphere_login_code:
+            return 'StudySphereUser'
+        return user.display_id
+    
+    def get_url_id(self, obj):
+        """Get ID for URL (use studysphere_login_code for StudySphere users)."""
+        user = obj.user
+        # StudySphere経由のユーザーの場合、URLにはトークンを使用
+        if user.studysphere_login_code:
+            return user.studysphere_login_code
+        return user.display_id
+    
     def get_display_name(self, obj):
         """Get display name from display_name field, fallback to bio, then display_id."""
-        return obj.display_name or obj.bio or obj.user.display_id
+        user = obj.user
+        # StudySphere経由のユーザーの場合、display_idの代わりに'StudySphereUser'を使用
+        fallback_id = 'StudySphereUser' if (user.studysphere_user_id or user.studysphere_login_code) else user.display_id
+        return obj.display_name or obj.bio or fallback_id
     
     def to_representation(self, instance):
         """Override to check title expiry and add title image URL."""
@@ -112,6 +151,7 @@ class UserMetaSerializer(serializers.ModelSerializer):
         
         # アバターURLとヘッダーURLの取得（存在確認は行わず、URLをそのまま返す）
         from toybox.image_utils import get_image_url
+        from toybox.image_optimizer import get_thumbnail_url
         import logging
         logger = logging.getLogger(__name__)
         request = self.context.get('request')
@@ -122,6 +162,7 @@ class UserMetaSerializer(serializers.ModelSerializer):
         logger.info(f'[Profile Image Debug] UserMetaSerializer - User {user.id} avatar_url from DB: {avatar_url_raw}')
         
         avatar_url = None
+        avatar_thumbnail_url = None
         if avatar_url_raw:
             avatar_url = get_image_url(
                 image_url_field=avatar_url_raw,
@@ -129,13 +170,21 @@ class UserMetaSerializer(serializers.ModelSerializer):
                 verify_exists=False  # 存在確認を行わない
             )
             logger.info(f'[Profile Image Debug] UserMetaSerializer - User {user.id} avatar_url after get_image_url: {avatar_url}')
+            
+            # サムネイルURLを取得
+            if avatar_url:
+                avatar_thumbnail_url = get_thumbnail_url(avatar_url, max_size=300, quality=80)
+                if avatar_thumbnail_url == avatar_url:
+                    avatar_thumbnail_url = None
         
         data['avatar_url'] = avatar_url
+        data['avatar_thumbnail_url'] = avatar_thumbnail_url
         
-        # ヘッダーURLの取得
+        # ヘッダーURLの取得（サムネイルは生成しない）
         header_url_raw = data.get('header_url')
         logger.info(f'[Profile Image Debug] UserMetaSerializer - User {user.id} header_url from DB: {header_url_raw}')
         
+        header_url = None
         if header_url_raw:
             header_url = get_image_url(
                 image_url_field=header_url_raw,
@@ -143,8 +192,6 @@ class UserMetaSerializer(serializers.ModelSerializer):
                 verify_exists=False  # 存在確認を行わない
             )
             logger.info(f'[Profile Image Debug] UserMetaSerializer - User {user.id} header_url after get_image_url: {header_url}')
-        else:
-            header_url = None
         
         data['header_url'] = header_url
         
@@ -158,6 +205,10 @@ class UserMetaSerializer(serializers.ModelSerializer):
         
         # 称号のバナー画像URLを取得
         active_title = data.get('active_title')
+        user = instance.user
+        is_studysphere_user = bool(user.studysphere_user_id or user.studysphere_login_code)
+        logger.info(f'[UserMetaSerializer] User {user.id} (StudySphere: {is_studysphere_user}) - active_title: {active_title}')
+        
         if active_title:
             try:
                 from gamification.models import Title
@@ -170,22 +221,23 @@ class UserMetaSerializer(serializers.ModelSerializer):
                         request=request,
                         verify_exists=False  # ファイルが存在しなくてもURLを返す
                     )
+                    logger.info(f'[UserMetaSerializer] User {user.id} - Found title object for "{active_title}", image_url: {data["active_title_image_url"]}')
                 else:
                     data['active_title_image_url'] = None
+                    logger.warning(f'[UserMetaSerializer] User {user.id} - Title object not found for "{active_title}"')
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to get title image for {active_title}: {e}')
+                logger.warning(f'[UserMetaSerializer] User {user.id} - Failed to get title image for {active_title}: {e}', exc_info=True)
                 data['active_title_image_url'] = None
         else:
             data['active_title_image_url'] = None
+            logger.info(f'[UserMetaSerializer] User {user.id} - No active_title')
         
         return data
     
     class Meta:
         model = UserMeta
-        fields = ['display_id', 'display_name', 'avatar_url', 'active_title', 'title_color', 'expires_at', 'bio', 'header_url', 'lottery_bonus_count', 'onboarding_completed']
-        read_only_fields = ['display_id', 'avatar_url', 'lottery_bonus_count']
+        fields = ['display_id', 'url_id', 'display_name', 'avatar_url', 'active_title', 'title_color', 'expires_at', 'bio', 'header_url', 'lottery_bonus_count', 'onboarding_completed']
+        read_only_fields = ['display_id', 'url_id', 'avatar_url', 'lottery_bonus_count']
 
 
 class UserCardSerializer(serializers.ModelSerializer):

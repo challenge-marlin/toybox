@@ -13,6 +13,12 @@ toybox.ayatori-inc.co.jp {
 		}
 	}
 
+	# 静的ファイル（CSS, JS、画像など）
+	handle /static/* {
+		root * /app/staticfiles
+		uri strip_prefix /static
+		file_server
+	}
 	# アップロードファイル（Django経由で配信）
 	handle /uploads/* {
 		reverse_proxy web:8000 {

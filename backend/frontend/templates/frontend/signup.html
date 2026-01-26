@@ -1,7 +1,7 @@
 {% extends 'frontend/base.html' %}
 {% load static %}
 
-{% block title %}アカウント作成 - ToyBox{% endblock %}
+{% block title %}アカウント作成 - TOYBOX！{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -576,6 +576,10 @@
                         .replace(/[^a-z0-9_]/g, '_')
                         .substring(0, 30);
                     usernameInput.value = suggestedUsername;
+                    // StudySphere連携の場合、IDを変更できないようにする
+                    usernameInput.readOnly = true;
+                    usernameInput.style.opacity = '0.7';
+                    usernameInput.style.cursor = 'not-allowed';
                 }
                 const passwordField = document.getElementById('password-field');
                 const passwordInput = document.getElementById('password');
@@ -657,7 +661,11 @@
                         .replace(/[^a-z0-9_]/g, '_')
                         .substring(0, 30);
                     usernameInput.value = suggestedUsername;
-                    console.log('[SSO Signup] Username auto-filled:', suggestedUsername);
+                    // StudySphere連携の場合、IDを変更できないようにする
+                    usernameInput.readOnly = true;
+                    usernameInput.style.opacity = '0.7';
+                    usernameInput.style.cursor = 'not-allowed';
+                    console.log('[SSO Signup] Username auto-filled and locked:', suggestedUsername);
                 }
                 
                 // パスワードフィールドを非表示

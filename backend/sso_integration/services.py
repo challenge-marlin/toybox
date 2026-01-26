@@ -120,11 +120,15 @@ def build_sso_login_url(ticket: str) -> str:
     return f"{base_url}/sso-login?ticket={ticket}"
 
 
-def build_sso_dispatch_url(ticket: str, target_system: str) -> str:
+def build_sso_dispatch_url(ticket: str, target_system: str, return_url: str = None) -> str:
     base_url = _get_web_base_url()
     if not base_url:
         raise SSOServiceError("Missing setting: SSO_WEB_BASE_URL or SSO_HUB_BASE_URL")
-    return f"{base_url}/sso-dispatch?target={target_system}&ticket={ticket}"
+    url = f"{base_url}/sso-dispatch?target={target_system}&ticket={ticket}"
+    if return_url:
+        from urllib.parse import quote
+        url += f"&return_url={quote(return_url, safe='')}"
+    return url
 
 
 def build_sso_return_url() -> str:

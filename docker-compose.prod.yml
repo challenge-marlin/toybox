@@ -1,15 +1,16 @@
 services:
   caddy:
-    image: caddy:2
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./backend/public/uploads:/app/public/uploads:ro
       - caddy-data:/data
       - caddy-config:/config
+      - backend_static_volume:/app/staticfiles:ro
     networks:
       - backend_default
 
@@ -20,3 +21,6 @@ networks:
 volumes:
   caddy-data:
   caddy-config:
+  backend_static_volume:
+    external: true
+    name: backend_static_volume

@@ -50,11 +50,18 @@ function redirectIfAuthenticated() {
 }
 
 /**
- * Clear authentication tokens.
+ * Clear authentication tokens and prevent browser back navigation.
+ * ID 14対応: ログアウト後のブラウザバック防止
  */
 function clearAuth() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    
+    // ブラウザバックを防ぐために履歴を操作
+    // 現在のページをログインページで置き換える
+    if (typeof history !== 'undefined' && history.replaceState) {
+        history.replaceState(null, '', '/login/');
+    }
 }
 
 /**

@@ -78,11 +78,16 @@ class UserSerializer(serializers.ModelSerializer):
     avatar_url = serializers.SerializerMethodField()
     avatar_thumbnail_url = serializers.SerializerMethodField()
     display_id = serializers.SerializerMethodField()
+    is_official = serializers.SerializerMethodField()
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'display_id', 'role', 'avatar_url', 'avatar_thumbnail_url', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id']
-        read_only_fields = ['id', 'role', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id']
+        fields = ['id', 'email', 'display_id', 'role', 'avatar_url', 'avatar_thumbnail_url', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id', 'is_official']
+        read_only_fields = ['id', 'role', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id', 'is_official']
+    
+    def get_is_official(self, obj):
+        """Check if user is official (superuser)."""
+        return obj.is_superuser
     
     def get_display_id(self, obj):
         """Get display_id, but return 'StudySphereUser' for StudySphere users."""
@@ -121,6 +126,7 @@ class UserMetaSerializer(serializers.ModelSerializer):
     url_id = serializers.SerializerMethodField()  # URL用のID（StudySphereユーザーの場合はトークン）
     display_name = serializers.SerializerMethodField()
     avatar_url = serializers.URLField(source='user.avatar_url', read_only=True)
+    is_official = serializers.SerializerMethodField()
     
     def get_display_id(self, obj):
         """Get display_id, but return 'StudySphereUser' for StudySphere users."""
@@ -236,8 +242,12 @@ class UserMetaSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserMeta
-        fields = ['display_id', 'url_id', 'display_name', 'avatar_url', 'active_title', 'title_color', 'expires_at', 'bio', 'header_url', 'lottery_bonus_count', 'onboarding_completed']
-        read_only_fields = ['display_id', 'url_id', 'avatar_url', 'lottery_bonus_count']
+        fields = ['display_id', 'url_id', 'display_name', 'avatar_url', 'active_title', 'title_color', 'expires_at', 'bio', 'header_url', 'lottery_bonus_count', 'onboarding_completed', 'is_official']
+        read_only_fields = ['display_id', 'url_id', 'avatar_url', 'lottery_bonus_count', 'is_official']
+    
+    def get_is_official(self, obj):
+        """Check if user is official (superuser)."""
+        return obj.user.is_superuser
 
 
 class UserCardSerializer(serializers.ModelSerializer):

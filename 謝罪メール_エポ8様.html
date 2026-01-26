@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOYBOXサービス障害のお詫び</title>
+    <style>
+        body {
+            font-family: 'メイリオ', 'Meiryo', 'ヒラギノ角ゴ Pro', 'Hiragino Kaku Gothic Pro', sans-serif;
+            line-height: 1.8;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d32f2f;
+            font-size: 22px;
+            border-bottom: 3px solid #d32f2f;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #1976d2;
+            font-size: 18px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 4px solid #1976d2;
+        }
+        .recipient {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .intro {
+            margin-bottom: 30px;
+        }
+        .box {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .box.danger {
+            background-color: #ffebee;
+            border-left: 4px solid #d32f2f;
+        }
+        .box.info {
+            background-color: #e3f2fd;
+            border-left: 4px solid #1976d2;
+        }
+        .box.success {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+        ul {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #1976d2;
+            color: #ffffff !important;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            font-size: 14px;
+            color: #666;
+        }
+        .signature {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <h1>【重要】TOYBOXサービス障害とデータ損失に関するお詫び</h1>
+        
+        <div class="recipient">
+            合同会社エポ8　ハッピーデザイン　御中
+        </div>
+        
+        <div class="intro">
+            <p>平素より、TOYBOXをご利用いただき、誠にありがとうございます。<br>
+            TOYBOX開発チームでございます。</p>
+            
+            <p>この度は、弊社のサービス「TOYBOX」において発生したサーバー障害により、<br>
+            貴社がご利用いただいていたデータが全て失われるという重大な事態を<br>
+            引き起こしてしまいましたこと、<strong style="color: #d32f2f;">深くお詫び申し上げます。</strong></p>
+        </div>
+        
+        <h2>📋 経緯</h2>
+        <p>2026年1月22日（本日）17:00頃より、TOYBOXのSNSシェア機能追加作業を実施しておりましたが、
+        作業中にサーバー障害が発生し、復旧作業を行う過程において、
+        データベースが初期化されるという事態に至りました。</p>
+        
+        <p>21:30にサービスは復旧いたしましたが、以下のデータが完全に失われております。</p>
+        
+        <div class="box danger">
+            <h3 style="margin-top:0; color:#d32f2f;">❌ 損失したデータ</h3>
+            <ul>
+                <li>全ユーザーアカウント情報</li>
+                <li>全投稿データ（ゲーム、画像、動画）</li>
+                <li>全カード情報</li>
+                <li>全いいね・コメント・リアクション</li>
+                <li>StudySphere連携情報</li>
+            </ul>
+            <p style="margin-bottom:0;"><strong>貴社がこれまで作成され、投稿されてきた作品やデータも含まれており、誠に申し訳ございません。</strong></p>
+        </div>
+        
+        <h2>✅ 現在の状況</h2>
+        <div class="box info">
+            <p>現在、TOYBOXのサイトは<strong>正常に稼働</strong>しており、全ての機能をご利用いただけます。</p>
+            <p style="margin-bottom:0;">ただし、データベースは空の状態となっているため、お手数をおかけいたしますが、<strong>再度アカウントをご作成いただく必要がございます。</strong></p>
+        </div>
+        
+        <h2>🔍 原因</h2>
+        <p>今回の事態は、以下の複合的な要因により発生いたしました：</p>
+        <ul>
+            <li>サーバーファイルシステムの予期しない不具合</li>
+            <li>自動バックアップ体制の未整備</li>
+            <li>復旧作業中の技術的判断ミス</li>
+        </ul>
+        <p>特に、日次での自動バックアップが未実施であったことは、運用上の重大な不備であり、深く反省しております。</p>
+        
+        <h2>🛡️ 今後の対策</h2>
+        <p>二度とこのような事態を発生させないため、以下の対策を直ちに実施いたします：</p>
+        
+        <div class="box success">
+            <h3 style="margin-top:0; color:#4caf50;">■ 即時実施（本日中）</h3>
+            <ul>
+                <li>データベースの自動バックアップシステムの構築（毎日深夜3時実行、7日分保持）</li>
+                <li>サーバーのスナップショット機能の有効化（毎日1回、7日分保持）</li>
+            </ul>
+            
+            <h3 style="color:#4caf50;">■ 短期対応（1週間以内）</h3>
+            <ul>
+                <li>サーバー監視システムの導入</li>
+                <li>ディスク健全性の確認（サーバープロバイダーへの依頼）</li>
+                <li>ステージング環境の構築</li>
+            </ul>
+            
+            <h3 style="color:#4caf50;">■ 中長期対応（1ヶ月以内）</h3>
+            <ul>
+                <li>データベースレプリケーションの検討</li>
+                <li>災害復旧計画（DR計画）の策定</li>
+                <li>運用手順書の整備</li>
+                <li>開発チームへの運用トレーニング実施</li>
+            </ul>
+        </div>
+        
+        <h2>🙏 貴社へのお願い</h2>
+        <p>大変恐縮ではございますが、TOYBOXを引き続きご利用いただける場合は、以下の手順で再度アカウントをご作成いただけますようお願い申し上げます。</p>
+        
+        <div class="box">
+            <ol>
+                <li><a href="https://toybox.ayatori-inc.co.jp" style="color:#1976d2; font-weight:bold;">https://toybox.ayatori-inc.co.jp</a> にアクセス</li>
+                <li>「アカウント作成」から新規登録</li>
+                <li>以前と同じメールアドレスでもご登録いただけます</li>
+            </ol>
+            <p style="margin-bottom:0;"><small>※ StudySphere連携の場合は、StudySphereからアクセスいただくだけで自動的に連携されます。</small></p>
+        </div>
+        
+        <div style="text-align:center;">
+            <a href="https://toybox.ayatori-inc.co.jp" class="cta-button">TOYBOXにアクセス</a>
+        </div>
+        
+        <h2>📞 お問い合わせ先</h2>
+        <p>今回の件に関するご質問、ご不明な点がございましたら、以下までご連絡をいただけますようお願い申し上げます。</p>
+        <ul>
+            <li><strong>メール：</strong>（担当者のメールアドレス）</li>
+            <li><strong>電話：</strong>（お問い合わせ電話番号）</li>
+            <li><strong>Discord：</strong>TOYBOXコミュニティ</li>
+        </ul>
+        
+        <div class="footer">
+            <p><strong>結びに</strong></p>
+            <p>貴社には、TOYBOXをご愛顧いただき、貴重な作品やコンテンツを投稿していただいておりました。</p>
+            <p>それらが全て失われてしまったこと、また、貴社の業務やプロジェクトに多大なご迷惑をおかけしたことを、改めて深くお詫び申し上げます。</p>
+            <p>今回の事態を真摯に受け止め、より安全で信頼できるサービスの提供に向けて、全力で取り組んでまいります。</p>
+            <p>今後とも、ご指導ご鞭撻を賜りますよう、何卒よろしくお願い申し上げます。</p>
+        </div>
+        
+        <div class="signature">
+            <p style="margin:5px 0;">───────────────────────────────</p>
+            <p style="margin:5px 0;"><strong>TOYBOX開発チーム</strong></p>
+            <p style="margin:5px 0;">担当：（お名前）</p>
+            <p style="margin:5px 0;">メール：（メールアドレス）</p>
+            <p style="margin:5px 0;">電話：（電話番号）</p>
+            <p style="margin:5px 0;">URL：<a href="https://toybox.ayatori-inc.co.jp" style="color:#1976d2;">https://toybox.ayatori-inc.co.jp</a></p>
+            <p style="margin:5px 0;">発信日：2026年1月22日</p>
+            <p style="margin:5px 0;">───────────────────────────────</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -4,7 +4,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ToyBox{% endblock %}</title>
+    <title>{% block title %}TOYBOX！{% endblock %}</title>
+    
+    <!-- OGP / Meta Tags -->
+    <meta name="description" content="{% block description %}TOYBOX！ - 創造の遊び場。ゲーム、画像、動画を作って共有しよう！{% endblock %}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}{% block title_plain %}TOYBOX！{% endblock %}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}TOYBOX！ - 創造の遊び場。ゲーム、画像、動画を作って共有しよう！{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}">
+    <meta property="og:site_name" content="TOYBOX！">
+    <meta property="og:image" content="{% block og_image %}https://toybox.ayatori-inc.co.jp/static/frontend/hero/toybox-ogp.png{% endblock %}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="TOYBOX！ - 創造の遊び場">
+    <meta property="og:locale" content="ja_JP">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}{% block title_plain2 %}TOYBOX！{% endblock %}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}TOYBOX！ - 創造の遊び場。ゲーム、画像、動画を作って共有しよう！{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}https://toybox.ayatori-inc.co.jp/static/frontend/hero/toybox-ogp.png{% endblock %}">
+    <meta name="twitter:image:alt" content="TOYBOX！ - 創造の遊び場">
+    
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
     <script>
@@ -71,6 +92,16 @@
                                 <span>プロフィール設定</span>
                             </div>
                         </a>
+                        <a id="studysphere-link-header" href="https://studysphere.ayatori-inc.co.jp/student/dashboard" target="_blank" rel="noopener noreferrer" style="display: block; padding: 0.75rem 1rem; color: var(--steam-iron-100); text-decoration: none; border-bottom: 1px solid var(--steam-iron-800); transition: background 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                                <span>StudySphereへ移動</span>
+                            </div>
+                        </a>
                         <button id="theme-toggle-btn" onclick="toggleTheme()" style="display: block; width: 100%; padding: 0.75rem 1rem; color: var(--steam-iron-100); text-decoration: none; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--steam-iron-800); transition: background 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -80,7 +111,7 @@
                                 <span id="theme-toggle-text">ライトモード</span>
                             </div>
                         </button>
-                        <a href="/login/" onclick="clearAuth(); window.location.href='/'; return false;" style="display: block; padding: 0.75rem 1rem; color: var(--steam-iron-100); text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">
+                        <a href="/login/" onclick="event.preventDefault(); clearAuth(); window.location.replace('/login/'); return false;" style="display: block; padding: 0.75rem 1rem; color: var(--steam-iron-100); text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -300,6 +331,27 @@
                     }
                 })
                 .catch(err => console.error('[Profile Image Debug] base.html - Failed to load user info:', err));
+                
+                // StudySphere連携状態を確認してリンクを更新（ID 8対応）
+                fetch('/api/users/me/', {
+                    headers: {
+                        'Authorization': `Bearer ${getAccessToken()}`,
+                    }
+                })
+                .then(res => res.json())
+                .then(userData => {
+                    const studysphereLink = document.getElementById('studysphere-link-header');
+                    if (studysphereLink && (userData.studysphere_user_id || userData.studysphere_login_code)) {
+                        // StudySphere連携済みの場合はSSOディスパッチを使用
+                        studysphereLink.href = '/sso/dispatch/studysphere/?redirect=1';
+                        console.log('[StudySphere] User is linked, will use SSO dispatch');
+                    } else if (studysphereLink) {
+                        // 未連携の場合はダッシュボードへ（StudySphere側でログイン処理される）
+                        studysphereLink.href = 'https://studysphere.ayatori-inc.co.jp/student/dashboard';
+                        console.log('[StudySphere] User is not linked, redirecting to dashboard');
+                    }
+                })
+                .catch(err => console.error('[StudySphere] Failed to check link status:', err));
                 
                 // テーマの初期化
                 initializeTheme();

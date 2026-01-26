@@ -1,0 +1,424 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOYBOXバックアップシステム ローカルテストガイド
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ローカルのDocker環境でバックアップシステムをテストする手順
+
+作成日：2026年1月26日
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【目的】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+本番環境に影響を与えずに、ローカルのWindows + Docker環境で
+バックアップシステムが正常に動作するかテストします。
+
+
+【前提条件】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Docker Desktopが起動している
+✅ TOYBOXのDockerコンテナが起動している
+   - backend-web-1
+   - backend-db-1
+✅ PowerShellまたはコマンドプロンプトが使える
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【テスト準備】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ ステップ1：ローカルにバックアップディレクトリを作成
+─────────────────────────────────────────────────────
+
+PowerShellまたはコマンドプロンプトで実行：
+
+mkdir C:\backup\toybox\database
+mkdir C:\backup\toybox\volumes
+mkdir C:\backup\toybox\volumes-incremental
+
+
+■ ステップ2：Dockerコンテナが起動しているか確認
+─────────────────────────────────────────────────────
+
+docker ps
+
+【確認事項】
+✅ backend-db-1 が Up 状態
+✅ backend-web-1 が Up 状態
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【テスト1：PostgreSQLダンプのテスト】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ ステップ1：バックアップを実行
+─────────────────────────────────────────────────────
+
+# PowerShellの場合
+$DATE = Get-Date -Format "yyyyMMdd_HHmmss"
+docker exec backend-db-1 pg_dump -U postgres toybox | Out-File -Encoding utf8 "C:\backup\toybox\database\toybox_$DATE.sql"
+
+# コマンドプロンプトの場合
+set DATE=%date:~0,4%%date:~5,2%%date:~8,2%_%time:~0,2%%time:~3,2%%time:~6,2%
+docker exec backend-db-1 pg_dump -U postgres toybox > C:\backup\toybox\database\toybox_%DATE%.sql
+
+
+■ ステップ2：バックアップファイルを確認
+─────────────────────────────────────────────────────
+
+# PowerShellの場合
+dir C:\backup\toybox\database\
+Get-Content C:\backup\toybox\database\toybox_*.sql -Head 20
+
+【確認事項】
+✅ ファイルが作成されている
+✅ ファイルサイズが0より大きい
+✅ ファイル内容にSQLコマンドが含まれている（CREATE TABLE等）
+
+
+■ ステップ3：圧縮してみる（オプション）
+─────────────────────────────────────────────────────
+
+# 7-Zipがインストールされている場合
+7z a C:\backup\toybox\database\toybox_%DATE%.sql.gz C:\backup\toybox\database\toybox_%DATE%.sql
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【テスト2：Dockerボリューム完全バックアップのテスト】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ ステップ1：PostgreSQLボリュームをバックアップ
+─────────────────────────────────────────────────────
+
+# PowerShellの場合
+$DATE = Get-Date -Format "yyyyMMdd"
+docker run --rm `
+  -v backend_postgres_data:/data:ro `
+  -v C:\backup\toybox\volumes:/backup `
+  alpine tar czf /backup/postgres_data_$DATE.tar.gz /data
+
+# コマンドプロンプトの場合
+set DATE=%date:~0,4%%date:~5,2%%date:~8,2%
+docker run --rm ^
+  -v backend_postgres_data:/data:ro ^
+  -v C:\backup\toybox\volumes:/backup ^
+  alpine tar czf /backup/postgres_data_%DATE%.tar.gz /data
+
+
+■ ステップ2：メディアボリュームをバックアップ
+─────────────────────────────────────────────────────
+
+# PowerShellの場合
+docker run --rm `
+  -v backend_media_volume:/data:ro `
+  -v C:\backup\toybox\volumes:/backup `
+  alpine tar czf /backup/media_volume_$DATE.tar.gz /data
+
+# コマンドプロンプトの場合
+docker run --rm ^
+  -v backend_media_volume:/data:ro ^
+  -v C:\backup\toybox\volumes:/backup ^
+  alpine tar czf /backup/media_volume_%DATE%.tar.gz /data
+
+
+■ ステップ3：バックアップファイルを確認
+─────────────────────────────────────────────────────
+
+# PowerShellの場合
+dir C:\backup\toybox\volumes\
+
+【確認事項】
+✅ postgres_data_YYYYMMDD.tar.gz が作成されている
+✅ media_volume_YYYYMMDD.tar.gz が作成されている
+✅ ファイルサイズが0より大きい
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【テスト3：Dockerボリューム差分バックアップのテスト】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ ステップ1：ベース（完全）バックアップを作成
+─────────────────────────────────────────────────────
+
+# PowerShellの場合
+$DATE = Get-Date -Format "yyyyMMdd"
+$BASE_DIR = "C:\backup\toybox\volumes-incremental\base_$DATE"
+New-Item -ItemType Directory -Path $BASE_DIR -Force
+
+# PostgreSQLボリュームの完全バックアップ
+docker run --rm `
+  -v backend_postgres_data:/source:ro `
+  -v ${BASE_DIR}:/backup `
+  alpine sh -c "cp -a /source /backup/postgres_data"
+
+# メディアボリュームの完全バックアップ
+docker run --rm `
+  -v backend_media_volume:/source:ro `
+  -v ${BASE_DIR}:/backup `
+  alpine sh -c "cp -a /source /backup/media_volume"
+
+
+■ ステップ2：差分バックアップを作成
+─────────────────────────────────────────────────────
+
+# PowerShellの場合
+$INCR_DIR = "C:\backup\toybox\volumes-incremental\incr_$DATE"
+New-Item -ItemType Directory -Path $INCR_DIR -Force
+
+# PostgreSQL差分バックアップ（rsync使用）
+docker run --rm `
+  -v backend_postgres_data:/source:ro `
+  -v ${BASE_DIR}\postgres_data:/base:ro `
+  -v ${INCR_DIR}:/backup `
+  alpine sh -c "apk add --no-cache rsync > /dev/null 2>&1 && rsync -a --delete --link-dest=/base /source/ /backup/postgres_data/"
+
+# メディア差分バックアップ
+docker run --rm `
+  -v backend_media_volume:/source:ro `
+  -v ${BASE_DIR}\media_volume:/base:ro `
+  -v ${INCR_DIR}:/backup `
+  alpine sh -c "apk add --no-cache rsync > /dev/null 2>&1 && rsync -a --delete --link-dest=/base /source/ /backup/media_volume/"
+
+
+■ ステップ3：バックアップファイルを確認
+─────────────────────────────────────────────────────
+
+# PowerShellの場合
+dir C:\backup\toybox\volumes-incremental\
+
+【確認事項】
+✅ base_YYYYMMDD フォルダが作成されている
+✅ incr_YYYYMMDD フォルダが作成されている
+✅ それぞれのフォルダ内に postgres_data と media_volume がある
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【簡易版：一括テストスクリプト（PowerShell）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+以下の内容を test_backup.ps1 として保存して実行：
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TOYBOXバックアップテストスクリプト（ローカル版）
+
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host "TOYBOXバックアップシステム ローカルテスト" -ForegroundColor Cyan
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host ""
+
+$DATE = Get-Date -Format "yyyyMMdd_HHmmss"
+$DATE_SHORT = Get-Date -Format "yyyyMMdd"
+$BACKUP_ROOT = "C:\backup\toybox"
+
+# ディレクトリ作成
+Write-Host "[1/5] バックアップディレクトリを作成中..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Path "$BACKUP_ROOT\database" -Force | Out-Null
+New-Item -ItemType Directory -Path "$BACKUP_ROOT\volumes" -Force | Out-Null
+New-Item -ItemType Directory -Path "$BACKUP_ROOT\volumes-incremental" -Force | Out-Null
+Write-Host "✅ 完了" -ForegroundColor Green
+Write-Host ""
+
+# PostgreSQLダンプ
+Write-Host "[2/5] PostgreSQLダンプを実行中..." -ForegroundColor Yellow
+docker exec backend-db-1 pg_dump -U postgres toybox | Out-File -Encoding utf8 "$BACKUP_ROOT\database\toybox_$DATE.sql"
+if (Test-Path "$BACKUP_ROOT\database\toybox_$DATE.sql") {
+    $size = (Get-Item "$BACKUP_ROOT\database\toybox_$DATE.sql").Length
+    Write-Host "✅ 完了 (サイズ: $([math]::Round($size/1KB, 2)) KB)" -ForegroundColor Green
+} else {
+    Write-Host "❌ 失敗" -ForegroundColor Red
+}
+Write-Host ""
+
+# Dockerボリューム完全バックアップ
+Write-Host "[3/5] Dockerボリューム完全バックアップを実行中..." -ForegroundColor Yellow
+Write-Host "  - PostgreSQLボリューム..." -ForegroundColor Gray
+docker run --rm `
+  -v backend_postgres_data:/data:ro `
+  -v ${BACKUP_ROOT}\volumes:/backup `
+  alpine tar czf /backup/postgres_data_$DATE_SHORT.tar.gz /data 2>$null
+
+Write-Host "  - メディアボリューム..." -ForegroundColor Gray
+docker run --rm `
+  -v backend_media_volume:/data:ro `
+  -v ${BACKUP_ROOT}\volumes:/backup `
+  alpine tar czf /backup/media_volume_$DATE_SHORT.tar.gz /data 2>$null
+
+if ((Test-Path "$BACKUP_ROOT\volumes\postgres_data_$DATE_SHORT.tar.gz") -and 
+    (Test-Path "$BACKUP_ROOT\volumes\media_volume_$DATE_SHORT.tar.gz")) {
+    $size1 = (Get-Item "$BACKUP_ROOT\volumes\postgres_data_$DATE_SHORT.tar.gz").Length
+    $size2 = (Get-Item "$BACKUP_ROOT\volumes\media_volume_$DATE_SHORT.tar.gz").Length
+    Write-Host "✅ 完了 (PostgreSQL: $([math]::Round($size1/1MB, 2)) MB, Media: $([math]::Round($size2/1MB, 2)) MB)" -ForegroundColor Green
+} else {
+    Write-Host "❌ 失敗" -ForegroundColor Red
+}
+Write-Host ""
+
+# Dockerボリューム差分バックアップ
+Write-Host "[4/5] Dockerボリューム差分バックアップを実行中..." -ForegroundColor Yellow
+$BASE_DIR = "$BACKUP_ROOT\volumes-incremental\base_$DATE_SHORT"
+$INCR_DIR = "$BACKUP_ROOT\volumes-incremental\incr_$DATE_SHORT"
+New-Item -ItemType Directory -Path $BASE_DIR -Force | Out-Null
+New-Item -ItemType Directory -Path $INCR_DIR -Force | Out-Null
+
+Write-Host "  - ベースバックアップ作成..." -ForegroundColor Gray
+docker run --rm `
+  -v backend_postgres_data:/source:ro `
+  -v ${BASE_DIR}:/backup `
+  alpine sh -c "cp -a /source /backup/postgres_data" 2>$null
+
+docker run --rm `
+  -v backend_media_volume:/source:ro `
+  -v ${BASE_DIR}:/backup `
+  alpine sh -c "cp -a /source /backup/media_volume" 2>$null
+
+Write-Host "  - 差分バックアップ作成..." -ForegroundColor Gray
+docker run --rm `
+  -v backend_postgres_data:/source:ro `
+  -v ${BASE_DIR}\postgres_data:/base:ro `
+  -v ${INCR_DIR}:/backup `
+  alpine sh -c "apk add --no-cache rsync > /dev/null 2>&1 && rsync -a --delete --link-dest=/base /source/ /backup/postgres_data/" 2>$null
+
+docker run --rm `
+  -v backend_media_volume:/source:ro `
+  -v ${BASE_DIR}\media_volume:/base:ro `
+  -v ${INCR_DIR}:/backup `
+  alpine sh -c "apk add --no-cache rsync > /dev/null 2>&1 && rsync -a --delete --link-dest=/base /source/ /backup/media_volume/" 2>$null
+
+if ((Test-Path "$BASE_DIR\postgres_data") -and (Test-Path "$INCR_DIR\postgres_data")) {
+    Write-Host "✅ 完了" -ForegroundColor Green
+} else {
+    Write-Host "❌ 失敗" -ForegroundColor Red
+}
+Write-Host ""
+
+# サマリー
+Write-Host "[5/5] テスト結果サマリー" -ForegroundColor Yellow
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "📂 バックアップファイル一覧:" -ForegroundColor White
+Write-Host ""
+Write-Host "【PostgreSQLダンプ】" -ForegroundColor Cyan
+Get-ChildItem "$BACKUP_ROOT\database" -Recurse | ForEach-Object {
+    Write-Host "  $($_.Name) - $([math]::Round($_.Length/1KB, 2)) KB" -ForegroundColor Gray
+}
+Write-Host ""
+Write-Host "【ボリューム完全バックアップ】" -ForegroundColor Cyan
+Get-ChildItem "$BACKUP_ROOT\volumes" -Recurse -File | ForEach-Object {
+    Write-Host "  $($_.Name) - $([math]::Round($_.Length/1MB, 2)) MB" -ForegroundColor Gray
+}
+Write-Host ""
+Write-Host "【ボリューム差分バックアップ】" -ForegroundColor Cyan
+Get-ChildItem "$BACKUP_ROOT\volumes-incremental" -Directory | ForEach-Object {
+    Write-Host "  $($_.Name)" -ForegroundColor Gray
+}
+Write-Host ""
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host "✅ すべてのテストが完了しました！" -ForegroundColor Green
+Write-Host ""
+Write-Host "バックアップファイルの場所: C:\backup\toybox\" -ForegroundColor White
+Write-Host ""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【実行方法】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 上記の内容を C:\github\toybox\test_backup.ps1 として保存
+
+2. PowerShellで実行：
+   cd C:\github\toybox
+   .\test_backup.ps1
+
+3. エラーが出た場合は実行ポリシーを変更：
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   .\test_backup.ps1
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【確認ポイント】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ すべてのバックアップファイルが作成された
+✅ ファイルサイズが0より大きい
+✅ PostgreSQLダンプにSQLコマンドが含まれている
+✅ 差分バックアップでハードリンクが機能している
+
+
+【トラブルシューティング】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ 「backend-db-1が見つかりません」エラー
+─────────────────────────────────────────────────────
+対処：docker ps で正しいコンテナ名を確認してください
+     backend-db-1ではなく、別の名前の可能性があります
+
+■ 「ボリュームが見つかりません」エラー
+─────────────────────────────────────────────────────
+対処：docker volume ls でボリューム名を確認してください
+     backend_postgres_data ではなく、別の名前の可能性があります
+
+■ 「Permission denied」エラー
+─────────────────────────────────────────────────────
+対処：PowerShellを管理者として実行してください
+
+■ ファイルサイズが異常に小さい（数バイト）
+─────────────────────────────────────────────────────
+対処：Dockerコンテナが正常に起動しているか確認してください
+     docker logs backend-db-1 でログを確認
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【本番環境との違い】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                    【ローカル】         【本番（ConoHa）】
+─────────────────────────────────────────────────────
+実行環境            Windows              Linux (Ubuntu/CentOS)
+バックアップ先      C:\backup\           /backup/
+スクリプト実行      手動                 cron自動実行
+メール通知          なし                 msmtp経由で自動送信
+ログ                なし                 /var/log/toybox_backup.log
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【まとめ】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+このローカルテストで確認できること：
+✅ バックアップコマンドが正常に動作する
+✅ バックアップファイルが正しく作成される
+✅ Dockerボリュームからデータが取得できる
+
+このローカルテストで確認できないこと：
+❌ cronによる自動実行
+❌ メール通知機能
+❌ 本番環境特有の権限設定
+
+→ 本番環境でも同様に動作することが期待できます！
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TOYBOX開発チーム
+2026年1月26日
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

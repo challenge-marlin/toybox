@@ -1,0 +1,479 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOYBOXバックアップ実装ガイド（技術者向け）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+作成日：2026年1月23日
+対象：サーバー管理者・開発チーム
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【即時実装】PostgreSQLダンプの自動化
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ステップ1：バックアップディレクトリの作成
+─────────────────────────────────────────
+mkdir -p /backup/toybox/database
+mkdir -p /backup/toybox/volumes
+mkdir -p /backup/toybox/volumes-incremental
+
+# 権限確認（rootユーザーの場合は変更不要）
+ls -ld /backup/toybox
+
+
+ステップ2：バックアップスクリプトの作成
+─────────────────────────────────────────
+mkdir -p /var/www/toybox/scripts
+
+cat > /var/www/toybox/scripts/backup_database.sh << 'EOF'
+#!/bin/bash
+# TOYBOXデータベース自動バックアップスクリプト
+
+BACKUP_DIR="/backup/toybox/database"
+DATE=$(date +%Y%m%d_%H%M%S)
+LOGFILE="/var/log/toybox_backup.log"
+
+echo "======================================" >> $LOGFILE
+echo "Backup started at $(date)" >> $LOGFILE
+
+# バックアップディレクトリが存在しない場合は作成
+mkdir -p $BACKUP_DIR
+
+# PostgreSQLダンプを実行
+if docker exec backend-db-1 pg_dump -U postgres toybox | gzip > $BACKUP_DIR/toybox_$DATE.sql.gz; then
+    echo "✅ Backup successful: toybox_$DATE.sql.gz" >> $LOGFILE
+    
+    # ファイルサイズを確認
+    SIZE=$(du -h $BACKUP_DIR/toybox_$DATE.sql.gz | cut -f1)
+    echo "File size: $SIZE" >> $LOGFILE
+else
+    echo "❌ Backup failed!" >> $LOGFILE
+    exit 1
+fi
+
+# 7日以上古いバックアップを削除
+OLD_COUNT=$(find $BACKUP_DIR -name "toybox_*.sql.gz" -mtime +7 | wc -l)
+if [ $OLD_COUNT -gt 0 ]; then
+    echo "Removing $OLD_COUNT old backup(s)" >> $LOGFILE
+    find $BACKUP_DIR -name "toybox_*.sql.gz" -mtime +7 -delete
+fi
+
+# 現在のバックアップ数を表示
+BACKUP_COUNT=$(ls -1 $BACKUP_DIR/toybox_*.sql.gz 2>/dev/null | wc -l)
+echo "Total backups: $BACKUP_COUNT" >> $LOGFILE
+echo "Backup completed at $(date)" >> $LOGFILE
+
+exit 0
+EOF
+
+chmod +x /var/www/toybox/scripts/backup_database.sh
+
+
+ステップ3：バックアップを手動でテスト
+─────────────────────────────────────────
+# スクリプトを実行
+/var/www/toybox/scripts/backup_database.sh
+
+# バックアップファイルを確認
+ls -lh /backup/toybox/database/
+
+# ログを確認
+tail -20 /var/log/toybox_backup.log
+
+
+ステップ4：cronジョブに登録（毎日3:00実行）
+─────────────────────────────────────────
+# rootユーザーのcronに追加
+(crontab -l 2>/dev/null; echo "0 3 * * * /var/www/toybox/scripts/backup_database.sh") | crontab -
+
+# cron確認
+crontab -l
+
+# cronサービスが動作しているか確認
+systemctl status cron || systemctl status crond
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【追加実装】Dockerボリュームバックアップの自動化
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ステップ1：バックアップスクリプトの作成
+─────────────────────────────────────────
+cat > /var/www/toybox/scripts/backup_volumes.sh << 'EOF'
+#!/bin/bash
+# TOYBOXボリューム自動バックアップスクリプト
+
+BACKUP_DIR="/backup/toybox/volumes"
+DATE=$(date +%Y%m%d)
+LOGFILE="/var/log/toybox_backup.log"
+
+echo "======================================" >> $LOGFILE
+echo "Volume backup started at $(date)" >> $LOGFILE
+
+# バックアップディレクトリが存在しない場合は作成
+mkdir -p $BACKUP_DIR
+
+# PostgreSQLボリュームをバックアップ
+echo "Backing up postgres_data volume..." >> $LOGFILE
+if docker run --rm \
+  -v backend_postgres_data:/data \
+  -v $BACKUP_DIR:/backup \
+  alpine tar czf /backup/postgres_data_$DATE.tar.gz /data 2>> $LOGFILE; then
+    SIZE=$(du -h $BACKUP_DIR/postgres_data_$DATE.tar.gz | cut -f1)
+    echo "✅ postgres_data backup successful: $SIZE" >> $LOGFILE
+else
+    echo "❌ postgres_data backup failed!" >> $LOGFILE
+fi
+
+# メディアボリュームをバックアップ
+echo "Backing up media_volume..." >> $LOGFILE
+if docker run --rm \
+  -v backend_media_volume:/data \
+  -v $BACKUP_DIR:/backup \
+  alpine tar czf /backup/media_volume_$DATE.tar.gz /data 2>> $LOGFILE; then
+    SIZE=$(du -h $BACKUP_DIR/media_volume_$DATE.tar.gz | cut -f1)
+    echo "✅ media_volume backup successful: $SIZE" >> $LOGFILE
+else
+    echo "❌ media_volume backup failed!" >> $LOGFILE
+fi
+
+# 14日以上古いバックアップを削除
+OLD_COUNT=$(find $BACKUP_DIR -name "*_*.tar.gz" -mtime +14 | wc -l)
+if [ $OLD_COUNT -gt 0 ]; then
+    echo "Removing $OLD_COUNT old volume backup(s)" >> $LOGFILE
+    find $BACKUP_DIR -name "*_*.tar.gz" -mtime +14 -delete
+fi
+
+BACKUP_COUNT=$(ls -1 $BACKUP_DIR/*_*.tar.gz 2>/dev/null | wc -l)
+echo "Total volume backups: $BACKUP_COUNT" >> $LOGFILE
+echo "Volume backup completed at $(date)" >> $LOGFILE
+
+exit 0
+EOF
+
+chmod +x /var/www/toybox/scripts/backup_volumes.sh
+
+
+ステップ2：バックアップを手動でテスト
+─────────────────────────────────────────
+# スクリプトを実行（時間がかかる可能性あり）
+/var/www/toybox/scripts/backup_volumes.sh
+
+# バックアップファイルを確認
+ls -lh /backup/toybox/volumes/
+
+# ログを確認
+tail -30 /var/log/toybox_backup.log
+
+
+ステップ3：cronジョブに登録（毎週日曜3:30実行）
+─────────────────────────────────────────
+# rootユーザーのcronに追加
+(crontab -l 2>/dev/null; echo "30 3 * * 0 /var/www/toybox/scripts/backup_volumes.sh") | crontab -
+
+# cron確認
+crontab -l
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【追加実装】Dockerボリューム差分バックアップの自動化
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ステップ1：差分バックアップスクリプトの作成
+─────────────────────────────────────────
+cat > /var/www/toybox/scripts/backup_volumes_incremental.sh << 'EOF'
+#!/bin/bash
+# TOYBOXボリューム差分バックアップスクリプト
+
+BACKUP_DIR="/backup/toybox/volumes-incremental"
+DATE=$(date +%Y%m%d)
+LOGFILE="/var/log/toybox_backup.log"
+
+echo "======================================" >> $LOGFILE
+echo "Incremental volume backup started at $(date)" >> $LOGFILE
+
+# バックアップディレクトリが存在しない場合は作成
+mkdir -p $BACKUP_DIR
+
+# 最新の完全バックアップを探す
+LATEST_BASE=$(find $BACKUP_DIR -maxdepth 1 -type d -name "base_*" | sort -r | head -1)
+
+# 完全バックアップが存在しない、または7日以上古い場合は完全バックアップを作成
+if [ -z "$LATEST_BASE" ] || [ $(find "$LATEST_BASE" -mtime +7 | wc -l) -gt 0 ]; then
+    echo "Creating new full backup (base)..." >> $LOGFILE
+    
+    BASE_DIR="$BACKUP_DIR/base_$DATE"
+    mkdir -p "$BASE_DIR"
+    
+    # PostgreSQLボリュームの完全バックアップ
+    if docker run --rm \
+      -v backend_postgres_data:/source:ro \
+      -v "$BASE_DIR":/backup \
+      alpine sh -c "cp -a /source /backup/postgres_data" 2>> $LOGFILE; then
+        echo "✅ postgres_data full backup successful" >> $LOGFILE
+    else
+        echo "❌ postgres_data full backup failed!" >> $LOGFILE
+        exit 1
+    fi
+    
+    # メディアボリュームの完全バックアップ
+    if docker run --rm \
+      -v backend_media_volume:/source:ro \
+      -v "$BASE_DIR":/backup \
+      alpine sh -c "cp -a /source /backup/media_volume" 2>> $LOGFILE; then
+        echo "✅ media_volume full backup successful" >> $LOGFILE
+    else
+        echo "❌ media_volume full backup failed!" >> $LOGFILE
+        exit 1
+    fi
+    
+    LATEST_BASE="$BASE_DIR"
+    echo "Full backup created: $BASE_DIR" >> $LOGFILE
+else
+    echo "Using existing base: $LATEST_BASE" >> $LOGFILE
+fi
+
+# 差分バックアップを作成
+INCR_DIR="$BACKUP_DIR/incr_$DATE"
+mkdir -p "$INCR_DIR"
+
+# PostgreSQLボリュームの差分バックアップ（rsync使用）
+echo "Creating incremental backup for postgres_data..." >> $LOGFILE
+if docker run --rm \
+  -v backend_postgres_data:/source:ro \
+  -v "$LATEST_BASE/postgres_data":/base:ro \
+  -v "$INCR_DIR":/backup \
+  alpine sh -c "
+    apk add --no-cache rsync > /dev/null 2>&1
+    rsync -a --delete --link-dest=/base /source/ /backup/postgres_data/
+  " 2>> $LOGFILE; then
+    SIZE=$(du -sh "$INCR_DIR/postgres_data" | cut -f1)
+    echo "✅ postgres_data incremental backup successful: $SIZE" >> $LOGFILE
+else
+    echo "❌ postgres_data incremental backup failed!" >> $LOGFILE
+fi
+
+# メディアボリュームの差分バックアップ
+echo "Creating incremental backup for media_volume..." >> $LOGFILE
+if docker run --rm \
+  -v backend_media_volume:/source:ro \
+  -v "$LATEST_BASE/media_volume":/base:ro \
+  -v "$INCR_DIR":/backup \
+  alpine sh -c "
+    apk add --no-cache rsync > /dev/null 2>&1
+    rsync -a --delete --link-dest=/base /source/ /backup/media_volume/
+  " 2>> $LOGFILE; then
+    SIZE=$(du -sh "$INCR_DIR/media_volume" | cut -f1)
+    echo "✅ media_volume incremental backup successful: $SIZE" >> $LOGFILE
+else
+    echo "❌ media_volume incremental backup failed!" >> $LOGFILE
+fi
+
+# 14日以上古いバックアップを削除
+OLD_BASES=$(find $BACKUP_DIR -maxdepth 1 -type d -name "base_*" -mtime +14)
+OLD_INCRS=$(find $BACKUP_DIR -maxdepth 1 -type d -name "incr_*" -mtime +14)
+
+OLD_COUNT=$(echo "$OLD_BASES $OLD_INCRS" | wc -w)
+if [ $OLD_COUNT -gt 0 ]; then
+    echo "Removing $OLD_COUNT old backup(s)" >> $LOGFILE
+    echo "$OLD_BASES $OLD_INCRS" | xargs rm -rf
+fi
+
+# 現在のバックアップ数を表示
+BASE_COUNT=$(find $BACKUP_DIR -maxdepth 1 -type d -name "base_*" | wc -l)
+INCR_COUNT=$(find $BACKUP_DIR -maxdepth 1 -type d -name "incr_*" | wc -l)
+echo "Total base backups: $BASE_COUNT, incremental backups: $INCR_COUNT" >> $LOGFILE
+echo "Incremental volume backup completed at $(date)" >> $LOGFILE
+
+exit 0
+EOF
+
+chmod +x /var/www/toybox/scripts/backup_volumes_incremental.sh
+
+
+ステップ2：差分バックアップを手動でテスト
+─────────────────────────────────────────
+# スクリプトを実行（初回は完全バックアップを作成）
+/var/www/toybox/scripts/backup_volumes_incremental.sh
+
+# バックアップファイルを確認
+ls -lh /backup/toybox/volumes-incremental/
+
+# ログを確認
+tail -50 /var/log/toybox_backup.log
+
+
+ステップ3：cronジョブに登録（毎日3:45実行）
+─────────────────────────────────────────
+# rootユーザーのcronに追加
+(crontab -l 2>/dev/null; echo "45 3 * * * /var/www/toybox/scripts/backup_volumes_incremental.sh") | crontab -
+
+# cron確認
+crontab -l
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【復元手順】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ PostgreSQLダンプから復元
+─────────────────────────────────────────
+# バックアップファイル一覧
+ls -lh /backup/toybox/database/
+
+# 復元（最新のファイルを使用）
+LATEST=$(ls -t /backup/toybox/database/toybox_*.sql.gz | head -1)
+echo "Restoring from: $LATEST"
+
+# データベースを復元
+gunzip -c $LATEST | docker exec -i backend-db-1 psql -U postgres toybox
+
+# 確認
+docker exec backend-web-1 python manage.py shell -c "
+from users.models import User
+from submissions.models import Submission
+print(f'ユーザー数: {User.objects.count()}')
+print(f'投稿数: {Submission.objects.count()}')
+"
+
+
+■ Dockerボリューム完全バックアップから復元
+─────────────────────────────────────────
+# コンテナを停止
+cd /var/www/toybox/backend && docker compose stop db
+
+# ボリュームを削除
+docker volume rm backend_postgres_data
+
+# ボリュームを復元
+LATEST=$(ls -t /backup/toybox/volumes/postgres_data_*.tar.gz | head -1)
+docker run --rm \
+  -v backend_postgres_data:/data \
+  -v /backup/toybox/volumes:/backup \
+  alpine sh -c "cd / && tar xzf /backup/$(basename $LATEST)"
+
+# コンテナを起動
+cd /var/www/toybox/backend && docker compose up -d
+
+
+■ Dockerボリューム差分バックアップから復元
+─────────────────────────────────────────
+# コンテナを停止
+cd /var/www/toybox/backend && docker compose stop db
+
+# ボリュームを削除
+docker volume rm backend_postgres_data backend_media_volume
+
+# 復元したい日付を指定
+TARGET_DATE="20260123"  # 例：2026年1月23日に復元
+
+# ベースとなる完全バックアップを見つける
+BASE_DIR=$(find /backup/toybox/volumes-incremental -maxdepth 1 -type d -name "base_*" -not -newer /backup/toybox/volumes-incremental/incr_$TARGET_DATE | sort -r | head -1)
+
+# ベースから復元
+docker run --rm \
+  -v backend_postgres_data:/data \
+  -v "$BASE_DIR/postgres_data":/source:ro \
+  alpine sh -c "cp -a /source/. /data/"
+
+# 差分を順番に適用
+for INCR_DIR in $(find /backup/toybox/volumes-incremental -maxdepth 1 -type d -name "incr_*" -newer "$BASE_DIR" -not -newer /backup/toybox/volumes-incremental/incr_$TARGET_DATE | sort); do
+    echo "Applying incremental: $(basename $INCR_DIR)"
+    docker run --rm \
+      -v backend_postgres_data:/data \
+      -v "$INCR_DIR/postgres_data":/source:ro \
+      alpine sh -c "cp -a /source/. /data/"
+done
+
+# コンテナを起動
+cd /var/www/toybox/backend && docker compose up -d
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【トラブルシューティング】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ バックアップが失敗する場合
+─────────────────────────────────────────
+# ディスク容量を確認
+df -h
+
+# Dockerコンテナの状態を確認
+docker ps
+
+# PostgreSQLが起動しているか確認
+docker exec backend-db-1 pg_isready -U postgres
+
+
+■ バックアップファイルが正常か確認
+─────────────────────────────────────────
+# ファイルサイズを確認（0バイトでないこと）
+ls -lh /backup/toybox/database/
+
+# gzipファイルが破損していないか確認
+gunzip -t /backup/toybox/database/toybox_20260123_030000.sql.gz
+
+
+■ cronが動作しているか確認
+─────────────────────────────────────────
+# cronログを確認
+grep CRON /var/log/syslog | tail -20
+
+# 手動で実行してエラーがないか確認
+/var/www/toybox/scripts/backup_database.sh
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【チェックリスト】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【即時実装（本日中）】
+□ /backup/toybox ディレクトリの作成
+□ backup_database.sh スクリプトの作成
+□ 手動バックアップのテスト実行
+□ cronジョブの登録（日次：3:00）
+
+【短期実装（今週中）】
+□ backup_volumes.sh スクリプトの作成（完全バックアップ）
+□ backup_volumes_incremental.sh スクリプトの作成（差分バックアップ）
+□ 手動ボリュームバックアップのテスト
+□ cronジョブの登録（週次：3:30、日次：3:45）
+□ バックアップログの確認体制構築
+
+【月次作業】
+□ 復元テストの実施（毎月1回）
+□ バックアップファイルの整合性確認
+□ ディスク容量の確認
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【参考：各バックアップ方式の比較】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+方式                   頻度    サイズ    復元速度  確実性  復元粒度
+───────────────────────────────────────────────────────────
+PostgreSQLダンプ       毎日    小       速い      高      日次
+ボリューム完全         毎週    大       中        高      週次
+ボリューム差分         毎日    小       やや遅い  中      日次
+───────────────────────────────────────────────────────────
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+実装担当者：_______________
+実装完了日：_______________
+確認者：_______________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,0 +1,367 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOYBOXバックアップ メール通知設定ガイド
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+作成日：2026年1月23日
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【概要】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+バックアップの成功・失敗を以下のメールアドレスに自動通知します：
+
+- maki@ayatori-inc.co.jp
+- tech@ayatori-inc.co.jp
+
+通知内容：
+✅ 成功時：バックアップファイル名、サイズ、保持数
+❌ 失敗時：エラー詳細、推奨対応
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【方法1】msmtpを使用（推奨・シンプル）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ステップ1：msmtpのインストール
+─────────────────────────────────────────
+# CentOSの場合
+yum install -y msmtp
+
+# Ubuntuの場合
+apt-get update && apt-get install -y msmtp msmtp-mta
+
+
+ステップ2：msmtpの設定ファイルを作成
+─────────────────────────────────────────
+# Gmailを使用する場合の例
+
+cat > /etc/msmtprc << 'EOF'
+# デフォルト設定
+defaults
+auth           on
+tls            on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        /var/log/msmtp.log
+
+# Gmail設定
+account        gmail
+host           smtp.gmail.com
+port           587
+from           noreply@ayatori-inc.co.jp
+user           your-email@gmail.com
+password       your-app-password
+
+# デフォルトアカウント
+account default : gmail
+EOF
+
+# 権限設定（重要！）
+chmod 600 /etc/msmtprc
+
+
+ステップ3：Gmailアプリパスワードの取得
+─────────────────────────────────────────
+1. Googleアカウントにログイン
+   https://myaccount.google.com/
+
+2. 「セキュリティ」→「2段階認証プロセス」を有効化
+
+3. 「アプリパスワード」を生成
+   - アプリを選択：「メール」
+   - デバイスを選択：「その他（カスタム名）」
+   - 名前：「TOYBOX Backup Server」
+   - 生成されたパスワードをコピー
+
+4. /etc/msmtprc の password 行に貼り付け
+   password       abcd efgh ijkl mnop
+
+
+ステップ4：テスト送信
+─────────────────────────────────────────
+# テストメール送信
+echo "これはテストメールです" | msmtp --from=noreply@ayatori-inc.co.jp -t maki@ayatori-inc.co.jp
+
+# ログ確認
+tail -f /var/log/msmtp.log
+
+
+ステップ5：通知スクリプトの配置
+─────────────────────────────────────────
+# 通知スクリプトに実行権限を付与
+chmod +x /var/www/toybox/scripts/send_backup_notification.sh
+
+# 手動テスト
+/var/www/toybox/scripts/send_backup_notification.sh "success" "テストバックアップ" "これはテストです"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【方法2】Pythonスクリプトを使用（高度）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+より詳細なカスタマイズが必要な場合に使用します。
+
+ステップ1：Pythonメール送信スクリプトの作成
+─────────────────────────────────────────
+cat > /var/www/toybox/scripts/send_email.py << 'EOF'
+#!/usr/bin/env python3
+import smtplib
+import sys
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime
+
+# メール設定
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USER = "your-email@gmail.com"
+SMTP_PASS = "your-app-password"
+FROM_EMAIL = "noreply@ayatori-inc.co.jp"
+TO_EMAILS = ["maki@ayatori-inc.co.jp", "tech@ayatori-inc.co.jp"]
+
+def send_notification(status, backup_type, details):
+    """バックアップ通知メールを送信"""
+    
+    # 件名
+    if status == "success":
+        subject = f"✅ TOYBOXバックアップ成功 - {backup_type}"
+    else:
+        subject = f"❌ TOYBOXバックアップ失敗 - {backup_type}"
+    
+    # 本文
+    body = f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOYBOX バックアップ通知
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【ステータス】{"成功" if status == "success" else "失敗"}
+【バックアップ種別】{backup_type}
+【日時】{datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【詳細】
+{details}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+このメールは自動送信されています。
+TOYBOX バックアップシステム
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    """
+    
+    # メッセージ作成
+    msg = MIMEMultipart()
+    msg['From'] = FROM_EMAIL
+    msg['To'] = ", ".join(TO_EMAILS)
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
+    
+    # 送信
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+        print(f"メール送信成功: {', '.join(TO_EMAILS)}")
+        return 0
+    except Exception as e:
+        print(f"メール送信失敗: {e}")
+        return 1
+
+if __name__ == "__main__":
+    if len(sys.argv) < 4:
+        print("使用方法: send_email.py <success|failure> <backup_type> <details>")
+        sys.exit(1)
+    
+    status = sys.argv[1]
+    backup_type = sys.argv[2]
+    details = sys.argv[3]
+    
+    sys.exit(send_notification(status, backup_type, details))
+EOF
+
+chmod +x /var/www/toybox/scripts/send_email.py
+
+
+ステップ2：バックアップスクリプトの修正
+─────────────────────────────────────────
+# send_backup_notification.sh の代わりに以下を使用
+python3 /var/www/toybox/scripts/send_email.py "success" "PostgreSQLダンプ" "詳細情報"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【トラブルシューティング】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ メールが届かない場合
+─────────────────────────────────────────
+1. msmtpログを確認
+   tail -f /var/log/msmtp.log
+
+2. Gmailのセキュリティ設定を確認
+   - 2段階認証が有効か
+   - アプリパスワードが正しいか
+
+3. ファイアウォール設定を確認
+   # SMTP（587番ポート）が開いているか確認
+   telnet smtp.gmail.com 587
+
+4. 手動テスト
+   echo "テスト" | msmtp --from=noreply@ayatori-inc.co.jp maki@ayatori-inc.co.jp
+
+
+■ Gmailを使わない場合
+─────────────────────────────────────────
+会社のメールサーバーを使用する場合：
+
+cat > /etc/msmtprc << 'EOF'
+defaults
+auth           on
+tls            on
+logfile        /var/log/msmtp.log
+
+account        company
+host           smtp.ayatori-inc.co.jp
+port           587
+from           noreply@ayatori-inc.co.jp
+user           your-username
+password       your-password
+
+account default : company
+EOF
+
+chmod 600 /etc/msmtprc
+
+
+■ 送信元メールアドレスを変更したい場合
+─────────────────────────────────────────
+/var/www/toybox/scripts/send_backup_notification.sh の以下を編集：
+
+From: TOYBOX Backup System <backup@ayatori-inc.co.jp>
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【セキュリティに関する注意】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ パスワードの保護
+/etc/msmtprc には認証情報が含まれるため、必ず以下を実行：
+chmod 600 /etc/msmtprc
+
+⚠️ Gmailアプリパスワード
+- 通常のGmailパスワードは使用しない
+- 必ず「アプリパスワード」を生成して使用
+- パスワードは定期的に変更
+
+⚠️ ログファイルの管理
+/var/log/msmtp.log にメール送信履歴が残るため、定期的にローテーション：
+
+cat > /etc/logrotate.d/msmtp << 'EOF'
+/var/log/msmtp.log {
+    weekly
+    rotate 4
+    compress
+    missingok
+    notifempty
+}
+EOF
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【通知メールのサンプル】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ 成功時
+─────────────────────────────────────────
+件名: ✅ TOYBOXバックアップ成功 - PostgreSQLダンプ
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOYBOX バックアップ通知
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【ステータス】成功
+【バックアップ種別】PostgreSQLダンプ
+【日時】2026年01月23日 03:00:15
+【サーバー】toybox-server
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【詳細】
+バックアップファイル: toybox_20260123_030000.sql.gz
+ファイルサイズ: 15M
+整合性チェック: OK
+削除した古いバックアップ: 1個
+保持しているバックアップ: 7個
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+このメールは自動送信されています。
+TOYBOX バックアップシステム
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+■ 失敗時
+─────────────────────────────────────────
+件名: ❌ TOYBOXバックアップ失敗 - PostgreSQLダンプ
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOYBOX バックアップ通知
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【ステータス】失敗
+【バックアップ種別】PostgreSQLダンプ
+【日時】2026年01月23日 03:00:15
+【サーバー】toybox-server
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【詳細】
+バックアップ実行に失敗しました。
+Dockerコンテナが起動しているか確認してください。
+
+【推奨対応】
+1. docker ps でコンテナ状態を確認
+2. docker logs backend-db-1 でエラーログを確認
+3. /var/log/toybox_backup.log を確認
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+このメールは自動送信されています。
+TOYBOX バックアップシステム
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【チェックリスト】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ msmtpのインストール
+□ /etc/msmtprcの作成と権限設定（600）
+□ Gmailアプリパスワードの取得と設定
+□ テストメールの送信確認
+□ send_backup_notification.shに実行権限付与
+□ バックアップスクリプトの更新
+□ 手動バックアップでメール通知テスト
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+設定担当者：_______________
+設定完了日：_______________
+確認者：_______________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

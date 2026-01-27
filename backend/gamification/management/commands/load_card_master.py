@@ -21,12 +21,17 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         tsv_file = options['tsv_file']
         
-        # Resolve path
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        tsv_path = os.path.join(project_root, tsv_file)
+        # Resolve path: absolute → そのまま / 相対 → プロジェクトルート基準
+        if os.path.isabs(tsv_file):
+            tsv_path = tsv_file
+        else:
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            tsv_path = os.path.join(project_root, tsv_file)
         
+        self.stdout.write(f'Reading TSV from: {tsv_path}')
         if not os.path.exists(tsv_path):
             self.stdout.write(self.style.ERROR(f'TSV file not found: {tsv_path}'))
+            self.stdout.write('Upload card_master.tsv to server (e.g. /var/www/toybox/backend/src/data/) and pass --tsv-file src/data/card_master.tsv, or use absolute path like /app/src/data/card_master.tsv.')
             return
         
         # Rarity mapping: TSV (N/R/SR/SSR) -> Django (common/rare/seasonal/special)
@@ -73,21 +78,34 @@ class Command(BaseCommand):
                 if image_url == '-' or not image_url:
                     image_url = f'/uploads/cards/{card_id}.png'
                 
-                # Create or update card
-                card, created = Card.objects.update_or_create(
-                    code=card_id,
-                    defaults={
-                        'name': card_name,
-                        'rarity': rarity,
-                        'image_url': image_url if image_url != '-' else None,
-                        'description': description,
-                        'attribute': attribute,
-                        'atk_points': atk_points,
-                        'def_points': def_points,
-                        'card_type': card_type,
-                        'buff_effect': buff_effect,
-                    }
-                )
+                # Debug: print values for C004
+                if card_id == 'C004':
+                    self.stdout.write(f'[DEBUG C004] TSV values: attr={repr(attribute)}, atk={atk_points}, def={def_points}, desc={repr(description[:30])}')
+                
+                # Get existing card or create new one
+                try:
+                    card = Card.objects.get(code=card_id)
+                    created = False
+                except Card.DoesNotExist:
+                    card = Card(code=card_id)
+                    created = True
+                
+                # Set all fields explicitly
+                card.name = card_name
+                card.rarity = rarity
+                card.image_url = image_url if image_url != '-' else None
+                card.description = description
+                card.attribute = attribute
+                card.atk_points = atk_points
+                card.def_points = def_points
+                card.card_type = card_type
+                card.buff_effect = buff_effect
+                card.save()
+                
+                # Debug: verify saved values for C004
+                if card_id == 'C004':
+                    card.refresh_from_db()
+                    self.stdout.write(f'[DEBUG C004] After save: attr={repr(card.attribute)}, atk={card.atk_points}, def={card.def_points}, desc={repr((card.description or "")[:30])}')
                 
                 if created:
                     loaded_count += 1

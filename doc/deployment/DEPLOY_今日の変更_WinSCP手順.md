@@ -49,6 +49,50 @@
 - Card に `attribute` / `atk_points` / `def_points` / `card_type` / `buff_effect` を追加した `0004` が未適用なら、マイグレーションを実行してください。
 - 既に `0004` を適用済みなら、マイグレーションは不要です。
 
+### マイグレーションのやり方
+
+**実行場所**: サーバー上の **backend ディレクトリ**（`manage.py` がある場所）。パス例: `/var/www/toybox/backend`。
+
+> 補足: サーバーによっては `python` コマンドが無く、`python3` のみ存在します。  
+> その場合は、以下の `python` を **`python3`** に読み替えて実行してください。
+
+1. **未適用かどうか確認する**
+
+   ```bash
+   cd /var/www/toybox/backend
+   source venv/bin/activate   # venv 運用の場合
+   python3 manage.py showmigrations gamification
+   ```
+
+   `gamification` の一覧で `0004_add_card_fields_attribute_atk_def_type_buff` の行が **`[ ]`（空白）** なら未適用、**`[X]`** なら適用済みです。
+
+2. **未適用なら実行する**
+
+   ```bash
+   python3 manage.py migrate gamification
+   ```
+
+   全アプリをまとめて適用する場合は:
+
+   ```bash
+   python3 manage.py migrate
+   ```
+
+3. **Docker で動かしている場合**
+
+   ```bash
+   cd /var/www/toybox
+   docker compose exec web python3 manage.py showmigrations gamification   # 確認
+   docker compose exec web python3 manage.py migrate gamification          # 実行
+   ```
+
+   （`docker-compose` や別名のサービスの場合は、そのコマンドに合わせて `docker compose` の部分を読み替えてください。）
+
+4. **実行後**
+
+   - エラーが出ず `Applying gamification.0004_... OK.` のように出れば成功です。
+   - 管理画面のカード一覧で「属性」列などが表示されるようになります。
+
 ---
 
 ## 4. サーバー上で実行するコマンド
@@ -70,15 +114,15 @@ source venv/bin/activate
 ### 4.3. マイグレーション（未適用なら実行）
 
 ```bash
-python manage.py migrate
+python3 manage.py migrate
 # もしくは gamification だけ
-python manage.py migrate gamification
+python3 manage.py migrate gamification
 ```
 
 ### 4.4. 静的ファイルの collect（本番で Django が static を配信する場合）
 
 ```bash
-python manage.py collectstatic --noinput
+python3 manage.py collectstatic --noinput
 ```
 
 ※ Nginx/Caddy 等で `STATIC_ROOT` を配信している場合は必須です。配信構成に合わせて実行してください。
@@ -88,7 +132,7 @@ python manage.py collectstatic --noinput
 称号マスターに画像を紐付け、未配置時はデフォルト画像を使うようにする場合：
 
 ```bash
-python manage.py init_titles
+python3 manage.py init_titles
 ```
 
 - `MEDIA_ROOT/titles/` に画像が無い称号に対して、`frontend/static/.../hero/toybox-title.png` をコピーして `image_url` を設定します。
@@ -147,7 +191,7 @@ pkill -f gunicorn
 ## 6. まとめチェックリスト
 
 - [ ] 上記ファイルを WinSCP でサーバーにアップロード
-- [ ] `python manage.py migrate`（または `migrate gamification`）を実行
+- [ ] `python3 manage.py migrate`（または `migrate gamification`）を実行
 - [ ] 必要なら `collectstatic` を実行
 - [ ] 必要なら `init_titles` を実行
 - [ ] Web アプリ（systemd / Docker / gunicorn）を再起動

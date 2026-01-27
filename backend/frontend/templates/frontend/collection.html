@@ -90,6 +90,7 @@
     }
     
     .card-tile {
+        position: relative;
         border-radius: 8px;
         border: 1px solid var(--steam-iron-700);
         background: var(--steam-iron-900);
@@ -109,7 +110,16 @@
         border-radius: 4px;
         margin-bottom: 0.5rem;
         overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
     }
+    .card-image-container[data-attr] { box-shadow: inset 0 0 0 2px var(--steam-iron-500); }
+    .card-image-container[data-attr="火"] { box-shadow: inset 0 0 0 2px #e53e3e; }
+    .card-image-container[data-attr="水"] { box-shadow: inset 0 0 0 2px #63b3ed; }
+    .card-image-container[data-attr="木"] { box-shadow: inset 0 0 0 2px #48bb78; }
+    .card-image-container[data-attr="金"] { box-shadow: inset 0 0 0 2px #d69e2e; }
+    .card-image-container[data-attr="土"] { box-shadow: inset 0 0 0 2px #a0522d; }
+    .card-image-container[data-attr="光"] { box-shadow: inset 0 0 0 2px #ecc94b; }
+    .card-image-container[data-attr="闇"] { box-shadow: inset 0 0 0 2px #805ad5; }
     
     .card-image {
         position: absolute;
@@ -142,7 +152,59 @@
     
     .card-attribute {
         font-size: 0.75rem;
-        color: var(--steam-iron-300);
+        font-weight: 600;
+    }
+    .card-attribute[data-attr="火"] { color: #e53e3e; }
+    .card-attribute[data-attr="水"] { color: #63b3ed; }
+    .card-attribute[data-attr="木"] { color: #48bb78; }
+    .card-attribute[data-attr="金"] { color: #d69e2e; }
+    .card-attribute[data-attr="土"] { color: #a0522d; }
+    .card-attribute[data-attr="光"] { color: #ecc94b; }
+    .card-attribute[data-attr="闇"] { color: #805ad5; }
+    .card-attribute:not([data-attr]) { color: var(--steam-iron-300); }
+    
+    .card-description-tooltip {
+        position: absolute;
+        right: 100%;
+        top: 0;
+        margin-right: 0.5rem;
+        min-width: 200px;
+        max-width: 280px;
+        width: max-content;
+        padding: 0.5rem 0.65rem;
+        background: rgba(0, 0, 0, 0.92);
+        color: var(--steam-gold-100);
+        font-size: 0.75rem;
+        line-height: 1.5;
+        letter-spacing: 0.01em;
+        white-space: pre-wrap;
+        word-break: break-word;
+        border-radius: 6px;
+        border: 1px solid var(--steam-gold-500);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+        z-index: 100;
+    }
+    .card-tile:hover .card-description-tooltip {
+        opacity: 1;
+        visibility: visible;
+    }
+    @media (max-width: 768px) {
+        .card-description-tooltip {
+            left: 50%;
+            right: auto;
+            margin-right: 0;
+            margin-left: 0;
+            top: auto;
+            bottom: 100%;
+            margin-bottom: 0.5rem;
+            transform: translateX(-50%);
+            min-width: 180px;
+            max-width: min(260px, 92vw);
+        }
     }
     
     .lightbox-overlay {
@@ -506,22 +568,35 @@
             return;
         }
         
+        const attrColors = ['火', '水', '木', '金', '土', '光', '闇'];
+        function escHtml(s) {
+            if (s == null || s === '') return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        
         grid.innerHTML = filtered.map(e => {
             const meta = e.meta || {};
             const imageUrl = meta.image_url || `/uploads/cards/${meta.card_id || e.id}.png`;
             const quantity = e.quantity || 1;
+            const attr = meta.attribute ? String(meta.attribute).trim() : '';
+            const attrData = attrColors.includes(attr) ? ` data-attr="${escHtml(attr)}"` : '';
+            const containerAttr = attr ? ` data-attr="${escHtml(attr)}"` : '';
+            const desc = meta.description ? String(meta.description).trim() : '';
+            const tooltipHtml = desc ? `<div class="card-description-tooltip">${escHtml(desc)}</div>` : '';
+            const attributeHtml = attr ? `<div class="card-attribute"${attrData}>${escHtml(attr)}</div>` : '';
             
             return `
-                <div class="card-tile" onclick="openLightbox('${imageUrl}')">
-                    <div class="card-image-container">
-                        <img src="${imageUrl}" alt="${meta.card_name || e.id}" class="card-image" onerror="this.style.display='none'">
+                <div class="card-tile" onclick="openLightbox('${imageUrl.replace(/'/g, "\\'")}')">
+                    ${tooltipHtml}
+                    <div class="card-image-container"${containerAttr}>
+                        <img src="${escHtml(imageUrl)}" alt="${escHtml(meta.card_name || e.id)}" class="card-image" onerror="this.style.display='none'">
                     </div>
-                    <div class="card-rarity">${meta.rarity || '-'}</div>
+                    <div class="card-rarity">${escHtml(meta.rarity || '-')}</div>
                     <div class="card-name">
-                        <span>${meta.card_name || e.id}</span>
+                        <span>${escHtml(meta.card_name || e.id)}</span>
                         ${quantity > 1 ? `<span class="card-quantity">×${quantity}</span>` : ''}
                     </div>
-                    ${meta.card_type === 'Character' && meta.attribute ? `<div class="card-attribute">${meta.attribute}</div>` : ''}
+                    ${attributeHtml}
                 </div>
             `;
         }).join('');

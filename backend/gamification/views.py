@@ -67,16 +67,23 @@ class MyCardsView(views.APIView):
                     if not card_name or card_name.strip() == '':
                         card_name = card_code
                 
+                card_type_val = getattr(card, 'card_type', None) or card_type
+                if isinstance(card_type_val, str):
+                    card_type_val = 'Character' if card_type_val.lower() == 'character' else 'Effect'
+                else:
+                    card_type_val = card_type
                 card_groups[card_code] = {
                     'id': card_code,
                     'obtainedAt': uc.obtained_at.isoformat() if uc.obtained_at else None,
                     'quantity': 0,
                     'meta': {
                         'card_id': card_code,
-                        'card_type': card_type,
+                        'card_type': card_type_val,
                         'card_name': card_name,
                         'rarity': rarity_str,
-                        'image_url': card.image_url or f'/uploads/cards/{card.code}.png'
+                        'image_url': card.image_url or f'/uploads/cards/{card.code}.png',
+                        'attribute': getattr(card, 'attribute', None) or None,
+                        'description': getattr(card, 'description', None) or None,
                     }
                 }
             

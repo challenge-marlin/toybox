@@ -1,10 +1,20 @@
 """
-称号データを初期化し、画像ファイルを関連付ける管理コマンド
+称号データを初期化し、画像ファイルを関連付ける管理コマンド。
+
+画像の参照順:
+1. MEDIA_ROOT/titles/{称号名}.png があればそれを使用
+2. なければ frontend/static/frontend/hero/toybox-title.png を
+   MEDIA_ROOT/titles/{称号名}.png にコピーしてから DB の image_url を設定
 """
+import shutil
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from pathlib import Path
 from gamification.models import Title
+
+
+# デフォルト画像（static に存在するもの）
+DEFAULT_TITLE_IMAGE = Path(__file__).resolve().parent.parent.parent.parent / 'frontend' / 'static' / 'frontend' / 'hero' / 'toybox-title.png'
 
 
 class Command(BaseCommand):
@@ -24,22 +34,35 @@ class Command(BaseCommand):
         ]
         
         titles_dir = Path(settings.MEDIA_ROOT) / 'titles'
+        titles_dir.mkdir(parents=True, exist_ok=True)
         created_count = 0
         updated_count = 0
         
         for title_name in titles_data:
-            # 画像ファイルのパスを確認
             image_path = titles_dir / f'{title_name}.png'
             image_url = None
             
             if image_path.exists():
-                # 画像ファイルが存在する場合、相対パスを設定
                 image_url = f'/uploads/titles/{title_name}.png'
                 self.stdout.write(f'画像ファイルが見つかりました: {image_path.name}')
             else:
-                self.stdout.write(self.style.WARNING(f'画像ファイルが見つかりません: {image_path.name}'))
+                # デフォルト画像をコピーして DB に紐付ける
+                if DEFAULT_TITLE_IMAGE.exists():
+                    try:
+                        shutil.copy2(DEFAULT_TITLE_IMAGE, image_path)
+                        image_url = f'/uploads/titles/{title_name}.png'
+                        self.stdout.write(self.style.SUCCESS(
+                            f'デフォルト画像をコピーしました: {image_path.name}'
+                        ))
+                    except OSError as e:
+                        self.stdout.write(self.style.WARNING(
+                            f'画像のコピーに失敗しました: {image_path.name} ({e})'
+                        ))
+                else:
+                    self.stdout.write(self.style.WARNING(
+                        f'画像が見つかりません: {image_path.name} （デフォルト: {DEFAULT_TITLE_IMAGE} もなし）'
+                    ))
             
-            # 称号データを作成または更新
             title, created = Title.objects.get_or_create(
                 name=title_name,
                 defaults={
@@ -52,12 +75,13 @@ class Command(BaseCommand):
                 created_count += 1
                 self.stdout.write(self.style.SUCCESS(f'称号を作成しました: {title_name}'))
             else:
-                # 既存のレコードを更新（image_urlが設定されていない場合）
-                if not title.image_url and image_url:
+                if image_url and title.image_url != image_url:
                     title.image_url = image_url
                     title.save()
                     updated_count += 1
-                    self.stdout.write(self.style.SUCCESS(f'称号を更新しました: {title_name} (画像URLを設定)'))
+                    self.stdout.write(self.style.SUCCESS(
+                        f'称号を更新しました: {title_name} (画像URLを設定)'
+                    ))
                 elif title.image_url:
                     self.stdout.write(f'称号は既に存在します: {title_name} (画像URL: {title.image_url})')
                 else:

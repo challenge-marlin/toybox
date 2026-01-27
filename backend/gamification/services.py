@@ -54,12 +54,33 @@ def load_card_master():
                 if image_url == '-' or not image_url:
                     image_url = f'/uploads/cards/{card_id}.png'
                 
+                # 追加項目（TSVにあれば読む、なければコードから推定または空）
+                attribute = (row.get('attribute') or '').strip() or None
+                atk_raw = (row.get('atk_points') or '').strip()
+                atk_points = int(atk_raw) if atk_raw and atk_raw.isdigit() else None
+                def_raw = (row.get('def_points') or '').strip()
+                def_points = int(def_raw) if def_raw and def_raw.isdigit() else None
+                card_type_raw = (row.get('card_type') or '').strip().lower()
+                if card_type_raw in ('character', 'effect'):
+                    card_type = card_type_raw
+                else:
+                    # コードから推定: C* → character, E* → effect
+                    card_type = 'character' if card_id.startswith('C') else 'effect' if card_id.startswith('E') else None
+                buff_effect = (row.get('buff_effect') or '').strip() or None
+                description = (row.get('description') or row.get('card_description') or '').strip() or None
+                
                 # Create card object (not saved to DB, just for in-memory use)
                 card = Card(
                     code=card_id,
                     name=card_name,
                     rarity=rarity,
                     image_url=image_url if image_url != '-' else None,
+                    description=description,
+                    attribute=attribute,
+                    atk_points=atk_points,
+                    def_points=def_points,
+                    card_type=card_type,
+                    buff_effect=buff_effect,
                 )
                 cards.append(card)
         
@@ -133,6 +154,17 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
         logger.warning(f'Failed to get title image for {chosen_title}: {e}', exc_info=True)
         # エラー時もデフォルトパスを設定
         title_image_url = f'/uploads/titles/{chosen_title}.png'
+    
+    # ファイル未配置時はフォールバック画像を使用
+    try:
+        from toybox.image_utils import verify_image_file_exists, TITLE_IMAGE_FALLBACK_PATH
+        if title_image_url and title_image_url != TITLE_IMAGE_FALLBACK_PATH and not verify_image_file_exists(title_image_url):
+            logger.info(f'Title image not found, using fallback: {title_image_url}')
+            title_image_url = TITLE_IMAGE_FALLBACK_PATH
+    except Exception as e:
+        logger.warning(f'Failed to verify title image, using fallback: {e}')
+        from toybox.image_utils import TITLE_IMAGE_FALLBACK_PATH
+        title_image_url = TITLE_IMAGE_FALLBACK_PATH
     
     # Draw card from card master
     card_meta = None
@@ -237,14 +269,24 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
             card_id = card_row.code
             
             # Get or create Card in DB (for UserCard relationship)
-            db_card, _ = Card.objects.get_or_create(
-                code=card_id,
-                defaults={
-                    'name': card_row.name,
-                    'rarity': card_row.rarity,
-                    'image_url': card_row.image_url
-                }
-            )
+            defaults = {
+                'name': card_row.name,
+                'rarity': card_row.rarity,
+                'image_url': card_row.image_url,
+            }
+            if hasattr(card_row, 'description') and card_row.description is not None:
+                defaults['description'] = card_row.description
+            if hasattr(card_row, 'attribute') and card_row.attribute is not None:
+                defaults['attribute'] = card_row.attribute
+            if hasattr(card_row, 'atk_points') and card_row.atk_points is not None:
+                defaults['atk_points'] = card_row.atk_points
+            if hasattr(card_row, 'def_points') and card_row.def_points is not None:
+                defaults['def_points'] = card_row.def_points
+            if hasattr(card_row, 'card_type') and card_row.card_type:
+                defaults['card_type'] = card_row.card_type
+            if hasattr(card_row, 'buff_effect') and card_row.buff_effect is not None:
+                defaults['buff_effect'] = card_row.buff_effect
+            db_card, _ = Card.objects.get_or_create(code=card_id, defaults=defaults)
             
             # Create UserCard (allow duplicates - same card can be owned multiple times)
             UserCard.objects.create(

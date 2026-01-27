@@ -33,6 +33,7 @@ services:
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/public/uploads
+      - ./src:/app/src:ro
     ports:
       - "8000:8000"
     env_file:

@@ -218,15 +218,10 @@ class UserMetaSerializer(serializers.ModelSerializer):
         if active_title:
             try:
                 from gamification.models import Title
-                from toybox.image_utils import get_image_url
+                from toybox.image_utils import get_title_image_url
                 title_obj = Title.objects.filter(name=active_title).first()
                 if title_obj:
-                    data['active_title_image_url'] = get_image_url(
-                        image_field=title_obj.image,
-                        image_url_field=title_obj.image_url,
-                        request=request,
-                        verify_exists=False  # ファイルが存在しなくてもURLを返す
-                    )
+                    data['active_title_image_url'] = get_title_image_url(title_obj, request)
                     logger.info(f'[UserMetaSerializer] User {user.id} - Found title object for "{active_title}", image_url: {data["active_title_image_url"]}')
                 else:
                     data['active_title_image_url'] = None

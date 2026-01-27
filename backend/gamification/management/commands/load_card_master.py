@@ -50,6 +50,18 @@ class Command(BaseCommand):
                 rarity_str = (row.get('rarity') or '-').strip()
                 image_url_raw = row.get('image_url') or '-'
                 image_url = image_url_raw.strip() if image_url_raw else '-'
+                attribute = (row.get('attribute') or '').strip() or None
+                atk_raw = (row.get('atk_points') or '').strip()
+                atk_points = int(atk_raw) if atk_raw and atk_raw.isdigit() else None
+                def_raw = (row.get('def_points') or '').strip()
+                def_points = int(def_raw) if def_raw and def_raw.isdigit() else None
+                card_type_raw = (row.get('card_type') or '').strip().lower()
+                if card_type_raw in ('character', 'effect'):
+                    card_type = card_type_raw
+                else:
+                    card_type = 'character' if card_id.startswith('C') else 'effect' if card_id.startswith('E') else None
+                buff_effect = (row.get('buff_effect') or '').strip() or None
+                description = (row.get('description') or row.get('card_description') or '').strip() or None
                 
                 if not card_id or not card_name:
                     continue
@@ -68,6 +80,12 @@ class Command(BaseCommand):
                         'name': card_name,
                         'rarity': rarity,
                         'image_url': image_url if image_url != '-' else None,
+                        'description': description,
+                        'attribute': attribute,
+                        'atk_points': atk_points,
+                        'def_points': def_points,
+                        'card_type': card_type,
+                        'buff_effect': buff_effect,
                     }
                 )
                 

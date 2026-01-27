@@ -657,20 +657,15 @@ class ProfileGetView(APIView):
                 profile_logger.error(f'[Profile Image Debug] ProfileGetView - Error getting header_url for user {user.id}: {e}', exc_info=True)
                 header_url = None
             
-            # 称号のバナー画像URLを取得
+            # 称号のバナー画像URLを取得（未配置時はフォールバック画像）
             active_title_image_url = None
             if active_title:
                 try:
                     from gamification.models import Title
-                    from toybox.image_utils import get_image_url
+                    from toybox.image_utils import get_title_image_url
                     title_obj = Title.objects.filter(name=active_title).first()
                     if title_obj:
-                        active_title_image_url = get_image_url(
-                            image_field=title_obj.image,
-                            image_url_field=title_obj.image_url,
-                            request=request,
-                            verify_exists=False  # ファイルが存在しなくてもURLを返す
-                        )
+                        active_title_image_url = get_title_image_url(title_obj, request)
                         profile_logger.info(f'[ProfileGetView] User {user.id} - Found title object for "{active_title}", image_url: {active_title_image_url}')
                     else:
                         profile_logger.warning(f'[ProfileGetView] User {user.id} - Title object not found for "{active_title}"')

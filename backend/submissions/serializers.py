@@ -281,19 +281,17 @@ class SubmissionSerializer(serializers.ModelSerializer):
                 if meta.expires_at and meta.expires_at <= timezone.now():
                     return None
                 
-                # Get title image URL
+                # Get title image URL（未配置時はフォールバック画像）
                 try:
                     from gamification.models import Title
-                    from toybox.image_utils import get_image_url
+                    from toybox.image_utils import get_title_image_url
                     request = self.context.get('request')
                     title_obj = Title.objects.filter(name=meta.active_title).first()
-                    if title_obj:
-                        return get_image_url(
-                            image_field=title_obj.image,
-                            image_url_field=title_obj.image_url,
-                            request=request,
-                            verify_exists=False
-                        )
+                    if title_obj and request:
+                        return get_title_image_url(title_obj, request)
+                    if title_obj and not request:
+                        from toybox.image_utils import TITLE_IMAGE_FALLBACK_PATH
+                        return TITLE_IMAGE_FALLBACK_PATH
                 except Exception as e:
                     import logging
                     logger = logging.getLogger(__name__)

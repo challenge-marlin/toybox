@@ -638,32 +638,34 @@
     async function loadSubmissions() {
         if (!currentUserId) return;
         
+        submissions = [];
+        nextCursor = null;
+        
         try {
-            const url = nextCursor 
-                ? `/api/user/submissions/${encodeURIComponent(currentUserId)}/?limit=12&cursor=${encodeURIComponent(nextCursor)}`
-                : `/api/user/submissions/${encodeURIComponent(currentUserId)}/?limit=12`;
-            
-            const res = await fetch(url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                }
-            });
-            const data = await res.json();
-            
-            if (data.items) {
-                submissions = submissions.concat(data.items);
-                nextCursor = data.nextCursor || null;
-                renderSubmissions();
+            do {
+                const url = nextCursor
+                    ? `/api/user/submissions/${encodeURIComponent(currentUserId)}/?limit=100&cursor=${encodeURIComponent(nextCursor)}`
+                    : `/api/user/submissions/${encodeURIComponent(currentUserId)}/?limit=100`;
                 
-                if (nextCursor) {
-                    document.getElementById('load-more-button').style.display = 'block';
-                } else {
-                    document.getElementById('load-more-button').style.display = 'none';
+                const res = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                });
+                const data = await res.json();
+                
+                if (data.items && data.items.length) {
+                    submissions = submissions.concat(data.items);
                 }
-            }
+                nextCursor = data.nextCursor || null;
+            } while (nextCursor);
+            
+            renderSubmissions();
+            document.getElementById('load-more-button').style.display = 'none';
         } catch (err) {
             console.error('Failed to load submissions:', err);
             document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">提出物の読み込みに失敗しました</div>';
+            document.getElementById('load-more-button').style.display = 'none';
         }
     }
     

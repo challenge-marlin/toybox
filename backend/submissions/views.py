@@ -923,7 +923,9 @@ class UserSubmissionsView(APIView):
                                     # thumbnail.urlが無効な場合のフォールバック
                                     if sub.image_url:
                                         image_url_val = sub.image_url
-                                        if image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
+                                        if request:
+                                            image_url_val = build_https_absolute_uri(request, image_url_val)
+                                        elif image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
                                             image_url_val = image_url_val.replace('http://', 'https://', 1)
                                         display_image_url = image_url_val
                                         image_url = image_url_val
@@ -935,7 +937,9 @@ class UserSubmissionsView(APIView):
                                             pass
                             elif sub.image_url:
                                 image_url_val = sub.image_url
-                                if image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
+                                if request:
+                                    image_url_val = build_https_absolute_uri(request, image_url_val)
+                                elif image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
                                     image_url_val = image_url_val.replace('http://', 'https://', 1)
                                 display_image_url = image_url_val
                                 image_url = image_url_val
@@ -951,7 +955,9 @@ class UserSubmissionsView(APIView):
                             from toybox.image_optimizer import get_thumbnail_url
                             if sub.image_url:
                                 image_url_val = sub.image_url
-                                if image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
+                                if request:
+                                    image_url_val = build_https_absolute_uri(request, image_url_val)
+                                elif image_url_val.startswith('http://toybox.ayatori-inc.co.jp'):
                                     image_url_val = image_url_val.replace('http://', 'https://', 1)
                                 image_url = image_url_val
                                 # サムネイルURLを取得
@@ -970,6 +976,12 @@ class UserSubmissionsView(APIView):
                     
                     video_url = getattr(sub, 'video_url', None) if getattr(sub, 'video_url', None) else None
                     game_url = getattr(sub, 'game_url', None) if getattr(sub, 'game_url', None) else None
+                    if request:
+                        from toybox.image_utils import build_https_absolute_uri
+                        if video_url and (video_url.startswith('http') or video_url.startswith('/')):
+                            video_url = build_https_absolute_uri(request, video_url)
+                        if game_url and (game_url.startswith('http') or game_url.startswith('/')):
+                            game_url = build_https_absolute_uri(request, game_url)
                     
                     # Safely get title and caption
                     title = getattr(sub, 'title', None) or None
@@ -1009,18 +1021,13 @@ class UserSubmissionsView(APIView):
                                 active_title = meta.active_title
                                 title_color = meta.title_color
                                 
-                                # 称号の画像URLを取得
+                                # 称号の画像URLを取得（未配置時はフォールバック画像）
                                 try:
                                     from gamification.models import Title
-                                    from toybox.image_utils import get_image_url
+                                    from toybox.image_utils import get_title_image_url
                                     title_obj = Title.objects.filter(name=meta.active_title).first()
                                     if title_obj:
-                                        active_title_image_url = get_image_url(
-                                            image_field=title_obj.image,
-                                            image_url_field=title_obj.image_url,
-                                            request=request,
-                                            verify_exists=False
-                                        )
+                                        active_title_image_url = get_title_image_url(title_obj, request)
                                 except Exception as e:
                                     logger.warning(f'Failed to get title image for {meta.active_title}: {e}')
                     except UserMeta.DoesNotExist:

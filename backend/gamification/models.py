@@ -34,12 +34,29 @@ class Card(models.Model):
         SEASONAL = 'seasonal', 'シーズナル'
         SPECIAL = 'special', 'スペシャル'
     
+    class CardType(models.TextChoices):
+        CHARACTER = 'character', 'キャラクターカード'
+        EFFECT = 'effect', 'エフェクトカード'
+    
     code = models.CharField('コード', max_length=50, unique=True, db_index=True)
     name = models.CharField('カード名', max_length=100)
     rarity = models.CharField('レアリティ', max_length=20, choices=Rarity.choices, default=Rarity.COMMON)
     image = models.ImageField('画像', upload_to='cards/', blank=True, null=True, help_text='カードの画像をアップロードします。')
     image_url = models.URLField('画像URL', max_length=500, blank=True, null=True, help_text='外部URLから画像を指定する場合に使用します。')
-    description = models.TextField('説明', blank=True, null=True)
+    description = models.TextField('カード説明', blank=True, null=True)
+    # 追加項目
+    attribute = models.CharField('属性', max_length=50, blank=True, null=True)
+    atk_points = models.IntegerField('ATKポイント', blank=True, null=True)
+    def_points = models.IntegerField('DEFポイント', blank=True, null=True)
+    card_type = models.CharField(
+        'カード種別',
+        max_length=20,
+        choices=CardType.choices,
+        blank=True,
+        null=True,
+        help_text='キャラクターカードかエフェクトカードか',
+    )
+    buff_effect = models.TextField('バフ効果', blank=True, null=True)
     
     # ETL tracking
     old_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)

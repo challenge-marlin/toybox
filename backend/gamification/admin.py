@@ -62,14 +62,14 @@ class TitleAdmin(admin.ModelAdmin):
 @admin.register(Card)
 class CardAdmin(admin.ModelAdmin):
     """カード管理 - ユーザーが獲得できるカードのマスタデータを管理します。"""
-    list_display = ['code', 'image_preview', 'name', 'rarity', 'created_at']
-    list_filter = ['rarity', 'created_at']
-    search_fields = ['code', 'name', 'old_id']
+    list_display = ['code', 'image_preview', 'name', 'rarity', 'card_type', 'attribute_colored', 'atk_points', 'def_points', 'created_at']
+    list_filter = ['rarity', 'card_type', 'created_at']
+    search_fields = ['code', 'name', 'old_id', 'attribute', 'buff_effect']
     readonly_fields = ['created_at', 'updated_at', 'image_preview_detail']
     fieldsets = (
         ('カード情報', {
-            'fields': ('code', 'name', 'rarity', 'description'),
-            'description': 'カードのコード、名前、レアリティ、説明を設定します。'
+            'fields': ('code', 'name', 'rarity', 'card_type', 'attribute', 'atk_points', 'def_points', 'description', 'buff_effect'),
+            'description': 'カードのコード、名前、レアリティ、種別（キャラ/エフェクト）、属性、ATK/DEF、カード説明、バフ効果を設定します。'
         }),
         ('画像設定', {
             'fields': ('image', 'image_preview_detail', 'image_url'),
@@ -86,6 +86,31 @@ class CardAdmin(admin.ModelAdmin):
         }),
     )
     
+    ATTRIBUTE_COLORS = {
+        '火': '#e53e3e',
+        '水': '#63b3ed',
+        '木': '#48bb78',
+        '金': '#d69e2e',
+        '土': '#a0522d',
+        '光': '#ecc94b',
+        '闇': '#805ad5',
+    }
+
+    def attribute_colored(self, obj):
+        """一覧画面で属性を色付き表示します。"""
+        a = (obj.attribute or '').strip()
+        if not a:
+            return '-'
+        color = self.ATTRIBUTE_COLORS.get(a)
+        if color:
+            return format_html(
+                '<span style="color: {}; font-weight: 600;">{}</span>',
+                color,
+                a,
+            )
+        return a
+    attribute_colored.short_description = '属性'
+
     def image_preview(self, obj):
         """一覧画面で画像を表示します。"""
         if obj.image:

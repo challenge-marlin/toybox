@@ -53,9 +53,15 @@ class LoginView(TokenObtainPairView):
                     # Establish Django session
                     from django.contrib.auth import login
                     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                    # 毎日ログインボーナス
+                    try:
+                        from gamification.services import award_daily_login
+                        award_daily_login(user)
+                    except Exception as e:
+                        logger.warning(f'[Point] daily login bonus failed: {e}')
                 except User.DoesNotExist:
                     pass
-        
+
         return response
 
 
@@ -148,6 +154,12 @@ class LoginWithStudySphereTokenView(APIView):
                 }
             
             logger.info(f'StudySphere token login successful for user {user.id} (display_id: {user.display_id})')
+            # 毎日ログインボーナス
+            try:
+                from gamification.services import award_daily_login
+                award_daily_login(user)
+            except Exception as e:
+                logger.warning(f'[Point] daily login bonus failed for StudySphere user: {e}')
             return Response(response_data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -167,6 +179,12 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            # 初回登録ボーナス
+            try:
+                from gamification.services import award_registration_bonus
+                award_registration_bonus(user)
+            except Exception as e:
+                logger.warning(f'[Point] registration bonus failed: {e}')
             # Generate tokens
             refresh = RefreshToken.for_user(user)
             response_data = {
@@ -742,6 +760,33 @@ class SetActiveTitleView(APIView):
         return Response({'ok': True, 'activeTitle': title_name})
 
 
+class AchievementsView(APIView):
+    """全アチーブメント一覧を返す（獲得済み/未獲得を含む）。"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from gamification.services import ACHIEVEMENT_DEFINITIONS
+        meta, _ = UserMeta.objects.get_or_create(user=request.user)
+        earned_set = set(meta.earned_titles or [])
+        active = meta.active_title or ''
+
+        items = []
+        for defn in ACHIEVEMENT_DEFINITIONS:
+            name = defn['name']
+            is_earned = name in earned_set
+            is_ultra = defn['ultra_secret'] and not is_earned
+            items.append({
+                'name':           '？？？' if is_ultra else name,
+                'color':          defn['color'],
+                'conditionText':  defn['condition_text'] if not defn['secret'] else '？？？',
+                'secret':         defn['secret'],
+                'ultraSecret':    defn['ultra_secret'],
+                'earned':         is_earned,
+                'isActive':       name == active,
+            })
+        return Response({'achievements': items})
+
+
 class NotificationListView(APIView):
     """List notifications for current user."""
     permission_classes = [IsAuthenticated]
@@ -1242,3 +1287,17 @@ class ProfileLinkStudySphereView(APIView):
             return Response({
                 'error': 'StudySphereアカウントの連携中にエラーが発生しました'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PointSummaryView(APIView):
+    """本人のポイント残高と獲得履歴を返す（本人のみ閲覧可能）。"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from gamification.services import get_point_summary
+        data = get_point_summary(request.user)
+        # created_at を ISO 文字列に変換
+        for item in data['history']:
+            if hasattr(item['created_at'], 'isoformat'):
+                item['created_at'] = item['created_at'].isoformat()
+        return Response(data)

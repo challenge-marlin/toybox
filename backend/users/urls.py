@@ -23,8 +23,12 @@ urlpatterns = [
     # Current user endpoint
     path('me/', views.CurrentUserView.as_view(), name='current-user'),
     
-    # 称号変更エンドポイント
+    # 称号エンドポイント
     path('title/', views.SetActiveTitleView.as_view(), name='set-active-title'),
+    path('achievements/', views.AchievementsView.as_view(), name='achievements'),
+
+    # ポイントエンドポイント
+    path('points/', views.PointSummaryView.as_view(), name='point-summary'),
     
     # Notification endpoints
     path('notifications/', views.NotificationListView.as_view(), name='notifications'),

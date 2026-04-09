@@ -7,7 +7,7 @@
 <style>
     body { visibility: hidden; }
     .titles-container {
-        max-width: 700px;
+        max-width: 860px;
         margin: 2rem auto;
         padding: 0 1rem 4rem;
     }
@@ -25,70 +25,98 @@
         font-size: 0.85rem;
         color: var(--steam-iron-300);
     }
+    /* ── セクション ── */
+    .tier-section { margin-bottom: 2rem; }
+    .tier-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        display: inline-block;
+        margin-bottom: 0.75rem;
+    }
+    .tier-green   { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+    .tier-blue    { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
+    .tier-gold    { background: #78350f; color: #fbbf24; border: 1px solid #d97706; }
+    .tier-red     { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+    .tier-rainbow { background: #1e1028; color: #e879f9; border: 1px solid #a855f7; }
+    /* ── グリッド ── */
     .titles-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.75rem;
     }
+    /* ── カード ── */
     .title-card {
         background: var(--steam-iron-900);
         border: 1px solid var(--steam-iron-700);
-        border-radius: 12px;
-        padding: 1.25rem 1rem;
+        border-radius: 10px;
+        padding: 1rem 0.75rem 0.85rem;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.75rem;
-        transition: border-color 0.2s;
+        gap: 0.5rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .title-card.active {
+    .title-card.earned:hover {
+        border-color: var(--steam-gold-500);
+        box-shadow: 0 0 10px rgba(251,191,36,0.15);
+    }
+    .title-card.active-card {
         border-color: var(--steam-gold-400);
-        box-shadow: 0 0 12px rgba(251,191,36,0.2);
+        box-shadow: 0 0 14px rgba(251,191,36,0.25);
     }
-    .title-badge-wrap {
-        display: flex;
-        justify-content: center;
+    .title-card.locked {
+        opacity: 0.45;
     }
+    .title-badge-wrap { display: flex; justify-content: center; }
     .title-name {
-        font-size: 1rem;
+        font-size: 0.85rem;
         font-weight: 600;
         color: var(--steam-gold-200);
         text-align: center;
+        line-height: 1.3;
     }
-    .title-desc {
-        font-size: 0.75rem;
+    .title-name.locked-name { color: var(--steam-iron-400); }
+    .title-cond {
+        font-size: 0.7rem;
         color: var(--steam-iron-300);
         text-align: center;
+        line-height: 1.4;
     }
     .title-active-badge {
-        font-size: 0.7rem;
-        padding: 0.15rem 0.6rem;
+        font-size: 0.65rem;
+        padding: 0.12rem 0.55rem;
         border-radius: 9999px;
         background: var(--steam-gold-500);
         color: #000;
-        font-weight: 600;
+        font-weight: 700;
     }
     .title-set-btn {
-        margin-top: 0.25rem;
-        padding: 0.35rem 1rem;
+        padding: 0.28rem 0.85rem;
         border-radius: 9999px;
         background: transparent;
         border: 1px solid var(--steam-gold-400);
         color: var(--steam-gold-300);
-        font-size: 0.78rem;
+        font-size: 0.72rem;
         cursor: pointer;
         transition: background 0.15s, color 0.15s;
     }
-    .title-set-btn:hover {
-        background: var(--steam-gold-500);
-        color: #000;
+    .title-set-btn:hover { background: var(--steam-gold-500); color: #000; }
+    .title-set-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* レインボーアニメ */
+    @keyframes rainbow-shift {
+        0%   { stop-color: #f472b6; }
+        20%  { stop-color: #fb923c; }
+        40%  { stop-color: #facc15; }
+        60%  { stop-color: #4ade80; }
+        80%  { stop-color: #60a5fa; }
+        100% { stop-color: #f472b6; }
     }
-    .titles-empty {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: var(--steam-iron-300);
-        font-size: 0.9rem;
-    }
+    .rainbow-stop1 { animation: rainbow-shift 3s linear infinite; }
+    .rainbow-stop2 { animation: rainbow-shift 3s linear infinite 1s; }
+    .rainbow-stop3 { animation: rainbow-shift 3s linear infinite 2s; }
 </style>
 {% endblock %}
 
@@ -96,10 +124,10 @@
 <div class="titles-container">
     <div class="titles-header">
         <h1>⭐ 獲得称号</h1>
-        <p>アチーブメントで解放した称号の一覧です。クリックで表示中の称号を変更できます。</p>
+        <p>アチーブメントで解放した称号の一覧です。称号をクリックして表示を変更できます。</p>
     </div>
-    <div class="titles-grid" id="titles-grid">
-        <div class="titles-empty">読み込み中...</div>
+    <div id="titles-root">
+        <div style="text-align:center;color:var(--steam-iron-300);padding:3rem;">読み込み中...</div>
     </div>
 </div>
 {% endblock %}
@@ -109,72 +137,139 @@
     const token = getAccessToken();
     if (!token) { window.location.replace('/login/'); }
 
-    /** 称号名からSVGテキストバッジを生成 */
-    function buildTitleSvgBadge(titleName) {
-        const name = titleName || '称号';
+    /* ── SVGバッジ生成（色付き・幅縮小版） ──
+       color: 'green' | 'blue' | 'gold' | 'red' | 'rainbow' | 'locked'
+    */
+    const COLOR_THEMES = {
+        green:   { bg1:'#14532d', bg2:'#052e16', s1:'#22c55e', s2:'#86efac', tx:'#bbf7d0' },
+        blue:    { bg1:'#1e3a8a', bg2:'#0f172a', s1:'#3b82f6', s2:'#93c5fd', tx:'#bfdbfe' },
+        gold:    { bg1:'#78350f', bg2:'#1c1a14', s1:'#d97706', s2:'#fbbf24', tx:'#fde68a' },
+        red:     { bg1:'#7f1d1d', bg2:'#1a0a0a', s1:'#ef4444', s2:'#fca5a5', tx:'#fecaca' },
+        locked:  { bg1:'#1c1c1c', bg2:'#0a0a0a', s1:'#4b5563', s2:'#6b7280', tx:'#6b7280' },
+    };
+
+    let _rainbowSvgId = 0;
+
+    function buildTitleSvgBadge(titleName, color) {
+        const name    = titleName || '称号';
         const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="56" viewBox="0 0 220 56" role="img" aria-label="${escaped}">
+        const fs      = name.length > 9 ? 10 : name.length > 6 ? 12 : 14;
+        const W = 160, H = 40;
+
+        if (color === 'rainbow') {
+            const uid = ++_rainbowSvgId;
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escaped}">
   <defs>
-    <linearGradient id="tbg3" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#78350f"/>
-      <stop offset="100%" stop-color="#1c1a14"/>
+    <linearGradient id="rbg${uid}" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#1e1028"/>
+      <stop offset="100%" stop-color="#0c0118"/>
     </linearGradient>
-    <linearGradient id="tb3" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#d97706"/>
-      <stop offset="50%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#d97706"/>
+    <linearGradient id="rb${uid}" x1="0" y1="0" x2="1" y2="0">
+      <stop class="rainbow-stop1" offset="0%"   stop-color="#f472b6"/>
+      <stop class="rainbow-stop2" offset="50%"  stop-color="#60a5fa"/>
+      <stop class="rainbow-stop3" offset="100%" stop-color="#4ade80"/>
     </linearGradient>
   </defs>
-  <rect x="1" y="1" width="218" height="54" rx="8" ry="8" fill="url(#tbg3)" stroke="url(#tb3)" stroke-width="1.5"/>
-  <text x="110" y="14" text-anchor="middle" font-size="6" fill="#fbbf24" opacity="0.8">✦ ✦ ✦</text>
-  <text x="110" y="34" text-anchor="middle" dominant-baseline="middle"
+  <rect x="1" y="1" width="${W-2}" height="${H-2}" rx="7" ry="7" fill="url(#rbg${uid})" stroke="url(#rb${uid})" stroke-width="1.5"/>
+  <text x="${W/2}" y="11" text-anchor="middle" font-size="5" fill="#a855f7" opacity="0.8">✦ ✦ ✦</text>
+  <text x="${W/2}" y="${H/2+2}" text-anchor="middle" dominant-baseline="middle"
         font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif"
-        font-size="${name.length > 8 ? 13 : 16}" font-weight="700"
-        fill="#fde68a" letter-spacing="2">${escaped}</text>
-  <text x="110" y="50" text-anchor="middle" font-size="6" fill="#d97706" opacity="0.7" letter-spacing="3">TOYBOX TITLE</text>
+        font-size="${fs}" font-weight="700" fill="#e879f9" letter-spacing="1">${escaped}</text>
+  <text x="${W/2}" y="${H-5}" text-anchor="middle" font-size="4.5" fill="#a855f7" opacity="0.7" letter-spacing="2">TOYBOX TITLE</text>
+</svg>`;
+        }
+
+        const th = COLOR_THEMES[color] || COLOR_THEMES.gold;
+        const uid2 = ++_rainbowSvgId;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escaped}">
+  <defs>
+    <linearGradient id="tbg${uid2}" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="${th.bg1}"/>
+      <stop offset="100%" stop-color="${th.bg2}"/>
+    </linearGradient>
+    <linearGradient id="tb${uid2}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="${th.s1}"/>
+      <stop offset="50%"  stop-color="${th.s2}"/>
+      <stop offset="100%" stop-color="${th.s1}"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="${W-2}" height="${H-2}" rx="7" ry="7" fill="url(#tbg${uid2})" stroke="url(#tb${uid2})" stroke-width="1.5"/>
+  <text x="${W/2}" y="11" text-anchor="middle" font-size="5" fill="${th.s2}" opacity="0.8">✦ ✦ ✦</text>
+  <text x="${W/2}" y="${H/2+2}" text-anchor="middle" dominant-baseline="middle"
+        font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif"
+        font-size="${fs}" font-weight="700" fill="${th.tx}" letter-spacing="1">${escaped}</text>
+  <text x="${W/2}" y="${H-5}" text-anchor="middle" font-size="4.5" fill="${th.s1}" opacity="0.7" letter-spacing="2">TOYBOX TITLE</text>
 </svg>`;
     }
 
-    const ACHIEVEMENT_DESCS = {
-        '駆け出しクリエイター': 'TOYBOXに登録した',
-        '見習いクリエイター':   '5作品以上投稿した',
-        '中堅クリエイター':     '20作品以上投稿した',
-        'ベテランクリエイター': '50作品以上投稿した',
-        'ゲームメーカー見習い': 'ゲームを1作品以上投稿した',
-        'ゲームクリエイター':   'ゲームを5作品以上投稿した',
+    const TIER_LABELS = {
+        green:   { ja: '入門',  cls: 'tier-green'   },
+        blue:    { ja: '初級',  cls: 'tier-blue'    },
+        gold:    { ja: '中級',  cls: 'tier-gold'    },
+        red:     { ja: '上級',  cls: 'tier-red'     },
+        rainbow: { ja: '伝説',  cls: 'tier-rainbow' },
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
         document.body.style.visibility = 'visible';
+        const root = document.getElementById('titles-root');
         try {
-            const res = await fetch('/api/users/me/', { headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch('/api/users/achievements/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!res.ok) throw new Error('API error');
             const data = await res.json();
+            const achievements = data.achievements || [];
 
-            const earned = data.earnedTitles || data.earned_titles || [];
-            const active = data.activeTitle || data.active_title || '';
-            const grid = document.getElementById('titles-grid');
-
-            if (!earned.length) {
-                grid.innerHTML = '<div class="titles-empty">まだ称号を獲得していません。<br>作品を投稿してアチーブメントを達成しよう！</div>';
+            if (!achievements.length) {
+                root.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--steam-iron-300)">称号データがありません</div>';
                 return;
             }
 
-            grid.innerHTML = earned.map(titleName => {
-                const isActive = titleName === active;
-                return `<div class="title-card ${isActive ? 'active' : ''}">
-                    <div class="title-badge-wrap">${buildTitleSvgBadge(titleName)}</div>
-                    <div class="title-name">${titleName}</div>
-                    <div class="title-desc">${ACHIEVEMENT_DESCS[titleName] || ''}</div>
-                    ${isActive
-                        ? '<span class="title-active-badge">✓ 表示中</span>'
-                        : `<button class="title-set-btn" onclick="setActiveTitle('${titleName.replace(/'/g,"\\'")}', this)">この称号を使う</button>`
+            // 色でグループ化（順序維持）
+            const ORDER = ['green','blue','gold','red','rainbow'];
+            const groups = {};
+            ORDER.forEach(c => { groups[c] = []; });
+            achievements.forEach(a => {
+                if (groups[a.color]) groups[a.color].push(a);
+            });
+
+            let html = '';
+            for (const colorKey of ORDER) {
+                const items = groups[colorKey];
+                if (!items.length) continue;
+                const tier = TIER_LABELS[colorKey];
+                html += `<div class="tier-section">
+  <span class="tier-label ${tier.cls}">${tier.ja}</span>
+  <div class="titles-grid">`;
+                for (const a of items) {
+                    const color = a.earned ? a.color : 'locked';
+                    const badge = buildTitleSvgBadge(a.name, color);
+                    const nameClass = a.earned ? '' : 'locked-name';
+                    const cond = a.conditionText || '';
+                    let action = '';
+                    if (a.earned) {
+                        if (a.isActive) {
+                            action = '<span class="title-active-badge">✓ 表示中</span>';
+                        } else {
+                            const safeName = a.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+                            action = `<button class="title-set-btn" onclick="setActiveTitle('${safeName}', this)">この称号を使う</button>`;
+                        }
+                    } else {
+                        action = `<div class="title-cond">${cond}</div>`;
                     }
-                </div>`;
-            }).join('');
+                    html += `<div class="title-card ${a.earned ? 'earned' : 'locked'} ${a.isActive ? 'active-card' : ''}">
+      <div class="title-badge-wrap">${badge}</div>
+      <div class="title-name ${nameClass}">${a.name}</div>
+      ${action}
+    </div>`;
+                }
+                html += '</div></div>';
+            }
+            root.innerHTML = html;
         } catch (e) {
-            document.getElementById('titles-grid').innerHTML =
-                '<div class="titles-empty">読み込みに失敗しました。</div>';
+            root.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--steam-iron-300)">読み込みに失敗しました。</div>';
+            console.error(e);
         }
     });
 

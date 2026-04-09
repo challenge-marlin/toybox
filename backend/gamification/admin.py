@@ -4,7 +4,7 @@ Gamification app admin.
 from django.contrib import admin
 from django.utils.html import format_html
 from django.conf import settings
-from .models import Title, Card
+from .models import Title, Card, UserPoint, PointHistory
 
 
 @admin.register(Title)
@@ -140,4 +140,35 @@ class CardAdmin(admin.ModelAdmin):
             )
         return format_html('<p style="color: #999;">画像が設定されていません。</p>')
     image_preview_detail.short_description = '画像プレビュー'
+
+
+@admin.register(UserPoint)
+class UserPointAdmin(admin.ModelAdmin):
+    """ユーザーポイント管理。管理者は全ユーザーのポイントを確認可能。"""
+    list_display = ['user', 'total_points', 'migration_bonus_granted', 'updated_at']
+    list_filter = ['migration_bonus_granted']
+    search_fields = ['user__display_id', 'user__email']
+    readonly_fields = ['user', 'total_points', 'migration_bonus_granted', 'created_at', 'updated_at']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PointHistory)
+class PointHistoryAdmin(admin.ModelAdmin):
+    """ポイント履歴管理。"""
+    list_display = ['user', 'action_type', 'points', 'description', 'created_at']
+    list_filter = ['action_type', 'created_at']
+    search_fields = ['user__display_id', 'description']
+    readonly_fields = ['user', 'action_type', 'points', 'description', 'created_at']
+    ordering = ['-created_at']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 

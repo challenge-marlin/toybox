@@ -1,6 +1,7 @@
 """
 Submissions app views for DRF.
 """
+import logging
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,6 +14,8 @@ from .models import Submission, Reaction
 from .serializers import SubmissionSerializer, SubmissionCreateSerializer, ReactionSerializer
 from users.models import UserMeta, User
 from lottery.services import handle_submission_and_lottery
+
+logger = logging.getLogger(__name__)
 
 
 class SubmissionViewSet(viewsets.ModelViewSet):
@@ -48,7 +51,14 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Create submission with current user as author."""
-        serializer.save(author=self.request.user)
+        submission = serializer.save(author=self.request.user)
+        # ポイント付与
+        try:
+            from gamification.services import award_submission_points
+            sub_type = _detect_submission_type(submission)
+            award_submission_points(self.request.user, sub_type)
+        except Exception as e:
+            logger.warning(f'[Point] submission point award failed: {e}')
     
     @action(detail=True, methods=['post'], url_path='react/submit_medal')
     def react_submit_medal(self, request, pk=None):
@@ -104,7 +114,14 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                     target_meta.save(update_fields=['notifications'])
                 except Exception as e:
                     logger.warning(f'Reaction notification failed: {e}')
-            
+            # ポイント付与（投稿者本人以外からのリアクションのみ）
+            if submission.author != request.user:
+                try:
+                    from gamification.services import award_reaction_received_points
+                    award_reaction_received_points(submission.author, reaction_type)
+                except Exception as e:
+                    logger.warning(f'[Point] reaction point award failed: {e}')
+
             total = Reaction.objects.filter(submission=submission, type=reaction_type).count()
             return Response({'ok': True, 'action': 'added', 'count': total}, status=status.HTTP_201_CREATED)
         else:
@@ -168,7 +185,15 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                     logger.error(f'Failed to create notification: {str(e)}', exc_info=True)
             elif not created:
                 logger.debug(f'Like already exists: user={request.user.display_id}, submission={submission.id}')
-            
+
+            # ポイント付与（新規いいね・投稿者本人以外から）
+            if created and submission.author != request.user:
+                try:
+                    from gamification.services import award_reaction_received_points
+                    award_reaction_received_points(submission.author, Reaction.Type.SUBMIT_MEDAL)
+                except Exception as e:
+                    logger.warning(f'[Point] like point award failed: {e}')
+
             return Response({
                 'ok': True,
                 'likesCount': likes_count,
@@ -928,29 +953,43 @@ class UserSubmissionsView(APIView):
                 except (ValueError, AttributeError, TypeError):
                     pass
             
-            submissions = queryset[:page_size]
+            submissions_qs = list(queryset[:page_size])
             
             # Check if current user has liked each submission
             current_user = request.user if request.user.is_authenticated else None
-            
+
+            # ── 一括クエリでリアクションデータを取得（N+1解消） ──
+            sub_ids = [s.id for s in submissions_qs]
+            from django.db.models import Count
+            # 種別ごとのカウントを一発で取得
+            reaction_counts = (
+                Reaction.objects.filter(submission_id__in=sub_ids)
+                .values('submission_id', 'type')
+                .annotate(cnt=Count('id'))
+            )
+            counts_map = {}  # {submission_id: {rtype: count}}
+            for row in reaction_counts:
+                sid = row['submission_id']
+                counts_map.setdefault(sid, {})[row['type']] = row['cnt']
+
+            # ログインユーザーのリアクション済みセットを一括取得
+            user_reacted_set = set()  # {(submission_id, rtype)}
+            if current_user:
+                user_reactions = Reaction.objects.filter(
+                    submission_id__in=sub_ids,
+                    user=current_user
+                ).values_list('submission_id', 'type')
+                user_reacted_set = {(r[0], r[1]) for r in user_reactions}
+
             # Format response
             items = []
-            for sub in submissions:
+            for sub in submissions_qs:
                 try:
-                    # Count likes
-                    likes_count = Reaction.objects.filter(
-                        submission=sub,
-                        type=Reaction.Type.SUBMIT_MEDAL
-                    ).count()
+                    # Count likes（一括クエリ結果から取得）
+                    likes_count = counts_map.get(sub.id, {}).get(Reaction.Type.SUBMIT_MEDAL.value, 0)
                     
                     # Check if current user liked
-                    liked = False
-                    if current_user:
-                        liked = Reaction.objects.filter(
-                            user=current_user,
-                            submission=sub,
-                            type=Reaction.Type.SUBMIT_MEDAL
-                        ).exists()
+                    liked = (sub.id, Reaction.Type.SUBMIT_MEDAL.value) in user_reacted_set
                     
                     # Get image/video/game URL (absolute URLs)
                     # ゲームの場合はサムネイルを優先
@@ -1069,13 +1108,13 @@ class UserSubmissionsView(APIView):
                     except Exception as e:
                         logger.warning(f'Failed to get title info for submission {sub.id}: {e}')
                     
-                    # 全リアクション（v2.0）
+                    # 全リアクション（v2.0）：一括クエリ結果から構築
                     all_reactions = []
                     try:
-                        current_user = request.user if request.user.is_authenticated else None
+                        sub_counts = counts_map.get(sub.id, {})
                         for rtype in Reaction.Type:
-                            count = sub.reactions.filter(type=rtype).count()
-                            user_reacted = current_user and sub.reactions.filter(user=current_user, type=rtype).exists()
+                            count = sub_counts.get(rtype.value, 0)
+                            user_reacted = (sub.id, rtype.value) in user_reacted_set
                             all_reactions.append({
                                 'type': rtype.value,
                                 'label': rtype.label,
@@ -1109,9 +1148,9 @@ class UserSubmissionsView(APIView):
                     continue
             
             next_cursor = None
-            if len(submissions) == page_size:
+            if len(submissions_qs) == page_size:
                 try:
-                    last_submission = submissions[-1]
+                    last_submission = submissions_qs[-1]
                     if last_submission.created_at:
                         next_cursor = last_submission.created_at.isoformat()
                 except (AttributeError, ValueError, IndexError):
@@ -1119,7 +1158,8 @@ class UserSubmissionsView(APIView):
             
             return Response({
                 'items': items,
-                'nextCursor': next_cursor
+                'nextCursor': next_cursor,
+                'total': len(items),
             })
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -1348,4 +1388,12 @@ class TimelineView(APIView):
                 {'error': 'タイムラインの読み込みに失敗しました。', 'details': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
+
+def _detect_submission_type(submission) -> str:
+    """投稿オブジェクトから種別（image/video/game）を判定する。"""
+    if submission.game_url:
+        return 'game'
+    if submission.video_url:
+        return 'video'
+    return 'image'

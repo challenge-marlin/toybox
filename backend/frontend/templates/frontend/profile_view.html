@@ -268,9 +268,17 @@
     }
     .dd-reaction-btn .dd-emoji { font-size: 1.4rem; line-height: 1; }
     .dd-reaction-btn .dd-count { font-size: 0.65rem; color: var(--steam-iron-300, #aaa); min-height: 0.8rem; }
+    .dd-reaction-btn .dd-label {
+        font-size: 0.55rem;
+        color: var(--steam-iron-300, #aaa);
+        white-space: nowrap;
+        line-height: 1.2;
+        display: block;
+    }
     .dd-reaction-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.12); }
     .dd-reaction-btn.reacted { background: rgba(251,113,133,0.18); border-color: #fb7185; color: #fb7185; }
     .dd-reaction-btn.reacted .dd-count { color: #fb7185; }
+    .dd-reaction-btn.reacted .dd-label { color: #fb7185; }
     
     .profile-view-submission-item .game-link {
         position: absolute;
@@ -357,6 +365,48 @@
         opacity: 0.6;
         cursor: not-allowed;
     }
+
+    /* ライトボックス リアクションバー */
+    .lightbox-reaction-bar {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+    }
+    .lightbox-reaction-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 9999px;
+        background: rgba(0,0,0,0.55);
+        border: 1px solid rgba(255,255,255,0.18);
+        color: #e2e2e2;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        line-height: 1;
+        position: relative;
+    }
+    .lightbox-reaction-btn:hover {
+        background: rgba(255,255,255,0.12);
+        border-color: rgba(255,255,255,0.4);
+        transform: scale(1.08);
+    }
+    .lightbox-reaction-btn.reacted {
+        background: rgba(251,113,133,0.22);
+        border-color: #fb7185;
+        color: #fb7185;
+    }
+    .lightbox-reaction-btn .r-emoji { font-size: 1.05rem; }
+    .lightbox-reaction-btn .r-label {
+        font-size: 0.6rem;
+        white-space: nowrap;
+        padding-left: 0.3rem;
+        display: inline;
+    }
+    .lightbox-reaction-btn .r-count { font-size: 0.75rem; min-width: 0.8rem; }
     
     .lightbox-close {
         position: fixed;
@@ -456,7 +506,10 @@
             <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
             <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
         </div>
-        <div id="lightbox-actions" style="display: none; margin-top: 1rem; gap: 0.5rem; align-items: center; justify-content: center;">
+        <div id="lightbox-actions" style="display: none; margin-top: 1rem; gap: 0.6rem; align-items: center; justify-content: center; flex-direction: column; flex-wrap: wrap;">
+            <div class="lightbox-reaction-bar" id="lightbox-reaction-bar">
+                <!-- JSでリアクションボタンを挿入 -->
+            </div>
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
@@ -481,30 +534,7 @@
     let submissions = [];
 
     /** 称号名からSVGテキストバッジを生成する（me.htmlと共通ロジック） */
-    function buildTitleSvgBadge(titleName) {
-        const name = titleName || '称号';
-        const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="60" viewBox="0 0 240 60" role="img" aria-label="${escaped}">
-  <defs>
-    <linearGradient id="tbg2" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#78350f"/>
-      <stop offset="100%" stop-color="#1c1a14"/>
-    </linearGradient>
-    <linearGradient id="tb2" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#d97706"/>
-      <stop offset="50%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#d97706"/>
-    </linearGradient>
-  </defs>
-  <rect x="1" y="1" width="238" height="58" rx="8" ry="8" fill="url(#tbg2)" stroke="url(#tb2)" stroke-width="1.5"/>
-  <text x="120" y="16" text-anchor="middle" font-size="7" fill="#fbbf24" opacity="0.8">✦ ✦ ✦</text>
-  <text x="120" y="38" text-anchor="middle" dominant-baseline="middle"
-        font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif"
-        font-size="${name.length > 8 ? 14 : 17}" font-weight="700"
-        fill="#fde68a" letter-spacing="2">${escaped}</text>
-  <text x="120" y="53" text-anchor="middle" font-size="6" fill="#d97706" opacity="0.7" letter-spacing="3">TOYBOX TITLE</text>
-</svg>`;
-    }
+    // buildTitleSvgBadge は base.html の共通関数を使用
     
     // 初期データ読み込み（bodyはこのページのCSSで visibility:hidden のためチラつき防止）
     document.addEventListener('DOMContentLoaded', function() {
@@ -814,6 +844,7 @@
             return `<button class="dd-reaction-btn ${r.user_reacted ? 'reacted' : ''}"
                         onclick="toggleProfileReaction('${submissionId}','${rd.type}',this);event.stopPropagation()">
                 <span class="dd-emoji">${rd.emoji}</span>
+                <span class="dd-label">${rd.label}</span>
                 <span class="dd-count">${r.count > 0 ? r.count : ''}</span>
             </button>`;
         }).join('');
@@ -998,88 +1029,75 @@
             image.src = url;
         }
         
-        // Discordシェアボタンを表示（画像と動画のみ）
-        if (type === 'image' || type === 'video') {
-            lightboxActions.style.display = 'flex';
-        } else {
-            lightboxActions.style.display = 'none';
-        }
-        
-        // 投稿詳細情報を取得
+        // アクションエリアを表示
+        lightboxActions.style.display = 'flex';
+        // Discordシェアボタンは画像・動画のみ
+        const discordBtn = document.getElementById('discord-share-btn');
+        if (discordBtn) discordBtn.style.display = (type === 'image' || type === 'video') ? 'inline-flex' : 'none';
+
+        // キャッシュデータで即時描画
+        const cachedSub = submissions.find(x => String(x.id) === String(assetId));
+        renderLightboxReactions(cachedSub ? (cachedSub.allReactions || []) : []);
+
+        // オーバーレイを即時表示（API待機なし）
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+
+        // 投稿詳細情報をバックグラウンドで取得
         if (assetId) {
-            try {
-                const res = await fetch(`/api/submissions/${assetId}/`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    
-                    // ゲーム投稿の場合、サムネイルを表示
-                    if (type === 'game') {
-                        const thumbnailImg = document.getElementById('lightbox-game-thumbnail');
-                        const gameIcon = document.getElementById('lightbox-game-icon');
-                        const displayImageUrl = data.display_image_url || data.thumbnail_url || (data.thumbnail ? data.thumbnail : null);
-                        
-                        if (thumbnailImg && gameIcon) {
-                            if (displayImageUrl) {
-                                thumbnailImg.src = displayImageUrl;
-                                thumbnailImg.style.display = 'block';
-                                gameIcon.style.display = 'none';
-                            } else {
-                                thumbnailImg.style.display = 'none';
-                                gameIcon.style.display = 'flex';
-                            }
+            fetch(`/api/submissions/${assetId}/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).then(res => {
+                if (!res.ok) { lightboxInfo.style.display = 'none'; return; }
+                return res.json();
+            }).then(data => {
+                if (!data) return;
+
+                // ゲーム投稿のサムネイル
+                if (type === 'game') {
+                    const thumbnailImg = document.getElementById('lightbox-game-thumbnail');
+                    const gameIcon = document.getElementById('lightbox-game-icon');
+                    const displayImageUrl = data.display_image_url || data.thumbnail_url || (data.thumbnail ? data.thumbnail : null);
+                    if (thumbnailImg && gameIcon) {
+                        if (displayImageUrl) {
+                            thumbnailImg.src = displayImageUrl;
+                            thumbnailImg.style.display = 'block';
+                            gameIcon.style.display = 'none';
+                        } else {
+                            thumbnailImg.style.display = 'none';
+                            gameIcon.style.display = 'flex';
                         }
                     }
-                    
-                    // タイトルを表示
-                    if (data.title) {
-                        lightboxTitle.textContent = data.title;
-                        lightboxTitle.style.display = 'block';
-                    } else {
-                        lightboxTitle.style.display = 'none';
-                    }
-                    // キャプションを表示
-                    if (data.caption) {
-                        lightboxCaption.textContent = data.caption;
-                        lightboxCaption.style.display = 'block';
-                    } else {
-                        lightboxCaption.style.display = 'none';
-                    }
-                    // ハッシュタグを表示（大文字小文字を保持）
-                    lightboxHashtags.innerHTML = '';
-                    if (data.hashtags && Array.isArray(data.hashtags) && data.hashtags.length > 0) {
-                        data.hashtags.forEach(tag => {
-                            if (tag && tag.trim()) {
-                                const tagNormalized = tag.trim();  // 大文字小文字を保持
-                                const tagEl = document.createElement('span');
-                                tagEl.textContent = `#${tagNormalized}`;
-                                tagEl.style.cssText = 'display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-gold-500); color: black; font-size: 0.75rem; cursor: pointer; font-weight: 600;';
-                                tagEl.onclick = (e) => {
-                                    e.stopPropagation();
-                                    filterByHashtag(tagNormalized);
-                                    closeLightbox();
-                                };
-                                lightboxHashtags.appendChild(tagEl);
-                            }
-                        });
-                    }
-                    lightboxInfo.style.display = 'block';
-                } else {
-                    lightboxInfo.style.display = 'none';
                 }
-            } catch (err) {
+
+                // リアクションバーを最新データで更新
+                renderLightboxReactions(data.all_reactions || data.allReactions || []);
+
+                // タイトル・キャプション・ハッシュタグ
+                if (data.title) { lightboxTitle.textContent = data.title; lightboxTitle.style.display = 'block'; }
+                else { lightboxTitle.style.display = 'none'; }
+                if (data.caption) { lightboxCaption.textContent = data.caption; lightboxCaption.style.display = 'block'; }
+                else { lightboxCaption.style.display = 'none'; }
+                lightboxHashtags.innerHTML = '';
+                if (data.hashtags && Array.isArray(data.hashtags)) {
+                    data.hashtags.forEach(tag => {
+                        if (!tag || !tag.trim()) return;
+                        const tagNormalized = tag.trim();
+                        const tagEl = document.createElement('span');
+                        tagEl.textContent = `#${tagNormalized}`;
+                        tagEl.style.cssText = 'display:inline-block;padding:0.25rem 0.5rem;border-radius:4px;background:var(--steam-gold-500);color:black;font-size:0.75rem;cursor:pointer;font-weight:600;';
+                        tagEl.onclick = e => { e.stopPropagation(); filterByHashtag(tagNormalized); closeLightbox(); };
+                        lightboxHashtags.appendChild(tagEl);
+                    });
+                }
+                lightboxInfo.style.display = 'block';
+            }).catch(err => {
                 console.error('Failed to load submission details:', err);
                 lightboxInfo.style.display = 'none';
-            }
+            });
         } else {
             lightboxInfo.style.display = 'none';
         }
-        
-        overlay.classList.add('show');
-        document.body.style.overflow = 'hidden';
     }
     
     // ハッシュタグで絞り込む関数
@@ -1090,6 +1108,46 @@
         window.location.href = `/feed/?hashtag=${encodeURIComponent(tag)}`;
     }
     
+    function renderLightboxReactions(allReactions) {
+        const bar = document.getElementById('lightbox-reaction-bar');
+        if (!bar) return;
+        const map = {};
+        if (allReactions) allReactions.forEach(r => { map[r.type] = r; });
+        bar.innerHTML = PROFILE_REACTION_DEFS.map(rd => {
+            const r = map[rd.type] || { count: 0, user_reacted: false };
+            return `<button class="lightbox-reaction-btn ${r.user_reacted ? 'reacted' : ''}" data-rtype="${rd.type}" onclick="toggleLightboxReaction(event,'${rd.type}',this)">
+                <span class="r-emoji">${rd.emoji}</span>
+                <span class="r-label">${rd.label}</span>
+                <span class="r-count">${r.count > 0 ? r.count : ''}</span>
+            </button>`;
+        }).join('');
+    }
+
+    async function toggleLightboxReaction(event, reactionType, btnEl) {
+        event.stopPropagation();
+        if (!currentLightboxAssetId || !token) return;
+        try {
+            const res = await fetch(`/api/submissions/${currentLightboxAssetId}/react/${reactionType}/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            // ボタン状態を更新
+            const reacted = data.reacted;
+            btnEl.classList.toggle('reacted', reacted);
+            const countEl = btnEl.querySelector('.r-count');
+            if (countEl) countEl.textContent = data.count > 0 ? data.count : '';
+            // submissions キャッシュも更新
+            const s = submissions.find(x => x.id === currentLightboxAssetId);
+            if (s && s.allReactions) {
+                const existing = s.allReactions.find(r => r.type === reactionType);
+                if (existing) { existing.count = data.count; existing.user_reacted = reacted; }
+                else s.allReactions.push({ type: reactionType, count: data.count, user_reacted: reacted });
+            }
+        } catch (e) { console.error('lightbox reaction error', e); }
+    }
+
     function closeLightbox() {
         const overlay = document.getElementById('lightbox-overlay');
         const video = document.getElementById('lightbox-video');

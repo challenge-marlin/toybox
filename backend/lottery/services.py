@@ -145,6 +145,20 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         logger.error('submission.create_failed', extra={'user_id': user.id, 'error': str(e)}, exc_info=True)
         raise
     
+    # ポイント付与
+    earned_points = 0
+    try:
+        from gamification.services import award_submission_points
+        if game_url:
+            sub_type = 'game'
+        elif video_url:
+            sub_type = 'video'
+        else:
+            sub_type = 'image'
+        earned_points = award_submission_points(user, sub_type)
+    except Exception as e:
+        logger.warning(f'[Point] submission point award failed: {e}')
+
     # Grant immediate rewards (card only - v2.0ではカードのみ、称号はアチーブメント制)
     reward = grant_immediate_rewards(meta, boost_rarity=bool(game_url))
     
@@ -165,5 +179,6 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         'rewardCard': reward.get('card_meta'),
         'jackpotRecordedAt': None,
         'newlyGrantedTitles': newly_granted_titles,
+        'earnedPoints': earned_points,
     }
 

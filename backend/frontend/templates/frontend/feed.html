@@ -276,9 +276,17 @@
     }
     .dd-reaction-btn .dd-emoji { font-size: 1.4rem; line-height: 1; }
     .dd-reaction-btn .dd-count { font-size: 0.65rem; color: var(--steam-iron-300, #aaa); min-height: 0.8rem; }
+    .dd-reaction-btn .dd-label {
+        font-size: 0.55rem;
+        color: var(--steam-iron-300, #aaa);
+        white-space: nowrap;
+        line-height: 1.2;
+        display: block;
+    }
     .dd-reaction-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.12); }
     .dd-reaction-btn.reacted { background: rgba(251,113,133,0.18); border-color: #fb7185; color: #fb7185; }
     .dd-reaction-btn.reacted .dd-count { color: #fb7185; }
+    .dd-reaction-btn.reacted .dd-label { color: #fb7185; }
     
     .feed-game-link {
         position: absolute;
@@ -358,6 +366,12 @@
     }
 
     .lightbox-reaction-btn .r-emoji { font-size: 1.05rem; }
+    .lightbox-reaction-btn .r-label {
+        font-size: 0.6rem;
+        white-space: nowrap;
+        padding-left: 0.3rem;
+        display: inline;
+    }
     .lightbox-reaction-btn .r-count { font-size: 0.75rem; min-width: 0.8rem; }
 </style>
 {% endblock %}
@@ -752,6 +766,7 @@
             return `<button class="dd-reaction-btn ${r.user_reacted ? 'reacted' : ''}"
                         onclick="toggleReaction('${submissionId}','${rd.type}',this);event.stopPropagation()">
                 <span class="dd-emoji">${rd.emoji}</span>
+                <span class="dd-label">${rd.label}</span>
                 <span class="dd-count">${r.count > 0 ? r.count : ''}</span>
             </button>`;
         }).join('');
@@ -1005,12 +1020,12 @@
 
         // カードデータからリアクション状態を取得して即座に反映
         const REACTION_DEFS = [
-            { type: 'submit_medal', emoji: '👍' },
-            { type: 'awesome',      emoji: '🤩' },
-            { type: 'cute',         emoji: '🥰' },
-            { type: 'funny',        emoji: '😂' },
-            { type: 'moved',        emoji: '😭' },
-            { type: 'cool',         emoji: '😎' },
+            { type: 'submit_medal', emoji: '👍', label: 'いいね！' },
+            { type: 'awesome',      emoji: '🤩', label: 'すごい！' },
+            { type: 'cute',         emoji: '🥰', label: 'かわいい！' },
+            { type: 'funny',        emoji: '😂', label: '笑える！' },
+            { type: 'moved',        emoji: '😭', label: '感動した' },
+            { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
         ];
         function renderLightboxReactions(allReactions) {
             const bar = document.getElementById('lightbox-reaction-bar');
@@ -1021,6 +1036,7 @@
                 const r = map[rd.type] || { count: 0, user_reacted: false };
                 return `<button class="lightbox-reaction-btn ${r.user_reacted ? 'reacted' : ''}" data-rtype="${rd.type}" onclick="toggleLightboxReaction(event,'${rd.type}',this)">
                     <span class="r-emoji">${rd.emoji}</span>
+                    <span class="r-label">${rd.label}</span>
                     <span class="r-count">${r.count > 0 ? r.count : ''}</span>
                 </button>`;
             }).join('');

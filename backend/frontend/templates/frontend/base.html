@@ -41,6 +41,19 @@
     <script src="{% static 'frontend/js/common/errors.js' %}?v=20260114-1"></script>
     <script src="{% static 'frontend/js/common/utils.js' %}?v=20260114-1"></script>
     {% block extra_css %}{% endblock %}
+    <style>
+        @keyframes rainbow-shift {
+            0%   { stop-color: #f472b6; }
+            20%  { stop-color: #fb923c; }
+            40%  { stop-color: #facc15; }
+            60%  { stop-color: #4ade80; }
+            80%  { stop-color: #60a5fa; }
+            100% { stop-color: #f472b6; }
+        }
+        .rainbow-stop1 { animation: rainbow-shift 3s linear infinite; }
+        .rainbow-stop2 { animation: rainbow-shift 3s linear infinite 1s; }
+        .rainbow-stop3 { animation: rainbow-shift 3s linear infinite 2s; }
+    </style>
 </head>
 <body>
     <header class="header-nav" style="border-bottom: 1px solid var(--steam-iron-800); background: rgba(31, 35, 42, 0.7);">
@@ -178,6 +191,72 @@
     </footer>
     
     {% block extra_js %}{% endblock %}
+    <!-- 共通: 色付きSVGバッジ生成ユーティリティ -->
+    <script>
+    (function(){
+        const _CT = {
+            green:   {bg1:'#14532d',bg2:'#052e16',s1:'#22c55e',s2:'#86efac',tx:'#bbf7d0'},
+            blue:    {bg1:'#1e3a8a',bg2:'#0f172a',s1:'#3b82f6',s2:'#93c5fd',tx:'#bfdbfe'},
+            gold:    {bg1:'#78350f',bg2:'#1c1a14',s1:'#d97706',s2:'#fbbf24',tx:'#fde68a'},
+            red:     {bg1:'#7f1d1d',bg2:'#1a0a0a',s1:'#ef4444',s2:'#fca5a5',tx:'#fecaca'},
+        };
+        const _TCM = {
+            '駆け出しクリエイター':'green','はじめの一歩':'green','絵師見習い':'green',
+            '映像クリエイター見習い':'green','ゲームメーカー見習い':'green','注目の新星':'green',
+            '話題の的':'green','笑わせ屋':'green','感動屋':'green','かわいいの使い手':'green',
+            '朝活クリエイター':'green','週末クリエイター':'green',
+            '見習いクリエイター':'blue','イラストレーター':'blue','ビデオアーティスト':'blue',
+            'ゲームクリエイター':'blue','人気クリエイター':'blue','コミュニティの星':'blue',
+            'クールマン':'blue','驚異のクリエイター':'blue','万能クリエイター':'blue',
+            '夜型クリエイター':'blue','カードコレクター':'blue','3日坊主じゃない':'blue',
+            '中堅クリエイター':'gold','ベテランクリエイター':'gold','デジタルアーティスト':'gold',
+            '動画職人':'gold','ゲーム職人':'gold','トップクリエイター':'gold',
+            '感動の嵐':'gold','トリプルマスター':'gold','一週間の炎':'gold','レアコレクター':'gold',
+            'マスタークリエイター':'red','絵の達人':'red','動画の達人':'red','ゲームの達人':'red',
+            '伝説のスター':'red','継続の意志':'red','熱狂のクリエイター':'red','影の芸術家':'red',
+            'レジェンドクリエイター':'rainbow','ゲームの神様':'rainbow','創造神':'rainbow',
+            '深淵のクリエイター':'rainbow','時を超える者':'rainbow','全知全能':'rainbow',
+            'TOYBOXの使者':'rainbow','AYATORI':'rainbow',
+        };
+        let _svgId = 0;
+        window.getTitleColor = function(n){ return _TCM[n] || 'gold'; };
+        window.buildTitleSvgBadge = function(titleName, colorHint){
+            const name    = titleName || '称号';
+            const color   = colorHint || _TCM[name] || 'gold';
+            const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const fs      = name.length > 9 ? 10 : name.length > 6 ? 12 : 14;
+            const W = 180, H = 44;
+            const uid = ++_svgId;
+            if (color === 'rainbow'){
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escaped}">
+  <defs>
+    <linearGradient id="rbg${uid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e1028"/><stop offset="100%" stop-color="#0c0118"/></linearGradient>
+    <linearGradient id="rb${uid}" x1="0" y1="0" x2="1" y2="0">
+      <stop class="rainbow-stop1" offset="0%" stop-color="#f472b6"/>
+      <stop class="rainbow-stop2" offset="50%" stop-color="#60a5fa"/>
+      <stop class="rainbow-stop3" offset="100%" stop-color="#4ade80"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="${W-2}" height="${H-2}" rx="7" ry="7" fill="url(#rbg${uid})" stroke="url(#rb${uid})" stroke-width="1.5"/>
+  <text x="${W/2}" y="12" text-anchor="middle" font-size="5" fill="#a855f7" opacity="0.8">✦ ✦ ✦</text>
+  <text x="${W/2}" y="${H/2+3}" text-anchor="middle" dominant-baseline="middle" font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif" font-size="${fs}" font-weight="700" fill="#e879f9" letter-spacing="1">${escaped}</text>
+  <text x="${W/2}" y="${H-5}" text-anchor="middle" font-size="4.5" fill="#a855f7" opacity="0.7" letter-spacing="2">TOYBOX TITLE</text>
+</svg>`;
+            }
+            const th = _CT[color] || _CT.gold;
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escaped}">
+  <defs>
+    <linearGradient id="tbg${uid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${th.bg1}"/><stop offset="100%" stop-color="${th.bg2}"/></linearGradient>
+    <linearGradient id="tb${uid}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${th.s1}"/><stop offset="50%" stop-color="${th.s2}"/><stop offset="100%" stop-color="${th.s1}"/></linearGradient>
+  </defs>
+  <rect x="1" y="1" width="${W-2}" height="${H-2}" rx="7" ry="7" fill="url(#tbg${uid})" stroke="url(#tb${uid})" stroke-width="1.5"/>
+  <text x="${W/2}" y="12" text-anchor="middle" font-size="5" fill="${th.s2}" opacity="0.8">✦ ✦ ✦</text>
+  <text x="${W/2}" y="${H/2+3}" text-anchor="middle" dominant-baseline="middle" font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif" font-size="${fs}" font-weight="700" fill="${th.tx}" letter-spacing="1">${escaped}</text>
+  <text x="${W/2}" y="${H-5}" text-anchor="middle" font-size="4.5" fill="${th.s1}" opacity="0.7" letter-spacing="2">TOYBOX TITLE</text>
+</svg>`;
+        };
+    })();
+    </script>
     <script>
         function openIdPopup() {
             var overlay = document.getElementById('id-popup-overlay');

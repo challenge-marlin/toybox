@@ -396,6 +396,23 @@
     
     <!-- 右カラム -->
     <aside>
+        <!-- ポイント残高 -->
+        <section class="me-section" id="me-section-points">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <h2 style="margin: 0;">TOYBOXポイント</h2>
+                <button onclick="togglePointHistory()" id="point-history-toggle-btn" style="font-size: 0.75rem; color: var(--steam-gold-400); background: none; border: none; cursor: pointer; text-decoration: underline;">履歴</button>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: 0.35rem;">
+                <span id="point-total" style="font-size: 1.75rem; font-weight: 700; color: var(--steam-gold-300); font-variant-numeric: tabular-nums;">—</span>
+                <span style="font-size: 0.875rem; color: var(--steam-iron-300);">TP</span>
+            </div>
+            <div id="point-history-panel" style="display: none; margin-top: 0.75rem; max-height: 14rem; overflow-y: auto;">
+                <ul id="point-history-list" style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.75rem; color: var(--steam-iron-200); list-style: none; padding: 0; margin: 0;">
+                    <li>読み込み中...</li>
+                </ul>
+            </div>
+        </section>
+
         <!-- お題をジェネレート -->
         <section class="me-section" id="random-prompt-entry">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
@@ -409,6 +426,20 @@
                 <button onclick="generateTopic('work')" style="flex: 1; border-radius: 9999px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-brown-600)'" onmouseout="this.style.background='var(--steam-brown-500)'">画像・動画</button>
                 <button onclick="generateTopic('game')" style="flex: 1; border-radius: 9999px; background: var(--steam-brown-500); padding: 0.5rem 1rem; color: white; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-brown-600)'" onmouseout="this.style.background='var(--steam-brown-500)'">ゲーム</button>
             </div>
+            <!-- AIでゲームをつくる -->
+            <a href="https://web-builder.ayatori-inc.co.jp/" target="_blank" rel="noreferrer"
+               style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.75rem; padding: 0.6rem 1rem; border-radius: 9999px; background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; font-size: 0.875rem; font-weight: 600; text-decoration: none; transition: opacity 0.2s, transform 0.15s; border: 1px solid rgba(168,85,247,0.4);"
+               onmouseover="this.style.opacity='0.85';this.style.transform='scale(1.02)'"
+               onmouseout="this.style.opacity='1';this.style.transform='scale(1)'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.69 0 1.32.28 1.77.73.45.45.73 1.08.73 1.77H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
+                </svg>
+                AIでゲームをつくる
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+            </a>
         </section>
         
         <!-- 画像・動画をアップロード（課金ユーザーのみ） -->
@@ -583,7 +614,40 @@
     </div>
 </div>
 
+<!-- TP獲得トースト -->
+<div id="tp-toast" style="
+    position: fixed;
+    top: 5rem;
+    right: 1.25rem;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #1a1f2e 0%, #252b3b 100%);
+    border: 1px solid var(--steam-gold-500);
+    border-radius: 12px;
+    padding: 0.75rem 1.25rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 12px rgba(212,175,55,0.2);
+    pointer-events: none;
+    animation: none;
+">
+    <span style="font-size: 1.25rem;">⭐</span>
+    <div>
+        <div style="font-size: 0.7rem; color: var(--steam-iron-300); letter-spacing: 0.05em;">TOYBOXポイント獲得</div>
+        <div style="font-size: 1.25rem; font-weight: 700; color: var(--steam-gold-300); line-height: 1.2;">
+            +<span id="tp-toast-amount">0</span> <span style="font-size: 0.875rem;">TP</span>
+        </div>
+    </div>
+</div>
+
 <style>
+@keyframes tpToastIn {
+    0%   { opacity: 0; transform: translateX(60px) scale(0.9); }
+    20%  { opacity: 1; transform: translateX(0)    scale(1.05); }
+    30%  { transform: translateX(0) scale(1); }
+    75%  { opacity: 1; }
+    100% { opacity: 0; transform: translateX(0) scale(1); }
+}
 @keyframes cardSpinIn {
     from {
         transform: rotateY(90deg);
@@ -781,13 +845,93 @@
             loadTimeline();
             loadSubmitters();
             loadRanking();
-            
+            loadPoints();
+
             // アップロード機能
             setupUpload();
             setupGameUpload();
         }
     });
-    
+
+    // ---- ポイント表示 ----
+    const ACTION_LABELS = {
+        registration_bonus: '🎉 初回登録ボーナス',
+        migration_bonus:    '🎁 移行ボーナス',
+        daily_login:        '📅 毎日ログイン',
+        submission_image:   '🖼 画像投稿',
+        submission_video:   '🎬 動画投稿',
+        submission_game:    '🎮 ゲーム投稿',
+        reaction_received:  '💬 リアクション受取',
+        game_played:        '▶️ ゲームプレイ',
+    };
+
+    function loadPoints() {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+        fetch('/api/users/points/', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            if (!data) return;
+            const el = document.getElementById('point-total');
+            if (el) el.textContent = data.total_points.toLocaleString();
+
+            const list = document.getElementById('point-history-list');
+            if (!list) return;
+            list.innerHTML = '';
+            if (!data.history || data.history.length === 0) {
+                list.innerHTML = '<li style="color: var(--steam-iron-400);">履歴なし</li>';
+                return;
+            }
+            data.history.forEach(item => {
+                const li = document.createElement('li');
+                li.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0;border-bottom:1px solid var(--steam-iron-800);';
+                const label = ACTION_LABELS[item.action_type] || item.description || item.action_type;
+                const dt = new Date(item.created_at);
+                const dateStr = `${dt.getMonth()+1}/${dt.getDate()}`;
+                li.innerHTML = `<span style="color:var(--steam-iron-100);">${label}</span><span style="color:var(--steam-gold-300);font-weight:600;white-space:nowrap;margin-left:0.5rem;">+${item.points} TP <span style="color:var(--steam-iron-400);font-weight:400;">${dateStr}</span></span>`;
+                list.appendChild(li);
+            });
+        })
+        .catch(() => {});
+    }
+
+    function togglePointHistory() {
+        const panel = document.getElementById('point-history-panel');
+        const btn   = document.getElementById('point-history-toggle-btn');
+        if (!panel) return;
+        const visible = panel.style.display !== 'none';
+        panel.style.display = visible ? 'none' : 'block';
+        if (btn) btn.textContent = visible ? '履歴' : '閉じる';
+    }
+
+    // TP獲得トースト
+    let _tpToastTimer = null;
+    function showTpToast(points) {
+        if (!points || points <= 0) return;
+        const toast = document.getElementById('tp-toast');
+        const amount = document.getElementById('tp-toast-amount');
+        if (!toast || !amount) return;
+
+        // 前回のアニメーションをリセット
+        if (_tpToastTimer) { clearTimeout(_tpToastTimer); _tpToastTimer = null; }
+        toast.style.animation = 'none';
+        toast.style.display = 'none';
+        // 強制リフロー
+        void toast.offsetWidth;
+
+        amount.textContent = points.toLocaleString();
+        toast.style.display = 'flex';
+        toast.style.animation = 'tpToastIn 2.8s ease forwards';
+
+        _tpToastTimer = setTimeout(() => {
+            toast.style.display = 'none';
+            // ポイント残高を再読み込み
+            loadPoints();
+        }, 2900);
+    }
+
     function loadProfile() {
         // まず自分のanonIdを取得
         fetch('/api/users/me/meta/', {
@@ -1700,18 +1844,27 @@
                 this.style.display = 'none';
             };
             
+            // 称号があれば「次へ」、なければ「閉じる」
+            const cardNextBtn = document.querySelector('#card-reveal button[onclick="nextToTitle()"]');
+            if (cardNextBtn) {
+                cardNextBtn.textContent = submitData.rewardTitle ? '次へ' : '閉じる';
+            }
             cardReveal.style.display = 'block';
             titleReveal.style.display = 'none';
         } else {
-            // カードがない場合は直接称号へ
+            // カードがない場合は直接称号へ（称号がある場合のみ）
             cardReveal.style.display = 'none';
             if (submitData.rewardTitle) {
                 document.getElementById('title-name').textContent = submitData.rewardTitle;
                 renderTitleBanner(submitData.rewardTitleImageUrl, submitData.rewardTitle);
                 titleReveal.style.display = 'block';
+            } else {
+                // カードも称号もない場合はオーバーレイを表示しない
+                overlay.style.display = 'none';
+                return;
             }
         }
-        
+
         overlay.style.display = 'flex';
     }
     
@@ -1739,57 +1892,23 @@
         }
     }
 
-    /** 称号名からSVGテキストバッジを生成する */
-    function buildTitleSvgBadge(titleName) {
-        const name = titleName || '称号';
-        const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="321" height="80" viewBox="0 0 321 80" role="img" aria-label="${escaped}">
-  <defs>
-    <linearGradient id="tbg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#78350f"/>
-      <stop offset="100%" stop-color="#1c1a14"/>
-    </linearGradient>
-    <linearGradient id="tborder" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#d97706"/>
-      <stop offset="50%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#d97706"/>
-    </linearGradient>
-  </defs>
-  <!-- 背景 -->
-  <rect x="2" y="2" width="317" height="76" rx="10" ry="10" fill="url(#tbg)" stroke="url(#tborder)" stroke-width="2"/>
-  <!-- 左右の装飾ライン -->
-  <line x1="18" y1="14" x2="18" y2="66" stroke="#d97706" stroke-width="1" opacity="0.5"/>
-  <line x1="303" y1="14" x2="303" y2="66" stroke="#d97706" stroke-width="1" opacity="0.5"/>
-  <!-- 上下の星型装飾 -->
-  <text x="160" y="18" text-anchor="middle" font-size="8" fill="#fbbf24" opacity="0.8">✦ ✦ ✦</text>
-  <!-- 称号テキスト -->
-  <text x="160" y="52" text-anchor="middle" dominant-baseline="middle"
-        font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif"
-        font-size="${name.length > 8 ? 18 : 22}" font-weight="700"
-        fill="#fde68a" letter-spacing="2">
-    ${escaped}
-  </text>
-  <text x="160" y="68" text-anchor="middle" font-size="7" fill="#d97706" opacity="0.7" letter-spacing="3">TOYBOX TITLE</text>
-</svg>`;
-    }
+    // buildTitleSvgBadge は base.html の共通関数を使用
 
     function nextToTitle() {
         const cardReveal = document.getElementById('card-reveal');
         const titleReveal = document.getElementById('title-reveal');
-        
-        cardReveal.style.display = 'none';
-        
-        // 称号バナー画像と称号名を表示（submitDataから取得）
         const submitData = window.pendingRewardData || {};
-        
-        // 称号名を設定
-        if (submitData.rewardTitle) {
-            document.getElementById('title-name').textContent = submitData.rewardTitle;
-        } else {
-            document.getElementById('title-name').textContent = '—';
+
+        cardReveal.style.display = 'none';
+
+        // 新規称号がない場合はそのまま閉じる
+        if (!submitData.rewardTitle) {
+            closeRewardFlow();
+            return;
         }
-        
-        // 称号バナーをレンダリング
+
+        // 称号名と画像をセット
+        document.getElementById('title-name').textContent = submitData.rewardTitle;
         renderTitleBanner(submitData.rewardTitleImageUrl, submitData.rewardTitle);
         titleReveal.style.display = 'block';
     }
@@ -2233,8 +2352,10 @@
             if (submitData.rewardCard || submitData.rewardTitle) {
                 showRewardFlow(submitData);
             } else {
-                // 報酬がない場合も提出物をリロード
-                // 少し待ってからリロード（サーバー側の処理が完了するのを待つ）
+                // カードも称号もない場合はトーストのみ表示してリロード
+                if (submitData.earnedPoints) {
+                    showTpToast(submitData.earnedPoints);
+                }
                 setTimeout(() => {
                     loadSubmissions();
                     loadProfile();
@@ -2254,9 +2375,14 @@
     function closeRewardFlow() {
         const overlay = document.getElementById('reward-overlay');
         overlay.style.display = 'none';
-        
-        // 最新のデータを再読み込み（ページリロードではなく）
-        // 少し待ってからリロード（サーバー側の処理が完了するのを待つ）
+
+        // TP獲得トーストを表示
+        const pending = window.pendingRewardData || {};
+        if (pending.earnedPoints) {
+            showTpToast(pending.earnedPoints);
+        }
+
+        // 最新のデータを再読み込み
         setTimeout(() => {
             loadProfile();
             loadSubmissions();

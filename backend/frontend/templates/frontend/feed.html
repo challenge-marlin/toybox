@@ -46,7 +46,16 @@
         border: 1px solid var(--steam-iron-700);
         background: var(--steam-iron-900);
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* 画像・動画・ゲームエリアは 1:1 を維持 */
+    .feed-item > img.feed-item-image,
+    .feed-item > .feed-item-video-container,
+    .feed-item > .feed-item-game-container {
         aspect-ratio: 1;
+        flex-shrink: 0;
     }
     
     .feed-item.game {

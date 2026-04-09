@@ -279,26 +279,42 @@ class SubmissionSerializer(serializers.ModelSerializer):
         return None
     
     def get_active_title_image_url(self, obj):
-        """Get author's active title image URL."""
+        """Get author's active title image URL.
+        
+        v2.0: 実際に画像が設定されている場合のみURLを返す。
+        未設定の場合は None を返し、フロントエンドでテキスト称号バッジを表示する。
+        """
         try:
             meta = UserMeta.objects.get(user=obj.author)
-            if meta.active_title:
-                
-                # Get title image URL（未配置時はフォールバック画像）
-                try:
-                    from gamification.models import Title
-                    from toybox.image_utils import get_title_image_url
-                    request = self.context.get('request')
-                    title_obj = Title.objects.filter(name=meta.active_title).first()
-                    if title_obj and request:
-                        return get_title_image_url(title_obj, request)
-                    if title_obj and not request:
-                        from toybox.image_utils import TITLE_IMAGE_FALLBACK_PATH
-                        return TITLE_IMAGE_FALLBACK_PATH
-                except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.warning(f'Failed to get title image for {meta.active_title}: {e}')
+            if not meta.active_title:
+                return None
+            try:
+                from gamification.models import Title
+                from toybox.image_utils import build_https_absolute_uri
+                request = self.context.get('request')
+                title_obj = Title.objects.filter(name=meta.active_title).first()
+                if not title_obj:
+                    return None
+                # ImageField に実ファイルが設定されている場合のみ返す
+                if title_obj.image and title_obj.image.name:
+                    try:
+                        image_url = title_obj.image.url
+                        if request:
+                            return build_https_absolute_uri(request, image_url)
+                        return image_url
+                    except Exception:
+                        pass
+                # image_url フィールドが設定されている場合（フォールバックパスは除外）
+                if title_obj.image_url:
+                    fallback = '/static/frontend/hero/toybox-title.png'
+                    if title_obj.image_url == fallback or title_obj.image_url.endswith('toybox-title.png'):
+                        return None
+                    return title_obj.image_url
+                return None
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f'Failed to get title image for {meta.active_title}: {e}')
+                return None
         except UserMeta.DoesNotExist:
             pass
         return None

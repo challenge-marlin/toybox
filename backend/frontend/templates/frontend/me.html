@@ -573,8 +573,8 @@
         <!-- 称号演出 -->
         <div id="title-reveal" style="display: none; text-align: center;">
             <div style="color: var(--steam-gold-300); font-weight: 600; font-size: 1.25rem; margin-bottom: 0.5rem;">称号を取得しました！</div>
-            <div style="margin-top: 0.5rem; display: flex; justify-content: center;">
-                <img id="title-banner-image" src="{% static 'frontend/hero/toybox-title.png' %}" alt="title" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px; opacity: 0.9;" onerror="this.style.display='none';">
+            <div style="margin-top: 0.5rem; display: flex; justify-content: center;" id="title-banner-wrap">
+                <!-- 実画像がある場合はimgタグ、なければSVGバッジをJSで挿入 -->
             </div>
             <div style="margin-top: 0.5rem; font-size: 1.5rem; font-weight: bold; color: var(--steam-gold-300);" id="title-name">—</div>
             <div style="margin-top: 1rem;">
@@ -896,55 +896,17 @@
                 avatarDiv.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: var(--steam-iron-800); color: var(--steam-gold-300); font-size: 1.5rem; font-weight: 600;">${firstChar}</span>`;
             }
             
-            // 称号を表示（期限切れチェック）
+            // 称号を表示（v2.0: 有効期限なし・SVGバッジ対応）
             const titleElement = document.getElementById('profile-title');
             const titleUntilElement = document.getElementById('profile-title-until');
             
-            console.log('Title data:', {
-                activeTitle: data.activeTitle,
-                activeTitleUntil: data.activeTitleUntil,
-                activeTitleImageUrl: data.activeTitleImageUrl,
-                active_title_image_url: data.active_title_image_url
-            });
-            
-            if (data.activeTitle && data.activeTitleUntil) {
-                const expiresAt = new Date(data.activeTitleUntil);
-                const now = new Date();
-                
-                if (expiresAt > now) {
-                    // 有効期限内
-                    if (titleElement) {
-                        if (data.activeTitleImageUrl || data.active_title_image_url) {
-                            const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
-                            titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300); font-size: 0.875rem;\\'>称号: ${data.activeTitle}</span>';">`;
-                        } else {
-                            titleElement.innerHTML = `<span style="color: var(--steam-gold-300); font-size: 0.875rem;">称号: ${data.activeTitle}</span>`;
-                        }
-                        titleElement.style.display = 'flex';
-                    }
-                    if (titleUntilElement) {
-                        titleUntilElement.textContent = `有効期限: ${expiresAt.toLocaleDateString()}`;
-                        titleUntilElement.style.display = 'block';
-                    }
-                } else {
-                    // 期限切れ
-                    if (titleElement) {
-                        titleElement.innerHTML = '';
-                        titleElement.style.display = 'none';
-                    }
-                    if (titleUntilElement) {
-                        titleUntilElement.textContent = '';
-                        titleUntilElement.style.display = 'none';
-                    }
-                }
-            } else if (data.activeTitle) {
-                // expires_atがない場合は表示
+            if (data.activeTitle) {
                 if (titleElement) {
-                    if (data.activeTitleImageUrl || data.active_title_image_url) {
-                        const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
-                        titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300); font-size: 0.875rem;\\'>称号: ${data.activeTitle}</span>';">`;
+                    const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
+                    if (imageUrl) {
+                        titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width:321px;max-height:115px;width:100%;height:auto;object-fit:contain;border-radius:8px;" onerror="this.outerHTML=buildTitleSvgBadge('${data.activeTitle.replace(/'/g,'\\\'')}}');">`;
                     } else {
-                        titleElement.innerHTML = `<span style="color: var(--steam-gold-300); font-size: 0.875rem;">称号: ${data.activeTitle}</span>`;
+                        titleElement.innerHTML = buildTitleSvgBadge(data.activeTitle);
                     }
                     titleElement.style.display = 'flex';
                 }
@@ -1751,36 +1713,7 @@
             cardReveal.style.display = 'none';
             if (submitData.rewardTitle) {
                 document.getElementById('title-name').textContent = submitData.rewardTitle;
-                
-                // 称号バナー画像を表示
-                const titleBannerImage = document.getElementById('title-banner-image');
-                console.log('Title reward data:', {
-                    rewardTitle: submitData.rewardTitle,
-                    rewardTitleImageUrl: submitData.rewardTitleImageUrl,
-                    fullSubmitData: submitData
-                });
-                
-                // 画像URLをリセット（前回の画像が残らないように）
-                titleBannerImage.onerror = null;
-                
-                if (submitData.rewardTitleImageUrl && submitData.rewardTitleImageUrl.trim() !== '') {
-                    // 画像URLが設定されている場合
-                    console.log('Setting title banner image:', submitData.rewardTitleImageUrl);
-                    titleBannerImage.src = submitData.rewardTitleImageUrl;
-                    titleBannerImage.style.display = 'block';
-                    titleBannerImage.onerror = function() {
-                        console.warn('Failed to load title banner image:', submitData.rewardTitleImageUrl);
-                        console.warn('Falling back to default image');
-                        // 画像読み込みエラー時はデフォルト画像を表示
-                        this.src = "{% static 'frontend/hero/toybox-title.png' %}";
-                    };
-                } else {
-                    // 画像URLがない場合
-                    console.warn('No rewardTitleImageUrl provided, using default image');
-                    titleBannerImage.src = "{% static 'frontend/hero/toybox-title.png' %}";
-                    titleBannerImage.style.display = 'block';
-                }
-                
+                renderTitleBanner(submitData.rewardTitleImageUrl, submitData.rewardTitle);
                 titleReveal.style.display = 'block';
             }
         }
@@ -1788,6 +1721,64 @@
         overlay.style.display = 'flex';
     }
     
+    /**
+     * 称号バナーをレンダリングする。
+     * 実画像URLがある場合は <img>、ない場合はSVGテキストバッジを表示する。
+     */
+    function renderTitleBanner(imageUrl, titleName) {
+        const wrap = document.getElementById('title-banner-wrap');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+
+        if (imageUrl && imageUrl.trim() !== '') {
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.alt = titleName || '称号';
+            img.style.cssText = 'max-width:321px;max-height:115px;width:100%;height:auto;object-fit:contain;border-radius:8px;opacity:0.9;';
+            img.onerror = function() {
+                // 画像ロード失敗時はSVGバッジにフォールバック
+                wrap.innerHTML = buildTitleSvgBadge(titleName);
+            };
+            wrap.appendChild(img);
+        } else {
+            wrap.innerHTML = buildTitleSvgBadge(titleName);
+        }
+    }
+
+    /** 称号名からSVGテキストバッジを生成する */
+    function buildTitleSvgBadge(titleName) {
+        const name = titleName || '称号';
+        const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="321" height="80" viewBox="0 0 321 80" role="img" aria-label="${escaped}">
+  <defs>
+    <linearGradient id="tbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#78350f"/>
+      <stop offset="100%" stop-color="#1c1a14"/>
+    </linearGradient>
+    <linearGradient id="tborder" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="50%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <!-- 背景 -->
+  <rect x="2" y="2" width="317" height="76" rx="10" ry="10" fill="url(#tbg)" stroke="url(#tborder)" stroke-width="2"/>
+  <!-- 左右の装飾ライン -->
+  <line x1="18" y1="14" x2="18" y2="66" stroke="#d97706" stroke-width="1" opacity="0.5"/>
+  <line x1="303" y1="14" x2="303" y2="66" stroke="#d97706" stroke-width="1" opacity="0.5"/>
+  <!-- 上下の星型装飾 -->
+  <text x="160" y="18" text-anchor="middle" font-size="8" fill="#fbbf24" opacity="0.8">✦ ✦ ✦</text>
+  <!-- 称号テキスト -->
+  <text x="160" y="52" text-anchor="middle" dominant-baseline="middle"
+        font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif"
+        font-size="${name.length > 8 ? 18 : 22}" font-weight="700"
+        fill="#fde68a" letter-spacing="2">
+    ${escaped}
+  </text>
+  <text x="160" y="68" text-anchor="middle" font-size="7" fill="#d97706" opacity="0.7" letter-spacing="3">TOYBOX TITLE</text>
+</svg>`;
+    }
+
     function nextToTitle() {
         const cardReveal = document.getElementById('card-reveal');
         const titleReveal = document.getElementById('title-reveal');
@@ -1804,35 +1795,8 @@
             document.getElementById('title-name').textContent = '—';
         }
         
-        // 称号バナー画像を表示
-        const titleBannerImage = document.getElementById('title-banner-image');
-        console.log('Title reward data (nextToTitle):', {
-            rewardTitle: submitData.rewardTitle,
-            rewardTitleImageUrl: submitData.rewardTitleImageUrl,
-            fullSubmitData: submitData
-        });
-        
-        // 画像URLをリセット（前回の画像が残らないように）
-        titleBannerImage.onerror = null;
-        
-        if (submitData.rewardTitleImageUrl && submitData.rewardTitleImageUrl.trim() !== '') {
-            // 画像URLが設定されている場合
-            console.log('Setting title banner image (nextToTitle):', submitData.rewardTitleImageUrl);
-            titleBannerImage.src = submitData.rewardTitleImageUrl;
-            titleBannerImage.style.display = 'block';
-            titleBannerImage.onerror = function() {
-                console.warn('Failed to load title banner image (nextToTitle):', submitData.rewardTitleImageUrl);
-                console.warn('Falling back to default image');
-                // 画像読み込みエラー時はデフォルト画像を表示
-                this.src = "{% static 'frontend/hero/toybox-title.png' %}";
-            };
-        } else {
-            // 画像URLがない場合
-            console.warn('No rewardTitleImageUrl provided (nextToTitle), using default image');
-            titleBannerImage.src = "{% static 'frontend/hero/toybox-title.png' %}";
-            titleBannerImage.style.display = 'block';
-        }
-        
+        // 称号バナーをレンダリング
+        renderTitleBanner(submitData.rewardTitleImageUrl, submitData.rewardTitle);
         titleReveal.style.display = 'block';
     }
     

@@ -324,18 +324,42 @@
         color: var(--steam-iron-400);
     }
     
-    .lightbox-like-btn {
-        transition: all 0.2s;
+    .lightbox-reaction-bar {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
     }
-    
-    .lightbox-like-btn:hover {
-        background: rgba(0, 0, 0, 0.8) !important;
+
+    .lightbox-reaction-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 9999px;
+        background: rgba(0,0,0,0.55);
+        border: 1px solid rgba(255,255,255,0.18);
+        color: #e2e2e2;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        line-height: 1;
     }
-    
-    .lightbox-like-btn.liked svg {
-        fill: #fb7185;
+
+    .lightbox-reaction-btn:hover {
+        background: rgba(255,255,255,0.12);
+        border-color: rgba(255,255,255,0.4);
+        transform: scale(1.08);
+    }
+
+    .lightbox-reaction-btn.reacted {
+        background: rgba(251,113,133,0.22);
+        border-color: #fb7185;
         color: #fb7185;
     }
+
+    .lightbox-reaction-btn .r-emoji { font-size: 1.05rem; }
+    .lightbox-reaction-btn .r-count { font-size: 0.75rem; min-width: 0.8rem; }
 </style>
 {% endblock %}
 
@@ -410,13 +434,10 @@
             <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
             <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
         </div>
-        <div id="lightbox-actions" style="display: none; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <button id="lightbox-like-btn" class="lightbox-like-btn" onclick="toggleLightboxLike(event)" style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-                </svg>
-                <span id="lightbox-like-count">0</span>
-            </button>
+        <div id="lightbox-actions" style="display: none; gap: 0.6rem; align-items: center; flex-wrap: wrap; flex-direction: column;">
+            <div class="lightbox-reaction-bar" id="lightbox-reaction-bar">
+                <!-- JSで6種リアクションボタンを挿入 -->
+            </div>
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer;">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
@@ -921,74 +942,68 @@
             lightboxImage.src = src;
         }
         
-        // いいねボタンとDiscordシェアボタンを表示（すべてのタイプでいいねボタンを表示）
+        // アクションエリアを表示
         lightboxActions.style.display = 'flex';
-        
+
         // Discordシェアボタンは画像と動画のみ表示
         const discordShareBtn = document.getElementById('discord-share-btn');
         if (discordShareBtn) {
-            if (type === 'image' || type === 'video') {
-                discordShareBtn.style.display = 'inline-flex';
-            } else {
-                discordShareBtn.style.display = 'none';
-            }
+            discordShareBtn.style.display = (type === 'image' || type === 'video') ? 'inline-flex' : 'none';
         }
-        
-        // 投稿詳細情報を取得
+
+        // カードデータからリアクション状態を取得して即座に反映
+        const REACTION_DEFS = [
+            { type: 'submit_medal', emoji: '👍' },
+            { type: 'awesome',      emoji: '🤩' },
+            { type: 'cute',         emoji: '🥰' },
+            { type: 'funny',        emoji: '😂' },
+            { type: 'moved',        emoji: '😭' },
+            { type: 'cool',         emoji: '😎' },
+        ];
+        function renderLightboxReactions(allReactions) {
+            const bar = document.getElementById('lightbox-reaction-bar');
+            if (!bar) return;
+            const map = {};
+            if (allReactions) allReactions.forEach(r => { map[r.type] = r; });
+            bar.innerHTML = REACTION_DEFS.map(rd => {
+                const r = map[rd.type] || { count: 0, user_reacted: false };
+                return `<button class="lightbox-reaction-btn ${r.user_reacted ? 'reacted' : ''}" data-rtype="${rd.type}" onclick="toggleLightboxReaction(event,'${rd.type}',this)">
+                    <span class="r-emoji">${rd.emoji}</span>
+                    <span class="r-count">${r.count > 0 ? r.count : ''}</span>
+                </button>`;
+            }).join('');
+        }
+
         if (assetId) {
-            // まず、カード上のデータからいいね状態を取得（優先）
+            // カードのallReactionsを先に反映
             const itemInFeed = items.find(x => x.id === assetId);
             const itemInPopular = popularItems.find(x => x.id === assetId);
             const cardItem = itemInFeed || itemInPopular;
-            
-            // カード上のいいね状態をライトボックスに反映
-            const likeBtn = document.getElementById('lightbox-like-btn');
-            const likeCount = document.getElementById('lightbox-like-count');
-            if (likeBtn && likeCount && cardItem) {
-                const isLiked = cardItem.liked || false;
-                const likesCount = cardItem.likesCount || cardItem.likes_count || 0;
-                
-                likeCount.textContent = likesCount;
-                if (isLiked) {
-                    likeBtn.classList.add('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                } else {
-                    likeBtn.classList.remove('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                }
+            if (cardItem && cardItem.allReactions) {
+                renderLightboxReactions(cardItem.allReactions);
+            } else {
+                renderLightboxReactions([]);
             }
-            
+
             try {
                 const token = localStorage.getItem('access_token');
                 const res = await fetch(`/api/submissions/${assetId}/`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    
-                    // 画像の場合は、APIから取得した元画像URLを使用（サムネイルではなく）
+
+                    // 画像の場合は元画像URLを使用
                     if (type === 'image' && lightboxImage) {
                         const originalImageUrl = data.imageUrl || data.image_url || data.displayImageUrl || data.display_image_url || src;
                         if (originalImageUrl && originalImageUrl !== src) {
                             lightboxImage.src = originalImageUrl;
                         }
                     }
-                    
-                    // カード上のデータがない場合のみ、APIから取得したデータを使用
-                    if (!cardItem && likeBtn && likeCount) {
-                        const isLiked = data.liked || false;
-                        const likesCount = data.likes_count || data.likesCount || 0;
-                        
-                        likeCount.textContent = likesCount;
-                        if (isLiked) {
-                            likeBtn.classList.add('liked');
-                            likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                        } else {
-                            likeBtn.classList.remove('liked');
-                            likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                        }
+
+                    // APIから最新のリアクションを反映
+                    if (data.all_reactions) {
+                        renderLightboxReactions(data.all_reactions);
                     }
                     
                     // ゲーム投稿の場合、サムネイルを表示
@@ -1104,116 +1119,70 @@
     });
     
     // ライトボックス内のいいね機能
-    async function toggleLightboxLike(event) {
+    async function toggleLightboxReaction(event, reactionType, btnEl) {
         event.stopPropagation();
-        
         if (!currentLightboxAssetId) return;
-        
         const token = localStorage.getItem('access_token');
-        if (!token) {
-            alert('ログインが必要です');
-            return;
-        }
-        
-        const likeBtn = document.getElementById('lightbox-like-btn');
-        const likeCount = document.getElementById('lightbox-like-count');
-        if (!likeBtn || !likeCount) return;
-        
-        const isCurrentlyLiked = likeBtn.classList.contains('liked');
-        const currentCount = parseInt(likeCount.textContent) || 0;
-        
+        if (!token) { alert('ログインが必要です'); return; }
+
+        const countEl = btnEl.querySelector('.r-count');
+        const isReacted = btnEl.classList.contains('reacted');
+        const currentCount = parseInt(countEl.textContent || '0', 10);
+
         // 楽観的更新
-        const newLiked = !isCurrentlyLiked;
-        const newCount = Math.max(0, currentCount + (isCurrentlyLiked ? -1 : 1));
-        
-        likeCount.textContent = newCount;
-        if (newLiked) {
-            likeBtn.classList.add('liked');
-            likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
+        if (isReacted) {
+            btnEl.classList.remove('reacted');
+            const n = Math.max(0, currentCount - 1);
+            countEl.textContent = n > 0 ? n : '';
         } else {
-            likeBtn.classList.remove('liked');
-            likeBtn.querySelector('svg').setAttribute('fill', 'none');
+            btnEl.classList.add('reacted');
+            countEl.textContent = currentCount + 1;
         }
-        
-        // フィード内のアイテムも更新
+
+        // フィードカード上のreactionも更新
+        const updateCard = (cardItem) => {
+            if (!cardItem || !cardItem.allReactions) return;
+            const r = cardItem.allReactions.find(x => x.type === reactionType);
+            if (r) {
+                r.user_reacted = !isReacted;
+                r.count = Math.max(0, r.count + (isReacted ? -1 : 1));
+            }
+            // フィードカードのボタンも同期
+            const cardBtns = document.querySelectorAll(`.feed-reaction-btn[data-submission-id="${currentLightboxAssetId}"][data-type="${reactionType}"]`);
+            cardBtns.forEach(b => {
+                b.classList.toggle('reacted', !isReacted);
+                const cc = b.querySelector('.reaction-count');
+                if (cc) cc.textContent = (r ? (r.count > 0 ? r.count : '') : '');
+            });
+            // likesCountも更新（submit_medalの場合）
+            if (reactionType === 'submit_medal') {
+                cardItem.liked = !isReacted;
+                cardItem.likesCount = Math.max(0, (cardItem.likesCount || 0) + (isReacted ? -1 : 1));
+            }
+        };
         const itemInFeed = items.find(x => x.id === currentLightboxAssetId);
         const itemInPopular = popularItems.find(x => x.id === currentLightboxAssetId);
-        
-        if (itemInFeed) {
-            itemInFeed.liked = newLiked;
-            itemInFeed.likesCount = newCount;
-        }
-        if (itemInPopular) {
-            itemInPopular.liked = newLiked;
-            itemInPopular.likesCount = newCount;
-        }
-        
-        // いいねボタンとカウントだけを更新（画像は再読み込みしない）
-        updateLikeButton(currentLightboxAssetId, newLiked, newCount);
-        
-        // API呼び出し
+        if (itemInFeed) updateCard(itemInFeed);
+        if (itemInPopular) updateCard(itemInPopular);
+
         try {
-            const method = isCurrentlyLiked ? 'DELETE' : 'POST';
-            const response = await fetch(`/api/submissions/${encodeURIComponent(currentLightboxAssetId)}/like/`, {
-                method: method,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: method === 'POST' ? JSON.stringify({}) : undefined
+            const res = await fetch(`/api/submissions/${encodeURIComponent(currentLightboxAssetId)}/react/${reactionType}/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             });
-            
-            const data = await response.json();
-            if (data.ok !== undefined && data.likesCount !== undefined) {
-                // サーバーからの結果で更新
-                const serverLiked = data.liked || false;
-                const serverCount = data.likesCount || 0;
-                
-                likeCount.textContent = serverCount;
-                if (serverLiked) {
-                    likeBtn.classList.add('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-                } else {
-                    likeBtn.classList.remove('liked');
-                    likeBtn.querySelector('svg').setAttribute('fill', 'none');
-                }
-                
-                // フィード内のアイテムも更新
-                if (itemInFeed) {
-                    itemInFeed.liked = serverLiked;
-                    itemInFeed.likesCount = serverCount;
-                }
-                if (itemInPopular) {
-                    itemInPopular.liked = serverLiked;
-                    itemInPopular.likesCount = serverCount;
-                }
-                
-                // いいねボタンとカウントだけを更新（画像は再読み込みしない）
-                updateLikeButton(currentLightboxAssetId, serverLiked, serverCount);
+            const data = await res.json();
+            if (data.ok) {
+                const n = data.count || 0;
+                countEl.textContent = n > 0 ? n : '';
+            } else {
+                // ロールバック
+                btnEl.classList.toggle('reacted', isReacted);
+                countEl.textContent = currentCount > 0 ? currentCount : '';
             }
         } catch (err) {
-            console.error('Failed to toggle like:', err);
-            // エラー時はロールバック
-            likeCount.textContent = currentCount;
-            if (isCurrentlyLiked) {
-                likeBtn.classList.add('liked');
-                likeBtn.querySelector('svg').setAttribute('fill', 'currentColor');
-            } else {
-                likeBtn.classList.remove('liked');
-                likeBtn.querySelector('svg').setAttribute('fill', 'none');
-            }
-            
-            if (itemInFeed) {
-                itemInFeed.liked = isCurrentlyLiked;
-                itemInFeed.likesCount = currentCount;
-            }
-            if (itemInPopular) {
-                itemInPopular.liked = isCurrentlyLiked;
-                itemInPopular.likesCount = currentCount;
-            }
-            
-            // いいねボタンとカウントだけを更新（画像は再読み込みしない）
-            updateLikeButton(currentLightboxAssetId, isCurrentlyLiked, currentCount);
+            console.error('Reaction error:', err);
+            btnEl.classList.toggle('reacted', isReacted);
+            countEl.textContent = currentCount > 0 ? currentCount : '';
         }
     }
     

@@ -327,14 +327,13 @@
                     <span>未設定</span>
                 </div>
                 <div style="color: var(--steam-iron-100); font-weight: 600; font-size: 0.875rem;" id="profile-name">—</div>
+                <div id="profile-title" style="display: none; justify-content: center; margin: 0.25rem 0;"></div>
                 <div style="font-size: 0.75rem; line-height: 1.6; color: var(--steam-iron-200); text-align: center; padding: 0 0.25rem;">
                     <span id="profile-bio">—</span>
                     <span id="profile-bio-more" style="display: none; margin-top: 0.25rem;">
                         <a href="/profile/view/" style="color: var(--steam-gold-400); text-decoration: underline; font-size: 0.6875rem;">続きを見る</a>
                     </span>
                 </div>
-                <div id="profile-title" style="display: flex; justify-content: center; margin-top: 0.5rem;"></div>
-                <div style="font-size: 0.75rem; color: var(--steam-iron-300); margin-top: 0.25rem;" id="profile-title-until"></div>
             </div>
         </section>
         
@@ -902,9 +901,10 @@
             
             if (data.activeTitle) {
                 if (titleElement) {
+                    // v2.0: activeTitleImageUrl は実画像のみ（フォールバックは返さない）
                     const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
-                    if (imageUrl) {
-                        titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width:321px;max-height:115px;width:100%;height:auto;object-fit:contain;border-radius:8px;" onerror="this.outerHTML=buildTitleSvgBadge('${data.activeTitle.replace(/'/g,'\\\'')}}');">`;
+                    if (imageUrl && !imageUrl.includes('toybox-title')) {
+                        titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width:280px;max-height:80px;width:100%;height:auto;object-fit:contain;border-radius:8px;" onerror="this.outerHTML=buildTitleSvgBadge('${data.activeTitle.replace(/'/g,'\\\'')}}');">`;
                     } else {
                         titleElement.innerHTML = buildTitleSvgBadge(data.activeTitle);
                     }
@@ -915,7 +915,6 @@
                     titleUntilElement.style.display = 'none';
                 }
             } else {
-                // 称号がない場合
                 if (titleElement) {
                     titleElement.innerHTML = '';
                     titleElement.style.display = 'none';

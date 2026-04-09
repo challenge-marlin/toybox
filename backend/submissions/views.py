@@ -1059,33 +1059,38 @@ class UserSubmissionsView(APIView):
                     title_color = None
                     try:
                         from users.models import UserMeta
-                        from django.utils import timezone
                         meta = UserMeta.objects.get(user=sub.author)
                         if meta.active_title:
-                            # 有効期限をチェック
-                            if meta.expires_at and meta.expires_at > timezone.now():
-                                active_title = meta.active_title
-                                title_color = meta.title_color
-                                
-                                # 称号の画像URLを取得（未配置時はフォールバック画像）
-                                try:
-                                    from gamification.models import Title
-                                    from toybox.image_utils import get_title_image_url
-                                    title_obj = Title.objects.filter(name=meta.active_title).first()
-                                    if title_obj:
-                                        active_title_image_url = get_title_image_url(title_obj, request)
-                                except Exception as e:
-                                    logger.warning(f'Failed to get title image for {meta.active_title}: {e}')
+                            # v2.0: 有効期限チェック廃止
+                            active_title = meta.active_title
+                            title_color = meta.title_color
                     except UserMeta.DoesNotExist:
                         pass
                     except Exception as e:
                         logger.warning(f'Failed to get title info for submission {sub.id}: {e}')
                     
+                    # 全リアクション（v2.0）
+                    all_reactions = []
+                    try:
+                        current_user = request.user if request.user.is_authenticated else None
+                        for rtype in Reaction.Type:
+                            count = sub.reactions.filter(type=rtype).count()
+                            user_reacted = current_user and sub.reactions.filter(user=current_user, type=rtype).exists()
+                            all_reactions.append({
+                                'type': rtype.value,
+                                'label': rtype.label,
+                                'emoji': Reaction.EMOJI_MAP.get(rtype.value, '👍'),
+                                'count': count,
+                                'user_reacted': bool(user_reacted),
+                            })
+                    except Exception as e:
+                        logger.warning(f'Failed to get reactions for submission {sub.id}: {e}')
+
                     items.append({
                         'id': str(sub.id),
-                        'imageUrl': image_url,  # 元画像URL
-                        'imageThumbnailUrl': image_thumbnail_url,  # サムネイルURL
-                        'displayImageUrl': display_image_url or image_url,  # 表示用（サムネイル優先）
+                        'imageUrl': image_url,
+                        'imageThumbnailUrl': image_thumbnail_url,
+                        'displayImageUrl': display_image_url or image_url,
                         'videoUrl': video_url,
                         'gameUrl': game_url,
                         'title': title,
@@ -1093,9 +1098,10 @@ class UserSubmissionsView(APIView):
                         'createdAt': created_at_str,
                         'likesCount': likes_count,
                         'liked': liked,
-                        'activeTitle': active_title,  # 称号
-                        'activeTitleImageUrl': active_title_image_url,  # 称号の画像URL
-                        'titleColor': title_color,  # 称号の色
+                        'allReactions': all_reactions,
+                        'activeTitle': active_title,
+                        'activeTitleImageUrl': None,  # v2.0: 実画像未設定時はNone
+                        'titleColor': title_color,
                     })
                 except Exception as e:
                     logger.error(f'Error processing submission {sub.id}: {str(e)}', exc_info=True)

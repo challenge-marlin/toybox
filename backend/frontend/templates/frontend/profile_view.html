@@ -169,8 +169,16 @@
         border-radius: 8px;
         border: 1px solid var(--steam-iron-700);
         background: var(--steam-iron-900);
-        aspect-ratio: 1;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .profile-view-submission-item img,
+    .profile-view-submission-item video,
+    .profile-view-submission-item .game-icon {
+        aspect-ratio: 1;
+        flex-shrink: 0;
     }
     
     .profile-view-submission-item.game {
@@ -184,7 +192,6 @@
     .profile-view-submission-item img,
     .profile-view-submission-item video {
         width: 100%;
-        height: 100%;
         object-fit: contain;
         padding: 0.5rem;
         cursor: pointer;
@@ -192,7 +199,6 @@
     
     .profile-view-submission-item .game-icon {
         width: 100%;
-        height: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -200,6 +206,48 @@
         color: var(--steam-iron-200);
         padding: 0.75rem;
     }
+
+    /* リアクションバー */
+    .profile-reaction-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.3rem 0.4rem;
+        background: var(--steam-iron-800, #1e1e1e);
+        border-top: 1px solid rgba(255,255,255,0.07);
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+
+    .profile-reaction-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.18rem;
+        padding: 0.18rem 0.4rem;
+        border-radius: 9999px;
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.12);
+        color: var(--steam-iron-200, #e2e2e2);
+        font-size: 0.72rem;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        line-height: 1;
+    }
+
+    .profile-reaction-btn:hover {
+        background: rgba(255,255,255,0.1);
+        border-color: rgba(255,255,255,0.3);
+        transform: scale(1.1);
+    }
+
+    .profile-reaction-btn.reacted {
+        background: rgba(251, 113, 133, 0.18);
+        border-color: #fb7185;
+        color: #fb7185;
+    }
+
+    .profile-reaction-btn .reaction-emoji { font-size: 0.9rem; line-height: 1; }
+    .profile-reaction-btn .reaction-count { font-size: 0.68rem; min-width: 0.7rem; }
     
     .profile-view-submission-item .game-icon svg {
         color: var(--steam-gold-300);
@@ -213,33 +261,7 @@
     }
     
     .profile-view-submission-item .like-button {
-        position: absolute;
-        bottom: 0.5rem;
-        right: 0.5rem;
-        z-index: 10;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        border-radius: 4px;
-        background: rgba(0, 0, 0, 0.6);
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
-        color: white;
-        border: none;
-        cursor: pointer;
-    }
-    
-    .profile-view-submission-item .like-button:hover {
-        background: rgba(0, 0, 0, 0.8);
-    }
-    
-    .profile-view-submission-item .like-button.liked {
-        color: #fb7185;
-    }
-    
-    .profile-view-submission-item .like-button svg {
-        width: 1rem;
-        height: 1rem;
+        display: none; /* v2.0: リアクションバーに置き換え */
     }
     
     .profile-view-submission-item .game-link {
@@ -446,6 +468,32 @@
     let currentUserId = null;
     let nextCursor = null;
     let submissions = [];
+
+    /** 称号名からSVGテキストバッジを生成する（me.htmlと共通ロジック） */
+    function buildTitleSvgBadge(titleName) {
+        const name = titleName || '称号';
+        const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="60" viewBox="0 0 240 60" role="img" aria-label="${escaped}">
+  <defs>
+    <linearGradient id="tbg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#78350f"/>
+      <stop offset="100%" stop-color="#1c1a14"/>
+    </linearGradient>
+    <linearGradient id="tb2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="50%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="238" height="58" rx="8" ry="8" fill="url(#tbg2)" stroke="url(#tb2)" stroke-width="1.5"/>
+  <text x="120" y="16" text-anchor="middle" font-size="7" fill="#fbbf24" opacity="0.8">✦ ✦ ✦</text>
+  <text x="120" y="38" text-anchor="middle" dominant-baseline="middle"
+        font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif"
+        font-size="${name.length > 8 ? 14 : 17}" font-weight="700"
+        fill="#fde68a" letter-spacing="2">${escaped}</text>
+  <text x="120" y="53" text-anchor="middle" font-size="6" fill="#d97706" opacity="0.7" letter-spacing="3">TOYBOX TITLE</text>
+</svg>`;
+    }
     
     // 初期データ読み込み（bodyはこのページのCSSで visibility:hidden のためチラつき防止）
     document.addEventListener('DOMContentLoaded', function() {
@@ -582,32 +630,16 @@
                     activeTitleImageUrl: activeTitleImageUrl
                 });
                 
-                // 称号を表示（期限切れチェック）
-                if (activeTitle && activeTitleUntil) {
-                    const expiresAt = new Date(activeTitleUntil);
-                    const now = new Date();
-                    
-                    if (expiresAt > now) {
-                        // 有効期限内
-                        if (activeTitleImageUrl) {
-                            document.getElementById('profile-title').innerHTML = `<img src="${activeTitleImageUrl}" alt="${activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300);\\'>称号: ${activeTitle}</span>';">`;
-                        } else {
-                            document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${activeTitle}</span>`;
-                        }
-                    } else {
-                        // 期限切れ
-                        document.getElementById('profile-title').innerHTML = '';
-                    }
-                } else if (activeTitle) {
-                    // expires_atがない場合は表示
+                // 称号を表示（v2.0: 有効期限廃止・SVGバッジ対応）
+                const titleEl = document.getElementById('profile-title');
+                if (activeTitle && titleEl) {
                     if (activeTitleImageUrl) {
-                        document.getElementById('profile-title').innerHTML = `<img src="${activeTitleImageUrl}" alt="${activeTitle}" style="max-width: 321px; max-height: 115px; width: 100%; height: auto; object-fit: contain; border-radius: 8px;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color: var(--steam-gold-300);\\'>称号: ${activeTitle}</span>';">`;
+                        titleEl.innerHTML = `<img src="${activeTitleImageUrl}" alt="${activeTitle}" style="max-width:321px;max-height:115px;width:100%;height:auto;object-fit:contain;border-radius:8px;" onerror="this.outerHTML=buildTitleSvgBadge('${activeTitle.replace(/'/g,'\\\'')}}');">`;
                     } else {
-                        document.getElementById('profile-title').innerHTML = `<span style="color: var(--steam-gold-300);">称号: ${activeTitle}</span>`;
+                        titleEl.innerHTML = buildTitleSvgBadge(activeTitle);
                     }
-                } else {
-                    // 称号がない場合
-                    document.getElementById('profile-title').innerHTML = '';
+                } else if (titleEl) {
+                    titleEl.innerHTML = '';
                 }
                 
                 if (metaData.bio) {
@@ -715,15 +747,28 @@
                 content = `<img src="${imageSrc}" alt="submission" onclick="openLightbox('${lightboxImageSrc}', 'image', '${s.id}')">`;
             }
             
+            // リアクションバー
+            const REACTION_TYPES = [
+                { type: 'submit_medal', emoji: '👍' },
+                { type: 'awesome',      emoji: '🤩' },
+                { type: 'cute',         emoji: '🥰' },
+                { type: 'funny',        emoji: '😂' },
+                { type: 'moved',        emoji: '😭' },
+                { type: 'cool',         emoji: '😎' },
+            ];
+            const reactionsMap = {};
+            if (s.allReactions) s.allReactions.forEach(r => { reactionsMap[r.type] = r; });
+            const reactionBarHtml = REACTION_TYPES.map(rt => {
+                const rd = reactionsMap[rt.type] || { count: 0, user_reacted: false };
+                return `<button class="profile-reaction-btn ${rd.user_reacted ? 'reacted' : ''}" data-submission-id="${s.id}" data-reaction-type="${rt.type}" onclick="toggleProfileReaction('${s.id}','${rt.type}',this)" title="${rt.emoji}">
+                    <span class="reaction-emoji">${rt.emoji}</span>
+                    <span class="reaction-count">${rd.count > 0 ? rd.count : ''}</span>
+                </button>`;
+            }).join('');
+
             return `
                 <div class="profile-view-submission-item ${isGame ? 'game' : (isVideo ? 'video' : '')}" data-submission-id="${s.id}">
                     ${content}
-                    <button class="like-button ${s.liked ? 'liked' : ''}" data-submission-id="${s.id}" onclick="toggleLike('${s.id}', ${s.liked || false})" style="pointer-events: auto;">
-                        <svg viewBox="0 0 24 24" fill="${s.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg>
-                        <span class="profile-like-count">${s.likesCount || 0}</span>
-                    </button>
                     ${isGame && gameUrl ? `
                         <div class="game-link" onclick="openLightbox('${gameUrl}', 'game', '${s.id}')" style="cursor: pointer;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -733,6 +778,7 @@
                             開く
                         </div>
                     ` : ''}
+                    <div class="profile-reaction-bar">${reactionBarHtml}</div>
                 </div>
             `;
         }).join('');
@@ -742,6 +788,34 @@
         loadSubmissions();
     }
     
+    // プロフィールページ汎用リアクション
+    function toggleProfileReaction(submissionId, reactionType, btnEl) {
+        const token = localStorage.getItem('access_token');
+        if (!token) { alert('ログインが必要です'); return; }
+        const isReacted = btnEl.classList.contains('reacted');
+        const countEl = btnEl.querySelector('.reaction-count');
+        const currentCount = parseInt(countEl.textContent || '0', 10);
+        if (isReacted) {
+            btnEl.classList.remove('reacted');
+            const n = Math.max(0, currentCount - 1);
+            countEl.textContent = n > 0 ? n : '';
+        } else {
+            btnEl.classList.add('reacted');
+            countEl.textContent = currentCount + 1;
+        }
+        fetch(`/api/submissions/${encodeURIComponent(submissionId)}/react/${reactionType}/`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) { btnEl.classList.toggle('reacted', isReacted); countEl.textContent = currentCount > 0 ? currentCount : ''; return; }
+            const n = data.count || 0;
+            countEl.textContent = n > 0 ? n : '';
+        })
+        .catch(() => { btnEl.classList.toggle('reacted', isReacted); countEl.textContent = currentCount > 0 ? currentCount : ''; });
+    }
+
     // いいねボタンとカウントだけを更新する関数（画像は再読み込みしない）
     function updateProfileLikeButton(submissionId, liked, likesCount) {
         const likeButtons = document.querySelectorAll(`.like-button[data-submission-id="${submissionId}"]`);

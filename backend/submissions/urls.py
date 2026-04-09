@@ -12,10 +12,16 @@ urlpatterns = [
     path('', include(router.urls)),
     # Submit upload endpoint (compatible with Next.js - returns imageUrl/videoUrl)
     path('submit/upload', views.SubmitUploadView.as_view(), name='submit-upload'),
+    # Trailing-slash variant (POST endpoints must not rely on APPEND_SLASH)
+    path('submit/upload/', views.SubmitUploadView.as_view(), name='submit-upload-slash'),
     # Submit game ZIP upload endpoint (extracts ZIP and returns gameUrl)
     path('submit/uploadGame', views.SubmitGameUploadView.as_view(), name='submit-upload-game'),
+    # Trailing-slash variant
+    path('submit/uploadGame/', views.SubmitGameUploadView.as_view(), name='submit-upload-game-slash'),
     # Submit endpoint (compatible with Next.js - returns rewards)
     path('submit/', views.SubmitView.as_view(), name='submit'),
+    # No-trailing-slash variant (avoid 301 on POST from some clients)
+    path('submit', views.SubmitView.as_view(), name='submit-noslash'),
     # Popular feed endpoint (ordered by likes count) - must be before feed/
     path('feed/popular/', views.PopularFeedView.as_view(), name='feed-popular'),
     # Hashtags endpoint (ordered by usage count) - must be before feed/

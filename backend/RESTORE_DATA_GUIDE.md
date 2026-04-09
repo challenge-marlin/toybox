@@ -58,21 +58,30 @@ scp app@160.251.168.144:~/toybox/backend/backup_20251217_140000.sql C:\github\to
 1. バックアップファイルの内容をコピー
 2. ローカルに新しいファイルとして保存: `C:\github\toybox\backend\backup_restore.sql`
 
-### ステップ4: ローカルデータベースを復元
+### ステップ4: ローカルデータベースを復元（文字化け対策付き）
+
+**重要**: 文字化けを防ぐため、UTF-8エンコーディングを明示的に設定してください。
 
 ```powershell
 # backendディレクトリに移動
 cd C:\github\toybox\backend
 
 # 現在のデータベースをバックアップ（念のため）
-docker compose exec -T db pg_dump -U postgres toybox > backup_before_restore_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql
+docker compose exec -T db pg_dump -U postgres --encoding=UTF8 toybox > backup_before_restore_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql
 
-# データベースを削除して再作成
+# データベースを削除して再作成（UTF-8文字セットを明示的に指定）
 docker compose exec db psql -U postgres -c "DROP DATABASE IF EXISTS toybox;"
-docker compose exec db psql -U postgres -c "CREATE DATABASE toybox;"
+docker compose exec db psql -U postgres -c "CREATE DATABASE toybox WITH ENCODING='UTF8' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE=template0;"
 
-# バックアップから復元
-Get-Content backup_restore.sql | docker compose exec -T db psql -U postgres toybox
+# バックアップから復元（UTF-8エンコーディングを設定）
+$content = Get-Content backup_restore.sql -Encoding UTF8 -Raw
+$content | docker compose exec -e PGCLIENTENCODING=UTF8 -e LANG=C.UTF-8 -T db psql -U postgres toybox
+```
+
+**簡単な方法**: `restore_from_prod_complete.ps1`スクリプトを使用すると、自動的にUTF-8エンコーディングが設定されます：
+
+```powershell
+.\restore_from_prod_complete.ps1
 ```
 
 ### ステップ5: 復元の確認
@@ -90,7 +99,28 @@ docker compose exec db psql -U postgres -d toybox -c "SELECT 'users' as table_na
 
 ## メディアファイルの復元
 
-投稿画像や動画も復元する必要がある場合：
+**重要**: カードと称号の画像はDockerボリューム（`media_volume`）に保存されているため、SQLデータだけでは復元されません。メディアボリュームのバックアップもリストアする必要があります。
+
+### 方法1: メディアボリュームのバックアップを使用（推奨）
+
+```powershell
+# 本番サーバーからメディアボリュームのバックアップをダウンロード
+scp -i "C:\Users\ayato\.ssh\toybox-2025-11-06-11-40.pem" `
+  root@160.251.168.144:/backup/toybox/volumes/media_volume_*.tar.gz `
+  C:\backup\toybox\volumes\
+
+# メディアボリュームをリストア
+$mediaBackup = Get-ChildItem C:\backup\toybox\volumes\media_volume_*.tar.gz | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+docker run --rm `
+  -v toybox_media_volume:/data `
+  -v "$(Split-Path $mediaBackup.FullName):/backup" `
+  alpine sh -c "cd / && tar xzf /backup/$(Split-Path $mediaBackup.FullName -Leaf)"
+```
+
+### 方法2: 手動でファイルをコピー
+
+メディアボリュームのバックアップが存在しない場合：
 
 ```bash
 # 本番サーバーで実行
@@ -100,10 +130,15 @@ tar -czf uploads_backup_20251217_140000.tar.gz public/uploads/
 # ローカルにダウンロード（SCP使用）
 scp app@160.251.168.144:~/toybox/backend/uploads_backup_20251217_140000.tar.gz C:\github\toybox\backend\
 
-# ローカルで展開
+# ローカルで展開（Dockerボリュームにコピー）
 cd C:\github\toybox\backend
 tar -xzf uploads_backup_20251217_140000.tar.gz
+
+# Dockerボリュームにコピー
+docker cp public/uploads/. $(docker compose ps -q web):/app/public/uploads/
 ```
+
+**詳細な手順**: [ローカル環境リストア完全手順](../doc/backup/ローカル環境リストア完全手順.md)を参照してください。
 
 ## トラブルシューティング
 

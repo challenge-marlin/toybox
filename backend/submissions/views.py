@@ -104,6 +104,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                     notification = {
                         'type': 'like',
                         'fromAnonId': request.user.display_id,
+                        'fromDisplayName': liker_name,
                         'submissionId': str(submission.id),
                         'message': message,
                         'createdAt': timezone.now().isoformat(),
@@ -177,6 +178,12 @@ class SubmitUploadView(APIView):
         """Upload file and return URL."""
         import logging
         logger = logging.getLogger(__name__)
+        
+        if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
+            return Response(
+                {'error': '画像・動画の投稿は課金ユーザー限定です。'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         file = request.FILES.get('file')
         
@@ -293,6 +300,12 @@ class SubmitGameUploadView(APIView):
         """Upload ZIP file, extract it, and return gameUrl."""
         import logging
         logger = logging.getLogger(__name__)
+        
+        if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
+            return Response(
+                {'error': 'ゲーム投稿は課金ユーザー限定です。'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         file = request.FILES.get('file')
         
@@ -449,6 +462,12 @@ class SubmitView(APIView):
     
     def post(self, request):
         """Handle submission and return rewards."""
+        if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
+            return Response(
+                {'error': '投稿は課金ユーザー限定です。'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         user = request.user
         
         # Extract data from request (support both JSON and multipart/form-data)
@@ -532,21 +551,15 @@ class SubmitView(APIView):
 
 
 class FeedView(APIView):
-    """Feed endpoint compatible with Next.js format."""
-    permission_classes = [IsAuthenticated]  # Require authentication
-    
+    """Feed endpoint compatible with Next.js format. 未認証でも閲覧可能（ログインループ防止）。"""
+    permission_classes = [AllowAny]
+
     def get(self, request):
         """Get feed items."""
         import logging
         logger = logging.getLogger(__name__)
         
         try:
-            # 一般ユーザー（FREE_USER）はアクセスできない
-            if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
-                return Response(
-                    {'error': 'この機能は課金ユーザー限定です。'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
             queryset = Submission.objects.filter(deleted_at__isnull=True)
             
             # Filter by hashtag if provided (大文字小文字を無視してフィルタリング)
@@ -681,22 +694,15 @@ class FeedView(APIView):
 
 
 class HashtagsView(APIView):
-    """Get popular hashtags ordered by usage count."""
-    permission_classes = [IsAuthenticated]  # Require authentication
-    
+    """Get popular hashtags ordered by usage count. 未認証でも取得可能."""
+    permission_classes = [AllowAny]
+
     def get(self, request):
         """Get hashtags ordered by usage count."""
         import logging
         logger = logging.getLogger(__name__)
         
         try:
-            # 一般ユーザー（FREE_USER）はアクセスできない
-            if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
-                return Response(
-                    {'error': 'この機能は課金ユーザー限定です。'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            
             # Get limit param (default 20)
             try:
                 limit = int(request.query_params.get('limit', 20))
@@ -750,17 +756,11 @@ class HashtagsView(APIView):
 
 
 class PopularFeedView(APIView):
-    """Popular feed endpoint - returns submissions ordered by likes count."""
-    permission_classes = [IsAuthenticated]  # Require authentication
-    
+    """Popular feed endpoint - returns submissions ordered by likes count. 未認証でも取得可能."""
+    permission_classes = [AllowAny]
+
     def get(self, request):
         """Get popular feed items ordered by likes count."""
-        # 一般ユーザー（FREE_USER）はアクセスできない
-        if hasattr(request.user, 'role') and request.user.role == User.Role.FREE_USER:
-            return Response(
-                {'error': 'この機能は課金ユーザー限定です。'},
-                status=status.HTTP_403_FORBIDDEN
-            )
         queryset = Submission.objects.filter(deleted_at__isnull=True)
         
         # Get limit param
@@ -865,7 +865,8 @@ class UserSubmissionsView(APIView):
             queryset = Submission.objects.filter(
                 author=user,
                 deleted_at__isnull=True
-            ).select_related('author', 'author__meta').order_by('-created_at')
+            )
+            queryset = queryset.select_related('author', 'author__meta').order_by('-created_at')
             
             # Pagination
             page_size = int(request.query_params.get('limit', 12))

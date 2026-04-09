@@ -1,0 +1,60 @@
+%% SQL一目でわかるフロー図
+%% 作成日: 2026年1月29日
+
+graph LR
+    subgraph "📦 バックアップ"
+        A[PostgreSQL] -->|UTF-8設定| B[pg_dump]
+        B -->|gzip| C[backup.sql.gz]
+        
+        style A fill:#4fc3f7,color:#000,stroke:#0277bd,stroke-width:2px
+        style B fill:#fff176,color:#000,stroke:#f57f17,stroke-width:2px
+        style C fill:#81c784,color:#000,stroke:#2e7d32,stroke-width:2px
+    end
+
+    subgraph "📥 ダウンロード"
+        D[サーバー] -->|SCP/WinSCP| E[ローカル]
+        E -->|7-Zip| F[backup.sql]
+        
+        style D fill:#ef5350,color:#fff,stroke:#c62828,stroke-width:2px
+        style E fill:#4fc3f7,color:#000,stroke:#0277bd,stroke-width:2px
+        style F fill:#81c784,color:#000,stroke:#2e7d32,stroke-width:2px
+    end
+
+    subgraph "🔄 リストア"
+        G[SQLファイル] -->|docker cp| H[コンテナ内]
+        H -->|UTF-8設定<br/>psql実行| I[DB復元]
+        
+        style G fill:#ce93d8,color:#000,stroke:#7b1fa2,stroke-width:2px
+        style H fill:#9575cd,color:#fff,stroke:#4527a0,stroke-width:2px
+        style I fill:#81c784,color:#000,stroke:#2e7d32,stroke-width:2px
+    end
+
+    subgraph "✅ 確認"
+        J[SELECT] -->|日本語表示| K{OK?}
+        K -->|Yes| L[成功]
+        K -->|No ?????| M[失敗]
+        
+        style J fill:#fff176,color:#000,stroke:#f57f17,stroke-width:2px
+        style K fill:#ffb74d,color:#000,stroke:#e65100,stroke-width:2px
+        style L fill:#2e7d32,color:#fff,stroke:#1b5e20,stroke-width:3px
+        style M fill:#d32f2f,color:#fff,stroke:#b71c1c,stroke-width:3px
+    end
+
+    %% フロー
+    C -.->|毎日| D
+    F --> G
+    I --> J
+
+    %% 重要ポイント（大きく表示）
+    subgraph "⚠️ 重要ポイント"
+        POINT1["✅ バックアップ時<br/>PGCLIENTENCODING=UTF8<br/>--encoding=UTF8<br/>--column-inserts"]
+        POINT2["✅ リストア時<br/>docker cp してから<br/>コンテナ内で psql 実行"]
+        POINT3["❌ ダメな例<br/>PowerShellパイプ経由<br/>文字化けする！"]
+        
+        style POINT1 fill:#00c853,color:#fff,stroke:#00701a,stroke-width:4px,font-size:14px
+        style POINT2 fill:#00c853,color:#fff,stroke:#00701a,stroke-width:4px,font-size:14px
+        style POINT3 fill:#d32f2f,color:#fff,stroke:#b71c1c,stroke-width:4px,font-size:14px
+    end
+
+    POINT1 -.->|適用| B
+    POINT2 -.->|適用| H

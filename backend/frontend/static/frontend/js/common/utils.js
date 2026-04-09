@@ -3,6 +3,18 @@
  */
 
 /**
+ * HTMLをエスケープ（XSS対策）
+ * @param {string} str - エスケープする文字列
+ * @returns {string}
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+/**
  * 日付をフォーマット
  * @param {Date|string} date - 日付オブジェクトまたは文字列
  * @param {string} format - フォーマット（'ja-JP'など）

@@ -97,3 +97,11 @@ db.sqlite3-journal
 backend/public/uploads/
 =======
 >>>>>>> Stashed changes
+
+# バックアップファイルを無視
+backend/*.sql
+backend/*.dump
+backend/*.tar.gz
+*.sql
+*.tar.gz
+*.dump

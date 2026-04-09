@@ -53,9 +53,10 @@
                 <a href="/collection/" id="nav-collection" style="color: var(--steam-gold-400); text-decoration: none; display: none;">コレクション</a>
                 <a href="/profile/view/" id="nav-profile" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール</a>
                 <a href="/feed/" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
+                <button type="button" id="nav-id-info" onclick="openIdPopup(); return false;" aria-label="ID・契約案内" style="display: none; background: var(--steam-gold-500); color: #000; border: none; border-radius: 50%; width: 1.5rem; height: 1.5rem; font-weight: bold; font-size: 0.875rem; cursor: pointer; padding: 0; line-height: 1;">!</button>
                 <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
             </nav>
-            <div id="user-info" style="display: flex; align-items: center; gap: 0.75rem; color: var(--steam-iron-200); display: none;">
+            <div id="user-info" style="display: none; align-items: center; gap: 0.75rem; color: var(--steam-iron-200);">
                 <div id="notification-container" style="position: relative; display: none;">
                     <button id="notification-button" onclick="toggleNotifications()" style="position: relative; background: transparent; border: none; padding: 0.25rem 0.5rem; cursor: pointer; color: var(--steam-gold-300); border-radius: 9999px;" aria-label="通知">
                         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
@@ -83,7 +84,7 @@
                         </svg>
                     </button>
                     <div id="user-menu-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; width: 200px; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700); border-radius: 4px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); z-index: 50; overflow: hidden;">
-                        <a href="/profile/" style="display: block; padding: 0.75rem 1rem; color: var(--steam-iron-100); text-decoration: none; border-bottom: 1px solid var(--steam-iron-800); transition: background 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">
+                        <a id="nav-profile-settings" href="/profile/" style="display: block; padding: 0.75rem 1rem; color: var(--steam-iron-100); text-decoration: none; border-bottom: 1px solid var(--steam-iron-800); transition: background 0.2s;" onmouseover="this.style.background='var(--steam-iron-800)'" onmouseout="this.style.background='transparent'">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -127,12 +128,67 @@
         </div>
     </header>
     
+    <!-- ID・契約案内ポップアップ -->
+    <div id="id-popup-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 1rem;" onclick="closeIdPopup()">
+        <div id="id-popup-box" style="max-width: 400px; width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700); border-radius: 8px; padding: 1.25rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); color: var(--steam-iron-100); font-size: 0.875rem; line-height: 1.5;" onclick="event.stopPropagation()">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <h2 style="color: var(--steam-gold-300); font-weight: 600; font-size: 1rem; margin: 0;">あなたのID</h2>
+                <button type="button" onclick="closeIdPopup()" aria-label="閉じる" style="background: transparent; border: none; color: var(--steam-iron-400); cursor: pointer; padding: 0.25rem; font-size: 1.25rem; line-height: 1;">×</button>
+            </div>
+            <p id="id-popup-display-id" style="font-family: monospace; word-break: break-all; margin-bottom: 0.75rem; color: var(--steam-iron-100);">—</p>
+            <p style="margin-bottom: 0.75rem; color: var(--steam-iron-200);">このアカウントのすべての機能を使うには株式会社AYATORIとの契約が必要です。すでにご契約済みのお客様はお手数ですが、所属の事業所、学校名とIDを株式会社AYATORIまでご連絡ください。</p>
+            <a href="/inquiry/" style="color: var(--steam-gold-400); text-decoration: underline;">お問い合わせフォームへ</a>
+        </div>
+    </div>
+    
     <main id="main-content">
         {% block content %}{% endblock %}
     </main>
     
+    <footer style="background: var(--steam-iron-900); border-top: 1px solid var(--steam-iron-800); margin-top: 4rem;">
+        <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 2rem 1rem;">
+            <div style="display: flex; flex-wrap: wrap; gap: 2rem; justify-content: space-between;">
+                <!-- ロゴとコピーライト -->
+                <div style="flex: 1; min-width: 200px;">
+                    <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="TOYBOX" style="height: 2rem; width: auto; margin-bottom: 1rem;">
+                    <p style="color: var(--steam-iron-400); font-size: 0.875rem; margin: 0;">© 2025 AYATORI Inc. All rights reserved.</p>
+                </div>
+                
+                <!-- フッターメニュー -->
+                <div style="flex: 2; min-width: 300px;">
+                    <nav style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+                        <a href="/terms/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">利用規約</a>
+                        <a href="/privacy/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">プライバシーポリシー</a>
+                        <a href="/derivative-guidelines/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">二次創作ガイドライン</a>
+                        <a href="/inquiry/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">お問い合わせ</a>
+                        <a href="/topic-help/" style="color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; transition: color 0.2s;" onmouseover="this.style.color='var(--steam-gold-300)'" onmouseout="this.style.color='var(--steam-gold-400)'">ヘルプ</a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
     {% block extra_js %}{% endblock %}
     <script>
+        function openIdPopup() {
+            var overlay = document.getElementById('id-popup-overlay');
+            var idEl = document.getElementById('id-popup-display-id');
+            if (!overlay || !idEl) return;
+            var token = getAccessToken();
+            if (token) {
+                fetch('/api/users/me/', { headers: { 'Authorization': 'Bearer ' + token } })
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) { if (idEl) idEl.textContent = (data && (data.display_id || data.displayId)) || '—'; })
+                    .catch(function() { if (idEl) idEl.textContent = '—'; });
+            } else {
+                idEl.textContent = '—';
+            }
+            overlay.style.display = 'flex';
+        }
+        function closeIdPopup() {
+            var overlay = document.getElementById('id-popup-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }
         // 通知機能の変数（グローバルスコープ）
         let notificationItems = [];
         let notificationNextOffset = null;
@@ -156,11 +212,9 @@
                 return res.json();
             })
             .then(data => {
-                // APIレスポンス形式に対応（items/unread または notifications/unreadCount）
                 notificationItems = data.items || data.notifications || [];
                 notificationUnread = data.unread !== undefined ? data.unread : (data.unreadCount || 0);
                 notificationNextOffset = data.nextOffset || null;
-                
                 updateNotificationBadge();
                 if (notificationDropdownOpen) {
                     renderNotifications();
@@ -168,7 +222,6 @@
             })
             .catch(err => {
                 console.error('Failed to load notifications:', err);
-                // エラーが発生してもバッジは非表示のままにする
                 notificationUnread = 0;
                 updateNotificationBadge();
             });
@@ -198,8 +251,9 @@
             } else {
                 list.innerHTML = notificationItems.map((n, i) => {
                     const date = new Date(n.createdAt);
+                    const messageHtml = n.message || '';
                     return `<div style="padding: 0.75rem; border-bottom: 1px solid var(--steam-iron-800); ${i === notificationItems.length - 1 ? 'border-bottom: none;' : ''}">
-                        <div style="font-weight: 600; color: var(--steam-gold-300); font-size: 0.75rem; margin-bottom: 0.25rem;">${n.message || ''}</div>
+                        <div style="font-weight: 600; color: var(--steam-gold-300); font-size: 0.75rem; margin-bottom: 0.25rem;">${messageHtml}</div>
                         <div style="color: var(--steam-iron-300); font-size: 10px;">${date.toLocaleString('ja-JP')}</div>
                     </div>`;
                 }).join('');
@@ -223,7 +277,6 @@
                 dropdown.style.display = notificationDropdownOpen ? 'block' : 'none';
                 if (notificationDropdownOpen) {
                     renderNotifications();
-                    // 開いた時に既読にする
                     if (notificationUnread > 0) {
                         markNotificationsAsRead();
                     }
@@ -268,7 +321,6 @@
                 if (data.ok) {
                     notificationUnread = 0;
                     updateNotificationBadge();
-                    // 通知アイテムも既読状態に更新
                     notificationItems.forEach(n => n.read = true);
                 }
             })
@@ -350,6 +402,11 @@
                         studysphereLink.href = 'https://studysphere.ayatori-inc.co.jp/student/dashboard';
                         console.log('[StudySphere] User is not linked, redirecting to dashboard');
                     }
+                    // 一般ユーザー（FREE_USER）のときだけ「!」ボタンを表示
+                    if (userData.role === 'FREE_USER') {
+                        const navIdInfo = document.getElementById('nav-id-info');
+                        if (navIdInfo) navIdInfo.style.display = 'inline-block';
+                    }
                 })
                 .catch(err => console.error('[StudySphere] Failed to check link status:', err));
                 
@@ -361,6 +418,7 @@
                 
                 // 定期的に通知を更新（30秒ごと）
                 setInterval(loadNotifications, 30000);
+                
             } else {
                 // 未ログインの場合
                 if (logoLink) logoLink.href = '/';

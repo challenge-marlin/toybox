@@ -2,7 +2,7 @@
 Frontend app views - Template views and API views.
 """
 import logging
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -20,25 +20,19 @@ def index(request):
 
 
 def feed(request):
-    """Feed page."""
+    """Feed page. 認証はクライアント側のJWTで行うため、未ログインでもテンプレートを返す（ログインループ防止）。"""
     from django.contrib.auth import get_user_model
     from django.shortcuts import redirect
     from users.models import UserMeta
     
     User = get_user_model()
     
-    # ログインしているかチェック
-    if not request.user.is_authenticated:
-        return redirect('/login/')
-    
-    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
-    if request.user.role == User.Role.PAID_USER:
+    if request.user.is_authenticated and request.user.role == User.Role.PAID_USER:
         try:
             meta = request.user.meta
             if not meta.terms_agreed_at:
                 return redirect('/terms/agree/')
         except UserMeta.DoesNotExist:
-            # UserMetaが存在しない場合も利用規約未同意とみなす
             return redirect('/terms/agree/')
     
     return render(request, 'frontend/feed.html')
@@ -55,7 +49,7 @@ def signup_page(request):
 
 
 def me(request):
-    """My page."""
+    """My page. 認証はクライアント側のJWTで行うため、サーバーでは未ログインでもテンプレートを返す（ログインループ防止）。"""
     from django.conf import settings
     from django.contrib.auth import get_user_model
     from django.shortcuts import redirect
@@ -63,35 +57,28 @@ def me(request):
     
     User = get_user_model()
     
-    # ログインしているかチェック
-    if not request.user.is_authenticated:
-        return redirect('/login/')
-    
-    # 一般ユーザー（FREE_USER）はマイページにアクセスできない
-    if request.user.role == User.Role.FREE_USER:
-        return redirect('/upgrade/')
-    
-    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
-    if request.user.role == User.Role.PAID_USER:
+    # サーバー側セッションがあれば課金ユーザーの利用規約チェックのみ行う（JWTのみのログインでも/me/に来るためリダイレクトしない）
+    if request.user.is_authenticated and request.user.role == User.Role.PAID_USER:
         try:
             meta = request.user.meta
             if not meta.terms_agreed_at:
                 return redirect('/terms/agree/')
         except UserMeta.DoesNotExist:
-            # UserMetaが存在しない場合も利用規約未同意とみなす
             return redirect('/terms/agree/')
     
     discord_invite_code = getattr(settings, 'DISCORD_INVITE_CODE', '')
+    display_id = getattr(request.user, 'display_id', None) or '' if request.user.is_authenticated else ''
     return render(request, 'frontend/me.html', {
-        'DISCORD_INVITE_CODE': discord_invite_code
+        'DISCORD_INVITE_CODE': discord_invite_code,
+        'me_display_id': display_id,
     })
 
 
-def upgrade(request):
-    """一般ユーザー向けの課金問い合わせページ。"""
-    # JWTトークン認証を使用しているため、サーバー側での認証チェックは行わない
-    # フロントエンド側でJWTトークンを使ってロールチェックを行う
-    return render(request, 'frontend/upgrade.html')
+def upgrade_redirect(request):
+    """ /upgrade/ は廃止。テンプレートは表示せず常にマイページへリダイレクト。 """
+    if request.user.is_authenticated:
+        return redirect('/me/')
+    return redirect('/')
 
 
 def lottery(request):
@@ -120,44 +107,33 @@ def lottery(request):
 
 
 def collection(request):
-    """Collection page."""
+    """Collection page. 認証はクライアント側のJWTで行うため、未ログインでもテンプレートを返す（ログインループ防止）。"""
     from django.contrib.auth import get_user_model
     from django.shortcuts import redirect
     from users.models import UserMeta
     
     User = get_user_model()
     
-    # ログインしているかチェック
-    if not request.user.is_authenticated:
-        return redirect('/login/')
-    
-    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
-    if request.user.role == User.Role.PAID_USER:
+    if request.user.is_authenticated and request.user.role == User.Role.PAID_USER:
         try:
             meta = request.user.meta
             if not meta.terms_agreed_at:
                 return redirect('/terms/agree/')
         except UserMeta.DoesNotExist:
-            # UserMetaが存在しない場合も利用規約未同意とみなす
             return redirect('/terms/agree/')
     
     return render(request, 'frontend/collection.html')
 
 
 def profile(request):
-    """Profile page."""
+    """Profile page (header/icon settings). 認証はクライアント側のJWTで行うため、未ログインでもテンプレートを返す（ログインループ防止）。"""
     from django.contrib.auth import get_user_model
     from django.shortcuts import redirect
     from users.models import UserMeta
     
     User = get_user_model()
     
-    # ログインしているかチェック
-    if not request.user.is_authenticated:
-        return redirect('/login/')
-    
-    # 課金ユーザーで利用規約未同意の場合は利用規約同意ページにリダイレクト
-    if request.user.role == User.Role.PAID_USER:
+    if request.user.is_authenticated and request.user.role == User.Role.PAID_USER:
         try:
             meta = request.user.meta
             if not meta.terms_agreed_at:

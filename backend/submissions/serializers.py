@@ -5,6 +5,7 @@ import os
 from rest_framework import serializers
 from .models import Submission, Reaction
 from users.models import UserMeta
+from django.conf import settings
 
 
 class SubmissionSerializer(serializers.ModelSerializer):
@@ -79,11 +80,14 @@ class SubmissionSerializer(serializers.ModelSerializer):
             verify_exists=True
         )
         
-        # ファイルが存在しない場合、データベースをクリア
-        if obj.image and not image_url:
-            clean_invalid_image_url(obj, 'image')
-        elif obj.image_url and not image_url:
-            clean_invalid_image_url(obj, 'image', 'image_url')
+        # 重要: 読み取り（フィード表示等）のタイミングでDBを書き換えると、
+        # リストア直後にメディア配置が一時的にズレているだけでURLが消えてしまう。
+        # 明示的に有効化した場合のみクリアする。
+        if getattr(settings, 'CLEAN_INVALID_MEDIA_URLS', False):
+            if obj.image and not image_url:
+                clean_invalid_image_url(obj, 'image')
+            elif obj.image_url and not image_url:
+                clean_invalid_image_url(obj, 'image', 'image_url')
         
         return image_url
         
@@ -126,9 +130,11 @@ class SubmissionSerializer(serializers.ModelSerializer):
                 # サムネイルファイルの存在確認
                 if hasattr(obj.thumbnail, 'path'):
                     if not os.path.exists(obj.thumbnail.path):
-                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
-                        obj.thumbnail = None
-                        obj.save(update_fields=['thumbnail'])
+                        # ファイルが存在しない場合はNoneを返す（DBクリアはオプション）
+                        if getattr(settings, 'CLEAN_INVALID_MEDIA_URLS', False):
+                            obj.thumbnail = None
+                            obj.save(update_fields=['thumbnail'])
+                        return None
                     else:
                         if request:
                             from toybox.image_utils import build_https_absolute_uri
@@ -158,8 +164,10 @@ class SubmissionSerializer(serializers.ModelSerializer):
                             if full_path.exists():
                                 return obj.image_url
                             else:
-                                obj.image_url = None
-                                obj.save(update_fields=['image_url'])
+                                if getattr(settings, 'CLEAN_INVALID_MEDIA_URLS', False):
+                                    obj.image_url = None
+                                    obj.save(update_fields=['image_url'])
+                                return None
                     except Exception:
                         pass
         
@@ -178,9 +186,10 @@ class SubmissionSerializer(serializers.ModelSerializer):
                     filename = file_path.replace('/uploads/submissions/', '')
                     full_path = settings.MEDIA_ROOT / 'submissions' / filename
                     if not full_path.exists():
-                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
-                        obj.image_url = None
-                        obj.save(update_fields=['image_url'])
+                        # ファイルが存在しない場合はNoneを返す（DBクリアはオプション）
+                        if getattr(settings, 'CLEAN_INVALID_MEDIA_URLS', False):
+                            obj.image_url = None
+                            obj.save(update_fields=['image_url'])
                         return None
                 # 外部URLの場合、HTTPをHTTPSに置き換え（同じドメインの場合のみ）
                 image_url = obj.image_url
@@ -198,9 +207,10 @@ class SubmissionSerializer(serializers.ModelSerializer):
                 # ファイルの存在確認
                 if hasattr(obj.image, 'path'):
                     if not os.path.exists(obj.image.path):
-                        # ファイルが存在しない場合はNoneを返し、データベースをクリア
-                        obj.image = None
-                        obj.save(update_fields=['image'])
+                        # ファイルが存在しない場合はNoneを返す（DBクリアはオプション）
+                        if getattr(settings, 'CLEAN_INVALID_MEDIA_URLS', False):
+                            obj.image = None
+                            obj.save(update_fields=['image'])
                         return None
                 
                 if request:

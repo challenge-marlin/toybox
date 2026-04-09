@@ -50,17 +50,21 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "データベースを再作成中..." -ForegroundColor White
-docker compose exec db psql -U postgres -c "CREATE DATABASE toybox;"
+Write-Host "データベースを再作成中（UTF-8文字セット指定）..." -ForegroundColor White
+docker compose exec db psql -U postgres -c "CREATE DATABASE toybox WITH ENCODING='UTF8' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE=template0;"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "エラー: データベースの作成に失敗しました" -ForegroundColor Red
     exit 1
 }
 
-# ステップ4: バックアップから復元
-Write-Host "`nステップ4: バックアップから復元" -ForegroundColor Yellow
+# ステップ4: バックアップから復元（UTF-8エンコーディングを明示的に設定）
+Write-Host "`nステップ4: バックアップから復元（UTF-8エンコーディング設定）" -ForegroundColor Yellow
 Write-Host "バックアップファイルを復元中..." -ForegroundColor White
-Get-Content $backupFile | docker compose exec -T db psql -U postgres toybox
+
+# UTF-8エンコーディングを明示的に設定してリストア
+# PowerShellのGet-ContentはデフォルトでUTF-8を使用しますが、明示的に指定
+$content = Get-Content $backupFile -Encoding UTF8 -Raw
+$content | docker compose exec -e PGCLIENTENCODING=UTF8 -e LANG=C.UTF-8 -T db psql -U postgres toybox
 if ($LASTEXITCODE -eq 0) {
     Write-Host "復元完了!" -ForegroundColor Green
 } else {

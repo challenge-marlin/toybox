@@ -239,19 +239,49 @@
 
 <script>
     // ページ読み込み時に認証チェック
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
         // チケットがある場合はSSO処理を優先
         const urlParams = new URLSearchParams(window.location.search);
         const hasTicket = urlParams.get('ticket');
         
         if (!hasTicket) {
-            // チケットがない場合のみ通常の認証チェック
-            redirectIfAuthenticated();
+            // チケットがない場合のみ通常の認証チェック（サーバー側で確認）
+            await checkServerAuthentication();
         }
         
         hideLoginPageNavigation();
         checkSSOTicket(); // StudySphereからのチケットをチェック
     });
+    
+    // サーバー側で認証状態を確認
+    async function checkServerAuthentication() {
+        const token = getAccessToken();
+        if (!token) {
+            return; // トークンがなければログイン画面を表示
+        }
+        
+        try {
+            // サーバー側で認証を確認
+            const response = await fetch('/api/users/me/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+            
+            if (response.ok) {
+                // 認証成功 - マイページへリダイレクト
+                window.location.href = '/me/';
+            } else {
+                // 認証失敗 - トークンをクリアしてログイン画面を表示
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+            }
+        } catch (err) {
+            // エラー時はトークンをクリア
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+        }
+    }
     
     // ログインページでヘッダーの「みんなの投稿」を非表示にする
     function hideLoginPageNavigation() {
@@ -518,10 +548,8 @@
                 if (data.penalty && data.penalty.message) {
                     showPenaltyModal(data.penalty.type, data.penalty.message);
                 } else {
-                    const redirectUrl = (data.user && data.user.role === 'FREE_USER') ? '/upgrade/' : '/me/';
-                    const redirectMessage = (data.user && data.user.role === 'FREE_USER') 
-                        ? 'ログイン成功！課金についてのページへ移動します...' 
-                        : 'ログイン成功！マイページへ移動します...';
+                    const redirectUrl = '/me/';
+                    const redirectMessage = 'ログイン成功！マイページへ移動します...';
                     
                     successDiv.textContent = redirectMessage;
                     successDiv.style.display = 'block';
@@ -587,10 +615,8 @@
                     console.log('Login response:', data);
                     console.log('User role:', data.role);
                     
-                    const redirectUrl = (data.role === 'FREE_USER') ? '/upgrade/' : '/me/';
-                    const redirectMessage = (data.role === 'FREE_USER') 
-                        ? 'ログイン成功！課金についてのページへ移動します...' 
-                        : 'ログイン成功！マイページへ移動します...';
+                    const redirectUrl = '/me/';
+                    const redirectMessage = 'ログイン成功！マイページへ移動します...';
                     
                     successDiv.textContent = redirectMessage;
                     successDiv.style.display = 'block';
@@ -687,10 +713,8 @@
                 if (data.penalty && data.penalty.message) {
                     showPenaltyModal(data.penalty.type, data.penalty.message);
                 } else {
-                    const redirectUrl = (data.user && data.user.role === 'FREE_USER') ? '/upgrade/' : '/me/';
-                    const redirectMessage = (data.user && data.user.role === 'FREE_USER') 
-                        ? 'ログイン成功！課金についてのページへ移動します...' 
-                        : 'ログイン成功！マイページへ移動します...';
+                    const redirectUrl = '/me/';
+                    const redirectMessage = 'ログイン成功！マイページへ移動します...';
                     
                     if (successDiv) {
                         successDiv.textContent = redirectMessage;

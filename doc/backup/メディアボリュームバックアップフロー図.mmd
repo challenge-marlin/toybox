@@ -1,0 +1,82 @@
+```mermaid
+graph TB
+    Start[開始] --> SSH[本番サーバーにSSH接続]
+    
+    subgraph "ステップ1: 本番環境でバックアップ"
+        SSH --> Upload[バックアップスクリプトをアップロード<br/>backup_media_from_prod.sh]
+        Upload --> Exec[スクリプト実行<br/>sudo ./backup_media_from_prod.sh]
+        Exec --> CreateBackup[メディアボリュームを<br/>tar.gzで圧縮]
+        CreateBackup --> CalcHash[SHA256ハッシュ値を計算]
+        CalcHash --> SaveInfo[バックアップ情報を記録<br/>ファイル数、サイズなど]
+        SaveInfo --> VerifyBackup{バックアップ<br/>成功?}
+        VerifyBackup -->|No| BackupFail[エラー: バックアップ失敗]
+        VerifyBackup -->|Yes| BackupFiles[3つのファイル作成<br/>① media_volume_DATE.tar.gz<br/>② .tar.gz.sha256<br/>③ _info.txt]
+    end
+    
+    subgraph "ステップ2: ローカルにダウンロード"
+        BackupFiles --> Download[SCPでダウンロード<br/>3つのファイルをすべて]
+        Download --> CheckHash{ハッシュ値<br/>一致?}
+        CheckHash -->|No| HashFail[警告: ハッシュ値不一致<br/>再ダウンロード推奨]
+        CheckHash -->|Yes| HashOK[✅ ダウンロード完了]
+    end
+    
+    subgraph "ステップ3: ローカルでリストア"
+        HashOK --> CheckCurrent[現在のメディアボリューム確認]
+        HashFail --> CheckCurrent
+        CheckCurrent --> Confirm{リストア<br/>確認}
+        Confirm -->|No| Cancel[キャンセル]
+        Confirm -->|Yes| BackupLocal[現在のボリュームを<br/>バックアップ<br/>念のため]
+        BackupLocal --> ClearVolume[メディアボリュームを<br/>クリア<br/>rm -rf /data/*]
+        ClearVolume --> RestoreVolume[バックアップから<br/>リストア<br/>tar xzf]
+        RestoreVolume --> RestoreComplete[✅ リストア完了]
+    end
+    
+    subgraph "ステップ4: 検証"
+        RestoreComplete --> CountFiles[ファイル数を確認]
+        CountFiles --> CompareCount{ファイル数<br/>一致?}
+        CompareCount -->|No| CountWarn[⚠️ ファイル数不一致]
+        CompareCount -->|Yes| CountOK[✅ ファイル数一致]
+        
+        CountOK --> CheckStructure[ディレクトリ構造確認]
+        CountWarn --> CheckStructure
+        CheckStructure --> CheckExtensions[ファイル種別の確認<br/>jpg, png, gif, webpなど]
+        CheckExtensions --> StartDocker[Dockerコンテナ起動<br/>docker compose up -d]
+        
+        StartDocker --> CheckDB[データベース整合性確認]
+        CheckDB --> CheckProfiles[プロファイル画像<br/>パスと実ファイル照合]
+        CheckProfiles --> CheckCards[カード画像<br/>パスと実ファイル照合]
+        CheckCards --> DBResult{データベース<br/>整合性OK?}
+        DBResult -->|No| DBWarn[⚠️ 一部ファイル不足]
+        DBResult -->|Yes| DBOK[✅ データベース整合性OK]
+    end
+    
+    subgraph "ステップ5: ブラウザ確認"
+        DBOK --> OpenBrowser[ブラウザで<br/>http://localhost:8000]
+        DBWarn --> OpenBrowser
+        OpenBrowser --> Login[ログイン]
+        Login --> CheckProfileImg[プロファイル画像表示確認]
+        CheckProfileImg --> CheckCardImg[カード画像表示確認]
+        CheckCardImg --> CheckDevTools[開発者ツールF12で<br/>404エラー確認]
+        CheckDevTools --> Result{すべて<br/>正常?}
+        Result -->|No| Troubleshoot[トラブルシューティング<br/>・パーミッション修正<br/>・コンテナ再起動<br/>・キャッシュクリア]
+        Result -->|Yes| Success[✅ リストア検証完了]
+    end
+    
+    BackupFail --> End[終了]
+    Cancel --> End
+    Success --> End[終了]
+    Troubleshoot --> CheckDevTools
+    
+    style Start fill:#90EE90
+    style Success fill:#90EE90
+    style End fill:#87CEEB
+    style BackupFail fill:#FFB6C1
+    style HashFail fill:#FFE4B5
+    style Cancel fill:#D3D3D3
+    style CountWarn fill:#FFE4B5
+    style DBWarn fill:#FFE4B5
+    style CountOK fill:#98FB98
+    style DBOK fill:#98FB98
+    style HashOK fill:#98FB98
+    style RestoreComplete fill:#98FB98
+```

@@ -64,11 +64,11 @@ npx http-server -p 8080
 
 ## お問い合わせ
 
-お問い合わせは、[AYATORI.Incのお問い合わせフォーム](https://www.ayatori-inc.co.jp/?page_id=7)からお願いいたします。
+お問い合わせは、[AYATORI Inc.のお問い合わせフォーム](https://www.ayatori-inc.co.jp/?page_id=7)からお願いいたします。
 
 ## 注意事項
 
 - PHPやサーバーサイドの処理は不要です
-- すべてのリンクは外部リンク（AYATORI.Incのお問い合わせフォーム）に設定されています
+- すべてのリンクは外部リンク（AYATORI Inc.のお問い合わせフォーム）に設定されています
 - 静的ファイルのみで動作します
 - OGP画像のURLは本番環境のドメインに変更してください

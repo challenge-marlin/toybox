@@ -101,8 +101,18 @@ class UserAdmin(BaseUserAdmin):
         """
         kwargs = dict(kwargs)
 
-        # Ensure we don't inherit an exclude tuple that makes fields disappear unexpectedly.
+        # Django 5+ raises FieldError if a non-editable model field (editable=False) is
+        # included in the ModelForm. created_at/updated_at are auto_now_add/auto_now.
+        # We must remove them from the fields list (from flatten_fieldsets) and add to exclude.
         exclude = list(kwargs.get('exclude') or [])
+        for f in ('created_at', 'updated_at'):
+            if f not in exclude:
+                exclude.append(f)
+        kwargs['exclude'] = exclude
+
+        if 'fields' in kwargs:
+            fields = [x for x in kwargs['fields'] if x not in ('created_at', 'updated_at')]
+            kwargs['fields'] = fields
 
         if not request.user.is_superuser:
             # Keep groups/user_permissions visible for role=ADMIN only.

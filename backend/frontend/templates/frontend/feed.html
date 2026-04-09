@@ -416,8 +416,8 @@
                 return null;
             }
             if (res.status === 403) {
-                // 403エラーの場合は課金ページにリダイレクト
-                window.location.href = '/upgrade/';
+                // 403の場合はマイページへ
+                window.location.href = '/me/';
                 return null;
             }
             if (!res.ok) {
@@ -559,7 +559,12 @@
             const imageSrc = thumbnailUrl || originalImageUrl || '';
             // ライトボックスでは必ず元画像URLを使用（imageUrlを最優先、なければdisplayImageUrl）
             const lightboxImageSrc = item.imageUrl || item.image_url || item.displayImageUrl || item.display_image_url || imageSrc;
-            content = `<img src="${imageSrc}" alt="投稿画像" class="feed-item-image" onclick="openLightbox('${lightboxImageSrc}', 'image', '${item.id}')" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; color: var(--steam-iron-300); font-size: 0.875rem;\\'>画像を読み込めませんでした</div>';">`;
+            if (imageSrc) {
+                content = `<img src="${imageSrc}" alt="投稿画像" class="feed-item-image" onclick="openLightbox('${lightboxImageSrc}', 'image', '${item.id}')" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; color: var(--steam-iron-300); font-size: 0.875rem;\\'>画像を読み込めませんでした</div>';">`;
+            } else {
+                // imageSrc が空だと現在ページHTMLを取りに行き、200でも画像デコード失敗になるため、img自体を出さない
+                content = `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--steam-iron-300); font-size: 0.875rem;">画像がありません</div>`;
+            }
         }
         
         // NOTE: 「みんなの投稿」では称号を表示しない（投稿画像に重なるため）
@@ -1166,13 +1171,8 @@
     }, { root: null, rootMargin: '200px', threshold: 0 });
     
     document.addEventListener('DOMContentLoaded', function() {
-        // ロールチェック：一般ユーザー（FREE_USER）はこのページにアクセスできない
         const token = localStorage.getItem('access_token');
-        if (!token) {
-            // トークンがない場合はログインページにリダイレクト
-            window.location.href = '/login/';
-            return;
-        }
+        // トークンがなくてもフィードページは表示する（APIは未認証でも取得可能）。認証はAPI呼び出し時の401でリダイレクト
         
         // ロールチェックを実行（並行してfeedも読み込み開始）
         let roleCheckCompleted = false;
@@ -1191,12 +1191,7 @@
         })
         .then(userData => {
             roleCheckCompleted = true;
-            if (userData.role === 'FREE_USER') {
-                shouldRedirect = true;
-                window.location.href = '/upgrade/';
-                return;
-            }
-            // 課金ユーザー以上の場合は通常の処理を続行
+            // 一般ユーザーもみんなの投稿は閲覧・いいね可能
             if (!feedInitialized) {
                 initializeFeed();
             }

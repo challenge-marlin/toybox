@@ -1,0 +1,93 @@
+%% TOYBOXバックアップ・リストア簡易フロー図
+%% 作成日: 2026年1月29日
+%% 全体の流れを一目で把握するための図
+
+graph LR
+    subgraph "バックアップ（サーバー側）"
+        A[PostgreSQL<br/>データベース] -->|UTF-8設定<br/>--column-inserts| B[バックアップ<br/>スクリプト]
+        B -->|gzip圧縮| C[toybox_YYYYMMDD.sql.gz]
+        C --> D[/backup/toybox/database/]
+        
+        style A fill:#4fc3f7
+        style B fill:#fff176
+        style C fill:#81c784
+        style D fill:#9575cd
+    end
+
+    subgraph "リストア：サーバー→サーバー"
+        E[本番サーバー] -->|1. 現状バックアップ| F[before_restore.sql.gz]
+        F --> G[2. DB削除・再作成<br/>UTF-8指定]
+        G --> H[3. gunzip + psql<br/>UTF-8設定]
+        H --> I[4. 復元確認]
+        I --> J[本番環境復旧]
+        
+        style E fill:#ef5350
+        style F fill:#fff176
+        style G fill:#ffb74d
+        style H fill:#81c784
+        style I fill:#4fc3f7
+        style J fill:#66bb6a
+    end
+
+    subgraph "リストア：サーバー→ローカル"
+        K[サーバー] -->|SCP/WinSCP| L[ローカル<br/>ダウンロード]
+        L --> M[エンコーディング<br/>確認 UTF-8]
+        M --> N[ローカルDB<br/>リセット UTF-8]
+        N --> O[docker cp<br/>コンテナ内配置]
+        O --> P[コンテナ内から<br/>psql実行 UTF-8]
+        P --> Q[復元確認<br/>文字化けなし]
+        
+        style K fill:#ef5350
+        style L fill:#4fc3f7
+        style M fill:#fff176
+        style N fill:#ffb74d
+        style O fill:#ba68c8
+        style P fill:#81c784
+        style Q fill:#66bb6a
+    end
+
+    subgraph "メディアボリューム（画像）復元"
+        R[サーバー] -->|SCP/WinSCP| S[media_volume.tar.gz]
+        S --> T[docker run<br/>+ tar xzf]
+        T --> U[画像ファイル<br/>展開]
+        U --> V[画像表示確認]
+        
+        style R fill:#ef5350
+        style S fill:#4fc3f7
+        style T fill:#ba68c8
+        style U fill:#81c784
+        style V fill:#66bb6a
+    end
+
+    subgraph "文字化け対策の3本柱"
+        W1[1. SQLファイル<br/>UTF-8確認] --> X1[Get-Content<br/>-Encoding UTF8]
+        Y1[2. バックアップ取得<br/>UTF-8設定] --> Z1[PGCLIENTENCODING=UTF8<br/>--encoding=UTF8]
+        AA1[3. リストア実行<br/>コンテナ内実行] --> AB1[docker cp +<br/>内部psql実行]
+        
+        style W1 fill:#fff176
+        style X1 fill:#81c784
+        style Y1 fill:#fff176
+        style Z1 fill:#81c784
+        style AA1 fill:#fff176
+        style AB1 fill:#81c784
+    end
+
+    %% 全体の流れ
+    D -.->|定期バックアップ| K
+    J -.-> END1[完了]
+    Q -.-> R
+    V -.-> END2[完全復元完了]
+    
+    style END1 fill:#2e7d32,color:#fff,stroke:#1b5e20,stroke-width:3px
+    style END2 fill:#2e7d32,color:#fff,stroke:#1b5e20,stroke-width:3px
+
+%% 重要ポイント
+subgraph "重要ポイント"
+    POINT1[UTF-8エンコーディングを<br/>必ず明示的に設定]
+    POINT2[コンテナ内で直接実行<br/>PowerShellパイプは避ける]
+    POINT3[--column-insertsオプション<br/>列順序問題を回避]
+    
+    style POINT1 fill:#ff5252,color:#fff
+    style POINT2 fill:#ff5252,color:#fff
+    style POINT3 fill:#ff5252,color:#fff
+end

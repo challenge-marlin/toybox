@@ -491,6 +491,7 @@
                 maxlength="30" 
                 pattern="[a-z0-9_]+"
                 title="英数字とアンダースコアのみ使用可能です"
+                autocomplete="off"
             />
         </div>
         <div class="signup-field">
@@ -501,6 +502,7 @@
                 name="display_name" 
                 class="signup-input" 
                 maxlength="50"
+                autocomplete="off"
             />
         </div>
         <div class="signup-field" id="password-field">
@@ -601,7 +603,31 @@
             return;
         }
         
-        console.log('[SSO Signup] No ticket found, normal signup');
+        // 通常の新規アカウント作成時（SSO経由でない場合）
+        // セッションストレージのSSO情報をクリアして、入力補助を無効化
+        console.log('[SSO Signup] No ticket found, normal signup - clearing SSO data');
+        sessionStorage.removeItem('sso_signup_data');
+        ssoSignupData = null;
+        
+        // usernameフィールドをクリア（念のため）
+        const usernameInput = document.getElementById('username');
+        if (usernameInput) {
+            usernameInput.value = '';
+            usernameInput.readOnly = false;
+            usernameInput.style.opacity = '1';
+            usernameInput.style.cursor = 'text';
+        }
+        
+        // パスワードフィールドを表示（SSO経由でない場合は必要）
+        const passwordField = document.getElementById('password-field');
+        const passwordInput = document.getElementById('password');
+        const passwordLabel = document.getElementById('password-label');
+        if (passwordField && passwordInput && passwordLabel) {
+            passwordInput.required = true;
+            passwordInput.style.display = 'block';
+            passwordLabel.style.display = 'block';
+            passwordField.style.display = 'block';
+        }
     }
     
     // チケットを検証してSSO情報を取得
@@ -916,10 +942,8 @@
                 console.log('Registration response:', data);
                 console.log('User role:', data.role);
                 
-                const redirectUrl = (data.role === 'FREE_USER') ? '/upgrade/' : '/me/';
-                const redirectMessage = (data.role === 'FREE_USER') 
-                    ? 'アカウントを作成しました。課金についてのページへ移動します…' 
-                    : 'アカウントを作成しました。マイページへ移動します…';
+                const redirectUrl = '/me/';
+                const redirectMessage = 'アカウントを作成しました。マイページへ移動します…';
                 
                 // Show success message
                 messageDiv.textContent = redirectMessage;

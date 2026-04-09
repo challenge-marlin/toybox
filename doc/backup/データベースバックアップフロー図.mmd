@@ -1,0 +1,142 @@
+%% TOYBOXデータベースバックアップ・リストアフロー図
+%% 作成日: 2026年1月29日
+
+graph TB
+    subgraph "1. バックアップフロー"
+        A1[サーバー側<br/>PostgreSQLデータベース] -->|cronで自動実行<br/>毎日 3:00| B1[バックアップスクリプト実行]
+        B1 -->|UTF-8エンコーディング設定| C1[pg_dump実行]
+        C1 -->|--encoding=UTF8<br/>--column-inserts<br/>PGCLIENTENCODING=UTF8| D1[SQLファイル生成]
+        D1 -->|gzip圧縮| E1[バックアップファイル<br/>toybox_YYYYMMDD_HHMMSS.sql.gz]
+        E1 -->|保存| F1[/backup/toybox/database/]
+        
+        style B1 fill:#e1f5ff
+        style C1 fill:#fff4e1
+        style D1 fill:#e8f5e9
+        style E1 fill:#f3e5f5
+    end
+
+    subgraph "2. バックアップ検証フロー"
+        G1[バックアップファイル] -->|gzip整合性チェック| H1{gzip -t<br/>成功?}
+        H1 -->|Yes| I1[INSERT文の数を確認]
+        H1 -->|No| J1[エラー通知]
+        I1 -->|件数確認| K1{10件以上?}
+        K1 -->|Yes| L1[バックアップ成功]
+        K1 -->|No| M1[警告通知]
+        
+        style H1 fill:#ffebee
+        style K1 fill:#ffebee
+        style L1 fill:#c8e6c9
+        style J1 fill:#ffcdd2
+        style M1 fill:#fff9c4
+    end
+
+    subgraph "3. リストアフロー（サーバー→サーバー）"
+        N1[本番環境] -->|現在の状態を| O1[バックアップ作成<br/>before_restore_YYYYMMDD.sql.gz]
+        O1 --> P1[データベースリセット]
+        P1 -->|DROP DATABASE<br/>CREATE DATABASE<br/>WITH ENCODING='UTF8'| Q1[空のデータベース作成]
+        Q1 --> R1[バックアップファイル選択]
+        R1 -->|gunzip -c| S1[解凍しながら復元]
+        S1 -->|PGCLIENTENCODING=UTF8<br/>psql -U postgres| T1[データ復元]
+        T1 --> U1[復元確認]
+        U1 -->|SELECT COUNT<br/>日本語表示確認| V1[復元完了]
+        
+        style O1 fill:#fff9c4
+        style P1 fill:#ffebee
+        style Q1 fill:#e1f5ff
+        style T1 fill:#e8f5e9
+        style V1 fill:#c8e6c9
+    end
+
+    subgraph "4. リストアフロー（サーバー→ローカル）"
+        W1[サーバー側バックアップ] -->|WinSCP/SCP| X1[ローカルにダウンロード]
+        X1 --> Y1{ファイルエンコーディング<br/>確認}
+        Y1 -->|UTF-8| Z1[ローカルDBリセット]
+        Y1 -->|Not UTF-8| AA1[エンコーディング変換]
+        AA1 --> Z1
+        Z1 -->|CREATE DATABASE<br/>WITH ENCODING='UTF8'| AB1[空のDB作成]
+        AB1 --> AC1[ファイルをコンテナにコピー]
+        AC1 -->|docker cp| AD1[コンテナ内に配置<br/>/tmp/restore.sql]
+        AD1 --> AE1[コンテナ内から実行]
+        AE1 -->|PGCLIENTENCODING=UTF8<br/>psql -f /tmp/restore.sql| AF1[データ復元]
+        AF1 --> AG1[復元確認]
+        AG1 -->|日本語表示確認| AH1{文字化けあり?}
+        AH1 -->|No| AI1[復元完了]
+        AH1 -->|Yes| AJ1[文字化け対策フロー]
+        
+        style X1 fill:#e1f5ff
+        style Y1 fill:#ffebee
+        style AC1 fill:#fff4e1
+        style AE1 fill:#e8f5e9
+        style AH1 fill:#ffebee
+        style AI1 fill:#c8e6c9
+        style AJ1 fill:#ffcdd2
+    end
+
+    subgraph "5. 文字化け対策フロー"
+        AK1[文字化け検出] -->|バイト列確認| AL1{DB内で既に<br/>文字化け?}
+        AL1 -->|Yes 0x3f3f...| AM1[バックアップ元を確認]
+        AL1 -->|No| AN1[リストア方法を確認]
+        
+        AM1 --> AO1{SQLファイルの<br/>エンコーディング}
+        AO1 -->|UTF-8| AP1[バックアップ取得方法を確認]
+        AO1 -->|Not UTF-8| AQ1[新しいバックアップを取得]
+        
+        AP1 --> AR1[サーバー側スクリプト修正]
+        AR1 -->|--encoding=UTF8<br/>PGCLIENTENCODING=UTF8| AS1[新バックアップ取得]
+        
+        AN1 --> AT1[コンテナ内実行方式]
+        AT1 -->|docker cp + 内部実行| AU1[再リストア]
+        
+        AS1 --> AU1
+        AQ1 --> AU1
+        AU1 --> AV1[文字化け解決]
+        
+        style AL1 fill:#ffebee
+        style AO1 fill:#ffebee
+        style AR1 fill:#fff4e1
+        style AT1 fill:#e8f5e9
+        style AV1 fill:#c8e6c9
+    end
+
+    subgraph "6. メディアボリューム復元フロー"
+        AW1[サーバー側<br/>media_volume_YYYYMMDD.tar.gz] -->|ダウンロード| AX1[ローカル環境]
+        AX1 --> AY1[Dockerボリューム確認]
+        AY1 -->|docker volume ls| AZ1{ボリューム存在?}
+        AZ1 -->|Yes| BA1[既存ボリュームに復元]
+        AZ1 -->|No| BB1[ボリューム作成]
+        BB1 --> BA1
+        BA1 -->|docker run + tar xzf| BC1[画像ファイル展開]
+        BC1 --> BD1[画像確認]
+        BD1 -->|ls /app/public/uploads| BE1[復元完了]
+        
+        style AY1 fill:#e1f5ff
+        style AZ1 fill:#ffebee
+        style BA1 fill:#fff4e1
+        style BC1 fill:#e8f5e9
+        style BE1 fill:#c8e6c9
+    end
+
+    %% フロー間の関連
+    F1 -.->|定期取得| W1
+    V1 -.->|本番環境で復元完了| END1[運用継続]
+    AI1 -.->|ローカル環境で復元完了| BF1[メディアボリューム復元]
+    BF1 --> AW1
+    BE1 --> BG1[完全復元完了]
+    
+    style END1 fill:#4caf50,color:#fff
+    style BG1 fill:#4caf50,color:#fff
+
+%% 凡例
+subgraph "凡例"
+    LEGEND1[処理] 
+    LEGEND2{判定}
+    LEGEND3[成功]
+    LEGEND4[エラー]
+    LEGEND5[警告]
+    
+    style LEGEND1 fill:#e1f5ff
+    style LEGEND2 fill:#ffebee
+    style LEGEND3 fill:#c8e6c9
+    style LEGEND4 fill:#ffcdd2
+    style LEGEND5 fill:#fff9c4
+end

@@ -1,0 +1,148 @@
+%% TOYBOXデータベース（SQL）バックアップ・リストアフロー図
+%% 作成日: 2026年1月29日
+%% PostgreSQLダンプのみを対象
+
+graph TB
+    subgraph "1️⃣ バックアップ（サーバー側）"
+        A1[PostgreSQL<br/>データベース] -->|cronで毎日3:00実行| B1[バックアップスクリプト]
+        B1 -->|UTF-8設定を確認| C1{設定OK?}
+        C1 -->|❌ No| D1[スクリプト修正]
+        D1 --> E1[pg_dump実行]
+        C1 -->|✅ Yes| E1
+        
+        E1 -->|必須4項目設定| F1["docker exec<br/>-e PGCLIENTENCODING=UTF8<br/>-e LANG=C.UTF-8<br/>pg_dump --encoding=UTF8<br/>--column-inserts"]
+        
+        F1 -->|gzip圧縮| G1[toybox_YYYYMMDD.sql.gz]
+        G1 -->|保存| H1[/backup/toybox/database/]
+        
+        style A1 fill:#4fc3f7,color:#000
+        style B1 fill:#fff176,color:#000
+        style C1 fill:#ffb74d,color:#000
+        style D1 fill:#ffcdd2,color:#000
+        style E1 fill:#81c784,color:#000
+        style F1 fill:#ce93d8,color:#000
+        style G1 fill:#81c784,color:#000
+        style H1 fill:#9575cd,color:#fff
+    end
+
+    subgraph "2️⃣ リストア準備（サーバー→ローカル）"
+        I1[サーバー] -->|SCP/WinSCP| J1[ダウンロード]
+        J1 -->|toybox_YYYYMMDD.sql.gz| K1[ローカル保存<br/>C:\backup\toybox\database\]
+        K1 -->|7-Zipで解凍| L1[toybox_YYYYMMDD.sql]
+        
+        L1 -->|UTF-8確認| M1{日本語OK?}
+        M1 -->|❌ 文字化け| N1[バックアップ元を確認<br/>サーバー側スクリプト修正]
+        M1 -->|✅ OK| O1[リストア準備完了]
+        
+        style I1 fill:#ef5350,color:#fff
+        style J1 fill:#4fc3f7,color:#000
+        style K1 fill:#81c784,color:#000
+        style L1 fill:#fff176,color:#000
+        style M1 fill:#ffb74d,color:#000
+        style N1 fill:#ffcdd2,color:#000
+        style O1 fill:#66bb6a,color:#fff
+    end
+
+    subgraph "3️⃣ リストア実行（ローカル環境）"
+        P1[SQLファイル準備完了] -->|現状バックアップ| Q1[念のため保存<br/>backup_before_restore.sql]
+        Q1 --> R1[DBリセット]
+        
+        R1 -->|DROP DATABASE| S1[データベース削除]
+        S1 -->|CREATE DATABASE<br/>WITH ENCODING='UTF8'| T1[空のDB作成<br/>UTF-8指定]
+        
+        T1 --> U1[復元方法選択]
+        
+        U1 -->|❌ 間違った方法| V1["PowerShellパイプ<br/>Get-Content | docker exec"]
+        V1 -->|文字化け発生| W1[失敗]
+        
+        U1 -->|✅ 正しい方法| X1["コンテナ内実行<br/>1. docker cp<br/>2. docker exec内部psql"]
+        
+        X1 -->|docker cp| Y1[SQLファイルを<br/>コンテナ内配置<br/>/tmp/restore.sql]
+        Y1 -->|PGCLIENTENCODING=UTF8| Z1[psql実行]
+        Z1 --> AA1[データ復元]
+        
+        AA1 --> AB1[復元確認]
+        AB1 -->|日本語表示チェック| AC1{文字化けなし?}
+        AC1 -->|✅ Yes| AD1[復元成功]
+        AC1 -->|❌ No| AE1[トラブルシューティング]
+        
+        style P1 fill:#4fc3f7,color:#000
+        style Q1 fill:#fff176,color:#000
+        style R1 fill:#ffb74d,color:#000
+        style S1 fill:#ef5350,color:#fff
+        style T1 fill:#81c784,color:#000
+        style U1 fill:#ce93d8,color:#000
+        style V1 fill:#ffcdd2,color:#000
+        style W1 fill:#d32f2f,color:#fff
+        style X1 fill:#66bb6a,color:#fff
+        style Y1 fill:#9575cd,color:#fff
+        style Z1 fill:#81c784,color:#000
+        style AA1 fill:#4fc3f7,color:#000
+        style AB1 fill:#fff176,color:#000
+        style AC1 fill:#ffb74d,color:#000
+        style AD1 fill:#2e7d32,color:#fff
+        style AE1 fill:#d32f2f,color:#fff
+    end
+
+    subgraph "4️⃣ 文字化け対策フロー"
+        AF1[文字化け検出] -->|バイト列確認| AG1["SELECT encode<br/>name::bytea, 'hex'"]
+        AG1 --> AH1{結果は?}
+        
+        AH1 -->|0x3f3f3f...| AI1[DB保存時に<br/>文字化け]
+        AH1 -->|UTF-8の16進数| AJ1[表示の問題のみ]
+        
+        AI1 --> AK1[原因診断]
+        AK1 --> AL1{SQLファイルUTF-8?}
+        
+        AL1 -->|❌ No| AM1[サーバー側<br/>スクリプト修正]
+        AM1 --> AN1[新バックアップ取得]
+        
+        AL1 -->|✅ Yes| AO1[リストア方法確認]
+        AO1 --> AP1{コンテナ内実行?}
+        
+        AP1 -->|❌ No| AQ1[正しい方法で再実行]
+        AP1 -->|✅ Yes| AR1[エンコーディング設定確認]
+        
+        AQ1 --> AS1[docker cp + 内部psql]
+        AR1 --> AS1
+        AN1 --> AS1
+        
+        AS1 --> AT1[文字化け解決]
+        
+        style AF1 fill:#ffcdd2,color:#000
+        style AG1 fill:#fff176,color:#000
+        style AH1 fill:#ffb74d,color:#000
+        style AI1 fill:#ef5350,color:#fff
+        style AJ1 fill:#4fc3f7,color:#000
+        style AK1 fill:#ce93d8,color:#000
+        style AL1 fill:#ffb74d,color:#000
+        style AM1 fill:#ffcdd2,color:#000
+        style AN1 fill:#fff176,color:#000
+        style AO1 fill:#ce93d8,color:#000
+        style AP1 fill:#ffb74d,color:#000
+        style AQ1 fill:#ffcdd2,color:#000
+        style AR1 fill:#fff176,color:#000
+        style AS1 fill:#81c784,color:#000
+        style AT1 fill:#2e7d32,color:#fff
+    end
+
+    subgraph "🔑 成功の3つの鉄則"
+        KEY1["1️⃣ バックアップ取得時<br/>UTF-8設定4項目"]
+        KEY2["2️⃣ リストア実行時<br/>コンテナ内で直接psql"]
+        KEY3["3️⃣ データベース作成時<br/>ENCODING='UTF8'指定"]
+        
+        KEY1 -.->|必須| F1
+        KEY2 -.->|必須| X1
+        KEY3 -.->|必須| T1
+        
+        style KEY1 fill:#ff5252,color:#fff,stroke:#b71c1c,stroke-width:3px
+        style KEY2 fill:#ff5252,color:#fff,stroke:#b71c1c,stroke-width:3px
+        style KEY3 fill:#ff5252,color:#fff,stroke:#b71c1c,stroke-width:3px
+    end
+
+    %% 全体の流れ
+    H1 -.->|定期バックアップ| I1
+    AD1 -.-> END1[✅ 復元完了]
+    AT1 -.-> END1
+    
+    style END1 fill:#1b5e20,color:#fff,stroke:#0d3c1a,stroke-width:4px

@@ -39,6 +39,24 @@ User = get_user_model()
 class LoginView(TokenObtainPairView):
     """Login endpoint."""
     serializer_class = CustomTokenObtainPairSerializer
+    
+    def post(self, request, *args, **kwargs):
+        """Login and establish session."""
+        response = super().post(request, *args, **kwargs)
+        
+        # If login successful, establish Django session
+        if response.status_code == 200:
+            display_id = request.data.get('display_id')
+            if display_id:
+                try:
+                    user = User.objects.get(display_id=display_id)
+                    # Establish Django session
+                    from django.contrib.auth import login
+                    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                except User.DoesNotExist:
+                    pass
+        
+        return response
 
 
 class RefreshTokenView(TokenRefreshView):

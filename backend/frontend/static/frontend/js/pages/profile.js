@@ -892,31 +892,20 @@
     
     /**
      * ページ読み込み時の初期化
+     * トークンがなくてもいったんAPIを呼ぶ（401でapiCall/apiGetFallbackがログインへリダイレクト）。ログインループ防止。
      */
     document.addEventListener('DOMContentLoaded', function() {
-        const requireAuthFunc = getFunction(requireAuth, requireAuthFallback);
-        if (!requireAuthFunc()) {
-            return;
-        }
-        
-        const token = getAuthToken();
-        if (!token) {
-            window.location.href = '/login/';
-            return;
-        }
-        
         const apiGetFunc = getFunction(apiGet, apiGetFallback);
         apiGetFunc('/api/users/me/')
                 .then(userData => {
-                    if (userData.role === 'FREE_USER') {
-                        window.location.href = '/upgrade/';
-                        return;
-                    }
                     initializeProfile();
                 })
                 .catch(err => {
                     console.error('Error fetching user data:', err);
-                    initializeProfile();
+                    // 401の場合は handleUnauthorized / apiCall 側でリダイレクト済み。それ以外は初期化を試行
+                    if (err.message !== '認証が必要です') {
+                        initializeProfile();
+                    }
                 });
     });
     

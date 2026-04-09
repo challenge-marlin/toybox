@@ -50,7 +50,8 @@ case $mode in
                 echo ""
                 echo "復元を開始します..."
                 
-                if gunzip -c $LATEST | docker exec -i backend-db-1 psql -U postgres toybox; then
+                # UTF-8エンコーディングを明示的に設定してリストア
+                if gunzip -c $LATEST | docker exec -e PGCLIENTENCODING=UTF8 -e LANG=C.UTF-8 -i backend-db-1 psql -U postgres toybox; then
                     echo ""
                     echo "✅ 復元が完了しました"
                     echo ""

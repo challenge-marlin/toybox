@@ -2,6 +2,8 @@
 # TOYBOXボリューム差分バックアップスクリプト
 # 作成日：2026年1月23日
 
+echo "[INFO] このスクリプト（差分バックアップ）は現在の運用では使用しません。必要時のみ実行してください。" >&2
+
 BACKUP_DIR="/backup/toybox/volumes-incremental"
 DATE=$(date +%Y%m%d)
 LOGFILE="/var/log/toybox_backup.log"

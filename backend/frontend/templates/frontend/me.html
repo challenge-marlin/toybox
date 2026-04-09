@@ -215,6 +215,28 @@
         }
     }
     
+    /* 右下: あなたのID・契約案内 */
+    .me-id-cta-box {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        z-index: 10001;
+        max-width: 320px;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        color: var(--steam-iron-100);
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .me-id-cta-box .me-id-label { color: var(--steam-gold-300); font-weight: 600; margin-bottom: 0.25rem; }
+    .me-id-cta-box .me-id-value { font-family: monospace; word-break: break-all; margin-bottom: 0.75rem; }
+    .me-id-cta-box .me-id-msg { margin-bottom: 0.75rem; }
+    .me-id-cta-box .me-id-form-link { display: inline-block; margin-top: 0.5rem; color: var(--steam-gold-400); text-decoration: underline; }
+    .me-id-cta-box .me-id-form-link:hover { color: var(--steam-gold-300); }
+    
     #lightbox-image,
     #lightbox-video {
         max-width: 80vw;
@@ -316,8 +338,8 @@
             </div>
         </section>
         
-        <!-- Discord参加 -->
-        <section class="me-section">
+        <!-- Discord参加（課金ユーザーのみ） -->
+        <section class="me-section" id="me-section-discord">
             <h2>Discord</h2>
             <div id="discord-section-buttons" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
                 <a href="https://discord.gg/{{ DISCORD_INVITE_CODE|default:'xSP8p44H' }}" target="_blank" rel="noreferrer" class="discord-join-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; width: 100%; justify-content: center; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s;">
@@ -329,8 +351,8 @@
             </div>
         </section>
         
-        <!-- StudySphere -->
-        <section class="me-section">
+        <!-- StudySphere（課金ユーザーのみ） -->
+        <section class="me-section" id="me-section-studysphere">
             <h2>StudySphere</h2>
             <div style="margin-top: 0.5rem;">
                 <a id="studysphere-link" href="https://studysphere.ayatori-inc.co.jp/student/dashboard" target="_blank" rel="noopener noreferrer" onclick="return handleStudySphereNavigation(event)" style="display: inline-flex; align-items: center; gap: 0.5rem; width: 100%; justify-content: center; background: transparent; color: var(--steam-gold-400); border: 1px solid var(--steam-gold-400); border-radius: 9999px; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='var(--steam-gold-500)'; this.style.color='#000'; this.style.borderColor='var(--steam-gold-500)'" onmouseout="this.style.background='transparent'; this.style.color='var(--steam-gold-400)'; this.style.borderColor='var(--steam-gold-400)'">
@@ -390,8 +412,8 @@
             </div>
         </section>
         
-        <!-- 画像・動画をアップロード -->
-        <section class="me-section">
+        <!-- 画像・動画をアップロード（課金ユーザーのみ） -->
+        <section class="me-section" id="me-section-media-upload">
             <h2>画像・動画をアップロード</h2>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <input id="upload-input" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/ogg" style="display: none;">
@@ -410,8 +432,8 @@
             </div>
         </section>
         
-        <!-- ゲームZIPアップロード -->
-        <section class="me-section">
+        <!-- ゲームZIPアップロード（課金ユーザーのみ） -->
+        <section class="me-section" id="me-section-game-upload">
             <h2>ゲームをアップロード（ZIP）</h2>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <input id="upload-game-input" type="file" accept=".zip,application/zip" style="display: none;">
@@ -684,7 +706,14 @@
             return;
         }
         
-        // まず、ユーザーのロールを確認してリダイレクトが必要かチェック
+        function applyFreeUserRestrictions() {
+            [ 'me-section-discord', 'me-section-studysphere', 'me-section-media-upload', 'me-section-game-upload' ].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+        }
+        
+        // まず、ユーザーのロールを確認
         sessionStorage.setItem('toybox_role_checking', '1');
         fetch('/api/users/me/', {
             headers: {
@@ -714,15 +743,29 @@
                 console.log('[StudySphere] User is not linked, redirecting to dashboard');
             }
             
-            // ロールがFREE_USERの場合は問い合わせページにリダイレクト
+            // 一般ユーザー（FREE_USER）の場合は制限付きで表示
             if (userData.role === 'FREE_USER') {
-                console.log('User is FREE_USER, redirecting to /upgrade/');
-                // リダイレクト前にフラグを設定して無限ループを防ぐ
-                sessionStorage.setItem('toybox_redirecting_to_upgrade', '1');
-                window.location.href = '/upgrade/';
-                return;
+                applyFreeUserRestrictions();
+            } else {
+                var profileSettingsLink = document.getElementById('nav-profile-settings');
+                if (profileSettingsLink) profileSettingsLink.style.display = 'block';
             }
-            // それ以外の場合は通常の処理を続行
+            // 右下: あなたのIDを反映
+            var idVal = document.getElementById('me-display-id');
+            var displayId = userData.display_id || userData.displayId;
+            if (idVal) {
+                if (displayId) {
+                    idVal.textContent = displayId;
+                } else {
+                    // /api/users/me/ に display_id が無い場合は meta から取得
+                    fetch('/api/users/me/meta/', { headers: { 'Authorization': 'Bearer ' + token } })
+                        .then(function(r) { return r.ok ? r.json() : null; })
+                        .then(function(meta) {
+                            if (idVal && meta && meta.display_id) idVal.textContent = meta.display_id;
+                        })
+                        .catch(function() {});
+                }
+            }
             initializePage();
         })
         .catch(err => {

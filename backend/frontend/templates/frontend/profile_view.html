@@ -83,6 +83,30 @@
         width: 100%;
         object-fit: cover;
     }
+    @keyframes official-border-pulse {
+        0%, 100% { box-shadow: 0 0 0 3px #00e5ff, 0 0 12px rgba(0,229,255,0.6); }
+        50%       { box-shadow: 0 0 0 3px #2979ff, 0 0 20px rgba(41,121,255,0.7); }
+    }
+    .official-avatar {
+        border: none !important;
+        animation: official-border-pulse 2.5s ease-in-out infinite !important;
+    }
+    .official-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.1rem;
+        height: 1.1rem;
+        background: #00bcd4;
+        border-radius: 50%;
+        color: #000;
+        margin-left: 0.4rem;
+        vertical-align: middle;
+    }
+    .official-badge svg {
+        width: 0.75rem;
+        height: 0.75rem;
+    }
     
     .profile-view-info {
         margin-top: 0.75rem;
@@ -653,6 +677,11 @@
                 
                 const isOfficial = metaData.isOfficial || metaData.is_official || false;
                 const officialBadge = isOfficial ? '<span class="official-badge" title="公式アカウント"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : '';
+                // 公式ユーザーはアバター枠にボーダーを付与
+                if (isOfficial) {
+                    const avatarWrap = document.getElementById('avatar-image');
+                    if (avatarWrap) avatarWrap.classList.add('official-avatar');
+                }
                 
                 if (displayName) {
                     document.getElementById('profile-name').innerHTML = displayName + officialBadge;

@@ -140,7 +140,7 @@
         justify-content: center;
         width: 1.25rem;
         height: 1.25rem;
-        background: var(--steam-gold-500);
+        background: #00bcd4;
         border-radius: 50%;
         color: black;
         font-weight: bold;
@@ -150,6 +150,14 @@
     .official-badge svg {
         width: 0.875rem;
         height: 0.875rem;
+    }
+    @keyframes official-border-pulse {
+        0%, 100% { box-shadow: 0 0 0 3px #00e5ff, 0 0 12px rgba(0,229,255,0.6); }
+        50%       { box-shadow: 0 0 0 3px #2979ff, 0 0 20px rgba(41,121,255,0.7); }
+    }
+    .official-avatar {
+        border: none !important;
+        animation: official-border-pulse 2.5s ease-in-out infinite !important;
     }
     
     .upload-overlay {
@@ -1023,6 +1031,12 @@
             const avatarUrl = data.avatarUrl || data.avatar_url;
             const avatarThumbnailUrl = data.avatarThumbnailUrl || data.avatar_thumbnail_url;
             console.log('[Profile Image Debug] me.html - Avatar URL:', avatarUrl, 'Thumbnail:', avatarThumbnailUrl);
+
+            // 公式ユーザーはアバター枠にボーダーを付与
+            if ((data.isOfficial || data.is_official) && avatarDiv) {
+                avatarDiv.classList.add('official-avatar');
+                avatarDiv.style.border = 'none';
+            }
             
             // サムネイルがあればそれを使用、なければ元画像を使用
             const avatarDisplayUrl = avatarThumbnailUrl || avatarUrl;

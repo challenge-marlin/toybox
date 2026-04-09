@@ -36,11 +36,12 @@
         display: inline-block;
         margin-bottom: 0.75rem;
     }
-    .tier-green   { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
-    .tier-blue    { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
-    .tier-gold    { background: #78350f; color: #fbbf24; border: 1px solid #d97706; }
-    .tier-red     { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
-    .tier-rainbow { background: #1e1028; color: #e879f9; border: 1px solid #a855f7; }
+    .tier-green    { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+    .tier-blue     { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
+    .tier-gold     { background: #78350f; color: #fbbf24; border: 1px solid #d97706; }
+    .tier-red      { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+    .tier-rainbow  { background: #1e1028; color: #e879f9; border: 1px solid #a855f7; }
+    .tier-official { background: #071428; color: #4fc3f7; border: 1px solid #00bcd4; }
     /* ── グリッド ── */
     .titles-grid {
         display: grid;
@@ -117,6 +118,26 @@
     .rainbow-stop1 { animation: rainbow-shift 3s linear infinite; }
     .rainbow-stop2 { animation: rainbow-shift 3s linear infinite 1s; }
     .rainbow-stop3 { animation: rainbow-shift 3s linear infinite 2s; }
+    /* 公式バッジ シマーアニメ */
+    @keyframes official-shift {
+        0%   { stop-color: #00e5ff; }
+        33%  { stop-color: #2979ff; }
+        66%  { stop-color: #7c4dff; }
+        100% { stop-color: #00e5ff; }
+    }
+    .official-stop1 { animation: official-shift 2s linear infinite; }
+    .official-stop2 { animation: official-shift 2s linear infinite 0.67s; }
+    .official-stop3 { animation: official-shift 2s linear infinite 1.33s; }
+    /* 公式ユーザー アイコン枠 */
+    @keyframes official-border-pulse {
+        0%, 100% { box-shadow: 0 0 0 3px #00e5ff, 0 0 10px rgba(0,229,255,0.55); }
+        50%       { box-shadow: 0 0 0 3px #2979ff, 0 0 16px rgba(41,121,255,0.7); }
+    }
+    .official-avatar {
+        border-radius: 50% !important;
+        animation: official-border-pulse 2.5s ease-in-out infinite !important;
+        border: none !important;
+    }
 </style>
 {% endblock %}
 
@@ -147,6 +168,32 @@
         red:     { bg1:'#7f1d1d', bg2:'#1a0a0a', s1:'#ef4444', s2:'#fca5a5', tx:'#fecaca' },
         locked:  { bg1:'#1c1c1c', bg2:'#0a0a0a', s1:'#4b5563', s2:'#6b7280', tx:'#6b7280' },
     };
+    /* 公式バッジ専用SVG生成（シマーボーダー付き） */
+    function buildOfficialSvgBadge(titleName) {
+        const name    = titleName || 'TOYBOX!公式';
+        const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const W = 160, H = 40;
+        const uid = ++_rainbowSvgId;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escaped}">
+  <defs>
+    <linearGradient id="ofbg${uid}" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#071428"/>
+      <stop offset="100%" stop-color="#030a1a"/>
+    </linearGradient>
+    <linearGradient id="ofb${uid}" x1="0" y1="0" x2="1" y2="0">
+      <stop class="official-stop1" offset="0%"   stop-color="#00e5ff"/>
+      <stop class="official-stop2" offset="50%"  stop-color="#2979ff"/>
+      <stop class="official-stop3" offset="100%" stop-color="#7c4dff"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="${W-2}" height="${H-2}" rx="7" ry="7" fill="url(#ofbg${uid})" stroke="url(#ofb${uid})" stroke-width="2"/>
+  <text x="${W/2}" y="11" text-anchor="middle" font-size="5.5" fill="#00e5ff" opacity="0.85" letter-spacing="2">★ ★ ★</text>
+  <text x="${W/2}" y="${H/2+2}" text-anchor="middle" dominant-baseline="middle"
+        font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif"
+        font-size="13" font-weight="700" fill="#e0f7fa" letter-spacing="1">${escaped}</text>
+  <text x="${W/2}" y="${H-5}" text-anchor="middle" font-size="4.5" fill="#00bcd4" opacity="0.8" letter-spacing="3">OFFICIAL</text>
+</svg>`;
+    }
 
     let _rainbowSvgId = 0;
 
@@ -203,11 +250,12 @@
     }
 
     const TIER_LABELS = {
-        green:   { ja: '入門',  cls: 'tier-green'   },
-        blue:    { ja: '初級',  cls: 'tier-blue'    },
-        gold:    { ja: '中級',  cls: 'tier-gold'    },
-        red:     { ja: '上級',  cls: 'tier-red'     },
-        rainbow: { ja: '伝説',  cls: 'tier-rainbow' },
+        green:    { ja: '入門',   cls: 'tier-green'    },
+        blue:     { ja: '初級',   cls: 'tier-blue'     },
+        gold:     { ja: '中級',   cls: 'tier-gold'     },
+        red:      { ja: '上級',   cls: 'tier-red'      },
+        rainbow:  { ja: '伝説',   cls: 'tier-rainbow'  },
+        official: { ja: 'その他', cls: 'tier-official' },
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -227,7 +275,7 @@
             }
 
             // 色でグループ化（順序維持）
-            const ORDER = ['green','blue','gold','red','rainbow'];
+            const ORDER = ['green','blue','gold','red','rainbow','official'];
             const groups = {};
             ORDER.forEach(c => { groups[c] = []; });
             achievements.forEach(a => {
@@ -244,7 +292,9 @@
   <div class="titles-grid">`;
                 for (const a of items) {
                     const color = a.earned ? a.color : 'locked';
-                    const badge = buildTitleSvgBadge(a.name, color);
+                    const badge = (a.color === 'official' && a.earned)
+                        ? buildOfficialSvgBadge(a.name)
+                        : buildTitleSvgBadge(a.name, color);
                     const nameClass = a.earned ? '' : 'locked-name';
                     const cond = a.conditionText || '';
                     let action = '';

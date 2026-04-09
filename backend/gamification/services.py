@@ -344,6 +344,8 @@ ACHIEVEMENT_DEFINITIONS = [
     {'name': '全知全能',                'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
     {'name': 'TOYBOXの使者',           'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
     {'name': 'AYATORI',                'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
+    # === 特別称号（公式スタッフ専用・他のユーザーには非公開） ===
+    {'name': 'TOYBOX!公式',            'color': 'official','condition_text': 'TOYBOX公式スタッフに付与',               'secret': False, 'ultra_secret': False},
 ]
 
 # 称号名 → カラー の高速参照用

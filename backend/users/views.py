@@ -35,6 +35,9 @@ from datetime import timedelta
 
 User = get_user_model()
 
+# 公式スタッフ専用称号を表示するユーザーの display_id セット
+OFFICIAL_DISPLAY_IDS = frozenset(['ramchan', 'km1010'])
+
 
 class LoginView(TokenObtainPairView):
     """Login endpoint."""
@@ -710,6 +713,7 @@ class ProfileGetView(APIView):
                 profile_logger = logging.getLogger(__name__)
                 profile_logger.warning(f'Failed to get total_likes for user {user.id}: {e}')
             
+            is_official = 'TOYBOX!公式' in (meta.earned_titles or [])
             response_data = {
                 'anonId': anon_id,
                 'displayName': display_name,
@@ -721,6 +725,7 @@ class ProfileGetView(APIView):
                 'activeTitleImageUrl': active_title_image_url,
                 'activeTitleUntil': active_title_until.isoformat() if active_title_until else None,
                 'earnedTitles': list(meta.earned_titles or []),
+                'isOfficial': is_official,
                 'updatedAt': meta.updated_at.isoformat() if meta.updated_at else None,
                 'totalLikes': total_likes
             }
@@ -769,9 +774,13 @@ class AchievementsView(APIView):
         meta, _ = UserMeta.objects.get_or_create(user=request.user)
         earned_set = set(meta.earned_titles or [])
         active = meta.active_title or ''
+        is_official_user = request.user.display_id in OFFICIAL_DISPLAY_IDS
 
         items = []
         for defn in ACHIEVEMENT_DEFINITIONS:
+            # 公式称号は公式スタッフのみ表示
+            if defn['color'] == 'official' and not is_official_user:
+                continue
             name = defn['name']
             is_earned = name in earned_set
             is_ultra = defn['ultra_secret'] and not is_earned

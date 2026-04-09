@@ -53,6 +53,15 @@
         .rainbow-stop1 { animation: rainbow-shift 3s linear infinite; }
         .rainbow-stop2 { animation: rainbow-shift 3s linear infinite 1s; }
         .rainbow-stop3 { animation: rainbow-shift 3s linear infinite 2s; }
+        @keyframes official-border-pulse {
+            0%, 100% { box-shadow: 0 0 0 3px #00e5ff, 0 0 10px rgba(0,229,255,0.55); }
+            50%       { box-shadow: 0 0 0 3px #2979ff, 0 0 16px rgba(41,121,255,0.7); }
+        }
+        .official-avatar {
+            border-radius: 50% !important;
+            animation: official-border-pulse 2.5s ease-in-out infinite !important;
+            border: none !important;
+        }
     </style>
 </head>
 <body>
@@ -458,6 +467,11 @@
                     const avatarUrl = data.avatar_url;
                     console.log('[Profile Image Debug] base.html - Avatar URL:', avatarUrl);
                     
+                    // 公式ユーザーはアバター枠に特別ボーダーを付与
+                    if (data.earned_titles && data.earned_titles.includes('TOYBOX!公式')) {
+                        if (avatarImg) avatarImg.classList.add('official-avatar');
+                        if (avatarIcon) avatarIcon.classList.add('official-avatar');
+                    }
                     if (avatarUrl && avatarImg && avatarIcon) {
                         console.log('[Profile Image Debug] base.html - Setting header avatar image:', avatarUrl);
                         avatarImg.src = avatarUrl;

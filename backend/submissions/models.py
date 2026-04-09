@@ -84,7 +84,22 @@ class Reaction(models.Model):
     """User reactions to submissions."""
     
     class Type(models.TextChoices):
-        SUBMIT_MEDAL = 'submit_medal', '投稿メダル'
+        SUBMIT_MEDAL = 'submit_medal', 'いいね！'
+        AWESOME = 'awesome', 'すごい！'
+        CUTE = 'cute', 'かわいい！'
+        FUNNY = 'funny', '笑える！'
+        MOVED = 'moved', '感動した'
+        COOL = 'cool', 'かっこいい！'
+    
+    # 絵文字マッピング（フロントエンド表示用）
+    EMOJI_MAP = {
+        'submit_medal': '👍',
+        'awesome': '🤩',
+        'cute': '🥰',
+        'funny': '😂',
+        'moved': '😭',
+        'cool': '😎',
+    }
     
     type = models.CharField('リアクションタイプ', max_length=50, choices=Type.choices)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reactions', verbose_name='ユーザー')

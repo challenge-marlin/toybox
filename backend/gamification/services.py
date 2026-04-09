@@ -91,80 +91,16 @@ def load_card_master():
 
 
 def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
-    """Grant immediate rewards (title + card)."""
-    from gamification.models import Title
+    """Grant immediate rewards (card only).
     
-    titles = [
-        '蒸気の旅人',
-        '真鍮の探究者',
-        '歯車の達人',
-        '工房の匠',
-        '鉄と蒸気の詩人',
-        '火花をまとう見習い',
-        '真夜中の機巧設計士',
-        '歯車仕掛けの物語紡ぎ',
-        '蒸気都市の工房守'
-    ]
-    
-    chosen_title = random.choice(titles)
+    v2.0変更: 称号はアチーブメント制に移行したため、投稿時のランダム称号付与を廃止。
+    カードのみ付与する。称号は check_and_grant_achievement_titles() で付与される。
+    """
     now = timezone.now()
-    until = now + timezone.timedelta(days=7)
     
-    meta.active_title = chosen_title
-    meta.expires_at = until
-    
-    # 称号のバナー画像URLを取得
+    # 称号・期限は変更しない（アチーブメントシステムが管理する）
     title_image_url = None
-    try:
-        title_obj = Title.objects.filter(name=chosen_title).first()
-        if title_obj:
-            if title_obj.image:
-                # ImageFieldの場合、/uploads/titles/形式に変換
-                # image.nameは'titles/xxx.png'のような形式
-                image_name = title_obj.image.name.split('/')[-1]  # ファイル名を取得
-                title_image_url = f'/uploads/titles/{image_name}'
-                logger.info(f'Title image from ImageField: {title_image_url}')
-            elif title_obj.image_url:
-                # image_urlフィールドが設定されている場合
-                title_image_url = title_obj.image_url
-                # HTTPをHTTPSに置き換え（同じドメインの場合のみ）
-                if title_image_url.startswith('http://toybox.ayatori-inc.co.jp'):
-                    title_image_url = title_image_url.replace('http://', 'https://', 1)
-                # /media/titles/形式の場合は/uploads/titles/に変換
-                elif title_image_url.startswith('/media/titles/'):
-                    image_name = title_image_url.split('/')[-1]
-                    title_image_url = f'/uploads/titles/{image_name}'
-                # 相対パスの場合はそのまま使用
-                elif not title_image_url.startswith('http'):
-                    # 既に/uploads/titles/形式の場合はそのまま
-                    pass
-                logger.info(f'Title image from image_url field: {title_image_url}')
-            else:
-                # どちらも設定されていない場合、デフォルトパスを試す
-                title_image_url = f'/uploads/titles/{chosen_title}.png'
-                logger.warning(f'Title image not set in DB, using default path: {title_image_url}')
-        else:
-            # 称号オブジェクトが存在しない場合
-            title_image_url = f'/uploads/titles/{chosen_title}.png'
-            logger.warning(f'Title object not found for {chosen_title}, using default path: {title_image_url}')
-        
-        # デバッグログ: 最終的な画像URLを出力
-        logger.info(f'Final title_image_url for {chosen_title}: {title_image_url}')
-    except Exception as e:
-        logger.warning(f'Failed to get title image for {chosen_title}: {e}', exc_info=True)
-        # エラー時もデフォルトパスを設定
-        title_image_url = f'/uploads/titles/{chosen_title}.png'
-    
-    # ファイル未配置時はフォールバック画像を使用
-    try:
-        from toybox.image_utils import verify_image_file_exists, TITLE_IMAGE_FALLBACK_PATH
-        if title_image_url and title_image_url != TITLE_IMAGE_FALLBACK_PATH and not verify_image_file_exists(title_image_url):
-            logger.info(f'Title image not found, using fallback: {title_image_url}')
-            title_image_url = TITLE_IMAGE_FALLBACK_PATH
-    except Exception as e:
-        logger.warning(f'Failed to verify title image, using fallback: {e}')
-        from toybox.image_utils import TITLE_IMAGE_FALLBACK_PATH
-        title_image_url = TITLE_IMAGE_FALLBACK_PATH
+    chosen_title = None
     
     # Draw card from card master
     card_meta = None
@@ -334,13 +270,8 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
     
     logger.info('reward.granted', extra={
         'user_id': meta.user_id,
-        'title': chosen_title,
-        'title_image_url': title_image_url,
         'card_id': card_id
     })
-    
-    # デバッグログ: 返すデータを確認
-    logger.info(f'Returning reward data: title={chosen_title}, title_image_url={title_image_url}')
     
     return {
         'title': chosen_title,
@@ -348,4 +279,53 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
         'card_id': card_id,
         'card_meta': card_meta
     }
+
+
+def check_and_grant_achievement_titles(user: User) -> list:
+    """アチーブメント条件をチェックし、未取得の称号を付与する。
+    
+    投稿・リアクション受け取りなどのタイミングで呼び出す。
+    新たに付与された称号のリストを返す。
+    """
+    from gamification.models import Title
+    from submissions.models import Submission
+    
+    meta, _ = UserMeta.objects.get_or_create(user=user)
+    
+    # 既取得の称号名セット（UserMeta.earned_titles JSONフィールド）
+    earned = set(meta.earned_titles or [])
+    newly_granted = []
+    
+    # 投稿数を取得
+    total_posts = Submission.objects.filter(author=user, deleted_at__isnull=True).count()
+    game_posts = Submission.objects.filter(author=user, deleted_at__isnull=True).exclude(game_url='').exclude(game_url__isnull=True).count()
+    
+    # 定義: (称号名, 達成条件チェック関数)
+    achievements = [
+        ('駆け出しクリエイター', lambda: True),           # 登録直後・常に対象
+        ('見習いクリエイター',   lambda: total_posts >= 5),
+        ('中堅クリエイター',     lambda: total_posts >= 20),
+        ('ベテランクリエイター', lambda: total_posts >= 50),
+        ('ゲームメーカー見習い', lambda: game_posts >= 1),
+        ('ゲームクリエイター',   lambda: game_posts >= 5),
+    ]
+    
+    for title_name, condition in achievements:
+        if title_name not in earned and condition():
+            earned.add(title_name)
+            newly_granted.append(title_name)
+            # 最初の称号をアクティブに設定（アクティブ称号が未設定の場合のみ）
+            if not meta.active_title:
+                meta.active_title = title_name
+                meta.expires_at = None  # 有効期限なし
+    
+    if newly_granted:
+        meta.earned_titles = list(earned)
+        meta.save(update_fields=['earned_titles', 'active_title', 'expires_at'])
+        logger.info('achievement.titles_granted', extra={
+            'user_id': user.id,
+            'newly_granted': newly_granted
+        })
+    
+    return newly_granted
 

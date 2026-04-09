@@ -52,22 +52,65 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], url_path='react/submit_medal')
     def react_submit_medal(self, request, pk=None):
-        """React to submission with submit_medal."""
+        """React to submission with submit_medal (後方互換エンドポイント)."""
+        return self._toggle_reaction(request, pk, Reaction.Type.SUBMIT_MEDAL)
+    
+    @action(detail=True, methods=['post'], url_path=r'react/(?P<reaction_type>[a-z_]+)')
+    def react(self, request, pk=None, reaction_type=None):
+        """汎用リアクション切り替えエンドポイント (POST /submissions/{id}/react/{type}/)。"""
+        valid_types = {t.value for t in Reaction.Type}
+        if reaction_type not in valid_types:
+            return Response(
+                {'error': f'Invalid reaction type. Valid types: {sorted(valid_types)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return self._toggle_reaction(request, pk, reaction_type)
+    
+    def _toggle_reaction(self, request, pk, reaction_type):
+        """リアクションのトグル共通処理。"""
         submission = self.get_object()
-        
-        # Check if already reacted
         reaction, created = Reaction.objects.get_or_create(
             user=request.user,
             submission=submission,
-            type=Reaction.Type.SUBMIT_MEDAL,
-            defaults={'user': request.user, 'submission': submission}
+            type=reaction_type,
         )
         
         if created:
-            return Response({'ok': True, 'message': 'Reaction added'}, status=status.HTTP_201_CREATED)
+            # 通知（いいね以外も同様に通知、自分には通知しない）
+            if submission.author != request.user:
+                try:
+                    from users.models import UserMeta
+                    target_meta, _ = UserMeta.objects.get_or_create(user=submission.author)
+                    liker_meta, _ = UserMeta.objects.get_or_create(user=request.user)
+                    liker_name = liker_meta.display_name or request.user.display_id
+                    emoji = Reaction.EMOJI_MAP.get(reaction_type, '👍')
+                    label = dict(Reaction.Type.choices).get(reaction_type, reaction_type)
+                    notifications = list(target_meta.notifications or [])
+                    notifications.append({
+                        'type': 'reaction',
+                        'reactionType': reaction_type,
+                        'emoji': emoji,
+                        'label': label,
+                        'fromAnonId': request.user.display_id,
+                        'fromDisplayName': liker_name,
+                        'submissionId': str(submission.id),
+                        'message': f'{liker_name} さんから「{emoji} {label}」がつきました',
+                        'read': False,
+                        'createdAt': str(timezone.now().isoformat()),
+                    })
+                    if len(notifications) > 50:
+                        notifications = notifications[-50:]
+                    target_meta.notifications = notifications
+                    target_meta.save(update_fields=['notifications'])
+                except Exception as e:
+                    logger.warning(f'Reaction notification failed: {e}')
+            
+            total = Reaction.objects.filter(submission=submission, type=reaction_type).count()
+            return Response({'ok': True, 'action': 'added', 'count': total}, status=status.HTTP_201_CREATED)
         else:
             reaction.delete()
-            return Response({'ok': True, 'message': 'Reaction removed'}, status=status.HTTP_200_OK)
+            total = Reaction.objects.filter(submission=submission, type=reaction_type).count()
+            return Response({'ok': True, 'action': 'removed', 'count': total}, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['post', 'delete'], url_path='like')
     def like(self, request, pk=None):
@@ -647,23 +690,24 @@ class FeedView(APIView):
                     feed_items.append({
                         'id': str(item_data.get('id', '')),
                         'anonId': item_data.get('author_display_id') or 'unknown',
-                        'anonUrlId': item_data.get('author_url_id') or item_data.get('author_display_id') or 'unknown',  # URL用のID
+                        'anonUrlId': item_data.get('author_url_id') or item_data.get('author_display_id') or 'unknown',
                         'displayName': display_name,
                         'avatarUrl': avatar_url,
                         'createdAt': item_data.get('created_at', ''),
-                        'imageUrl': image_url,  # 元画像URL
-                        'imageThumbnailUrl': image_thumbnail_url,  # サムネイルURL
+                        'imageUrl': image_url,
+                        'imageThumbnailUrl': image_thumbnail_url,
                         'videoUrl': item_data.get('video_url'),
-                        'displayImageUrl': display_image_url,  # 表示用（サムネイル優先）
+                        'displayImageUrl': display_image_url,
                         'title': title,
                         'caption': item_data.get('caption'),
                         'hashtags': item_data.get('hashtags', []),
                         'gameUrl': item_data.get('game_url'),
                         'likesCount': reactions_count or 0,
                         'liked': item_data.get('user_reacted', False),
-                        'activeTitle': item_data.get('active_title'),  # 称号
-                        'activeTitleImageUrl': item_data.get('active_title_image_url'),  # 称号の画像URL
-                        'titleColor': item_data.get('title_color'),  # 称号の色
+                        'allReactions': item_data.get('all_reactions', []),  # 全リアクション
+                        'activeTitle': item_data.get('active_title'),
+                        'activeTitleImageUrl': item_data.get('active_title_image_url'),
+                        'titleColor': item_data.get('title_color'),
                     })
                 except Exception as e:
                     logger.error(f'Error serializing submission {getattr(item, "id", "unknown")}: {str(e)}', exc_info=True)
@@ -822,13 +866,14 @@ class PopularFeedView(APIView):
                 'createdAt': item_data['created_at'],
                 'imageUrl': image_url,
                 'videoUrl': item_data.get('video_url'),
-                'displayImageUrl': image_url,  # サムネイルが含まれる
+                'displayImageUrl': image_url,
                 'title': title,
                 'caption': item_data.get('caption'),
                 'hashtags': item_data.get('hashtags', []),
                 'gameUrl': item_data.get('game_url'),
                 'likesCount': item_data.get('reactions_count', 0),
                 'liked': item_data.get('user_reacted', False),
+                'allReactions': item_data.get('all_reactions', []),
             })
         
         return Response({

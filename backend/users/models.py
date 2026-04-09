@@ -155,7 +155,9 @@ class UserMeta(models.Model):
     # Title information
     active_title = models.CharField(max_length=100, blank=True, null=True)
     title_color = models.CharField(max_length=50, blank=True, null=True)
-    expires_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True, help_text='v2.0以降は常にNULL（有効期限廃止）')
+    # v2.0: アチーブメント取得済み称号リスト
+    earned_titles = models.JSONField('取得済み称号リスト', default=list, blank=True)
     
     # Profile fields
     display_name = models.CharField(max_length=50, blank=True)

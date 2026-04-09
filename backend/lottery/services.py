@@ -145,17 +145,25 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         logger.error('submission.create_failed', extra={'user_id': user.id, 'error': str(e)}, exc_info=True)
         raise
     
-    # Grant immediate rewards (title + card)
+    # Grant immediate rewards (card only - v2.0ではカードのみ、称号はアチーブメント制)
     reward = grant_immediate_rewards(meta, boost_rarity=bool(game_url))
+    
+    # アチーブメント称号チェック（投稿後に新たな称号が解放されていないか確認）
+    from gamification.services import check_and_grant_achievement_titles
+    newly_granted_titles = check_and_grant_achievement_titles(user)
+    
+    # 新たに取得した称号があればレスポンスに含める
+    reward_title = newly_granted_titles[0] if newly_granted_titles else None
     
     return {
         'jpResult': 'none',
         'probability': 0,
         'bonusCount': meta.lottery_bonus_count,
-        'rewardTitle': reward.get('title'),
-        'rewardTitleImageUrl': reward.get('title_image_url'),
+        'rewardTitle': reward_title,
+        'rewardTitleImageUrl': None,
         'rewardCardId': reward.get('card_id'),
         'rewardCard': reward.get('card_meta'),
         'jackpotRecordedAt': None,
+        'newlyGrantedTitles': newly_granted_titles,
     }
 

@@ -34,6 +34,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
     title_color = serializers.SerializerMethodField()
     reactions_count = serializers.SerializerMethodField()
     user_reacted = serializers.SerializerMethodField()
+    all_reactions = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     display_image_url = serializers.SerializerMethodField()
     image_thumbnail_url = serializers.SerializerMethodField()
@@ -48,7 +49,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             'image_url', 'video_url', 'game_url',
             'title', 'caption', 'hashtags', 'comment_enabled', 'status',
             'active_title', 'active_title_image_url', 'title_color',
-            'reactions_count', 'user_reacted',
+            'reactions_count', 'user_reacted', 'all_reactions',
             'created_at', 'deleted_at'
         ]
         read_only_fields = ['id', 'author', 'created_at', 'deleted_at', 'status']
@@ -260,36 +261,28 @@ class SubmissionSerializer(serializers.ModelSerializer):
         return self.get_thumbnail(obj)
     
     def get_active_title(self, obj):
-        """Get author's active title."""
-        from django.utils import timezone
+        """Get author's active title (v2.0: 有効期限チェック廃止)."""
         try:
             meta = UserMeta.objects.get(user=obj.author)
-            if meta.expires_at and meta.expires_at > timezone.now():
-                return meta.active_title
+            return meta.active_title
         except UserMeta.DoesNotExist:
             pass
         return None
     
     def get_title_color(self, obj):
-        """Get author's title color."""
-        from django.utils import timezone
+        """Get author's title color (v2.0: 有効期限チェック廃止)."""
         try:
             meta = UserMeta.objects.get(user=obj.author)
-            if meta.expires_at and meta.expires_at > timezone.now():
-                return meta.title_color
+            return meta.title_color
         except UserMeta.DoesNotExist:
             pass
         return None
     
     def get_active_title_image_url(self, obj):
         """Get author's active title image URL."""
-        from django.utils import timezone
         try:
             meta = UserMeta.objects.get(user=obj.author)
             if meta.active_title:
-                # Check expiration
-                if meta.expires_at and meta.expires_at <= timezone.now():
-                    return None
                 
                 # Get title image URL（未配置時はフォールバック画像）
                 try:
@@ -311,19 +304,37 @@ class SubmissionSerializer(serializers.ModelSerializer):
         return None
     
     def get_reactions_count(self, obj):
-        """Get reactions count."""
-        # annotateで追加されたreactions_countを優先的に使用
+        """Get total reactions count (いいね！のみ / 後方互換)."""
         if hasattr(obj, 'reactions_count'):
             return obj.reactions_count
-        # フォールバック: 直接カウント
         return obj.reactions.filter(type=Reaction.Type.SUBMIT_MEDAL).count()
     
     def get_user_reacted(self, obj):
-        """Check if current user has reacted."""
+        """Check if current user has reacted with いいね (後方互換)."""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.reactions.filter(user=request.user, type=Reaction.Type.SUBMIT_MEDAL).exists()
         return False
+    
+    def get_all_reactions(self, obj):
+        """Get all reaction counts and current user's reactions per type."""
+        request = self.context.get('request')
+        current_user = request.user if request and request.user.is_authenticated else None
+        
+        result = []
+        for rtype in Reaction.Type:
+            count = obj.reactions.filter(type=rtype).count()
+            user_reacted = False
+            if current_user:
+                user_reacted = obj.reactions.filter(user=current_user, type=rtype).exists()
+            result.append({
+                'type': rtype.value,
+                'label': rtype.label,
+                'emoji': Reaction.EMOJI_MAP.get(rtype.value, '👍'),
+                'count': count,
+                'user_reacted': user_reacted,
+            })
+        return result
 
 
 class SubmissionCreateSerializer(serializers.ModelSerializer):

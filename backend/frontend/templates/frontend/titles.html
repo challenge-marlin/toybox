@@ -1,0 +1,204 @@
+{% extends "frontend/base.html" %}
+{% load static %}
+
+{% block title %}獲得称号 | TOYBOX！{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { visibility: hidden; }
+    .titles-container {
+        max-width: 700px;
+        margin: 2rem auto;
+        padding: 0 1rem 4rem;
+    }
+    .titles-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .titles-header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--steam-gold-300);
+        margin-bottom: 0.25rem;
+    }
+    .titles-header p {
+        font-size: 0.85rem;
+        color: var(--steam-iron-300);
+    }
+    .titles-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1rem;
+    }
+    .title-card {
+        background: var(--steam-iron-900);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 12px;
+        padding: 1.25rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        transition: border-color 0.2s;
+    }
+    .title-card.active {
+        border-color: var(--steam-gold-400);
+        box-shadow: 0 0 12px rgba(251,191,36,0.2);
+    }
+    .title-badge-wrap {
+        display: flex;
+        justify-content: center;
+    }
+    .title-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--steam-gold-200);
+        text-align: center;
+    }
+    .title-desc {
+        font-size: 0.75rem;
+        color: var(--steam-iron-300);
+        text-align: center;
+    }
+    .title-active-badge {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.6rem;
+        border-radius: 9999px;
+        background: var(--steam-gold-500);
+        color: #000;
+        font-weight: 600;
+    }
+    .title-set-btn {
+        margin-top: 0.25rem;
+        padding: 0.35rem 1rem;
+        border-radius: 9999px;
+        background: transparent;
+        border: 1px solid var(--steam-gold-400);
+        color: var(--steam-gold-300);
+        font-size: 0.78rem;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .title-set-btn:hover {
+        background: var(--steam-gold-500);
+        color: #000;
+    }
+    .titles-empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--steam-iron-300);
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="titles-container">
+    <div class="titles-header">
+        <h1>⭐ 獲得称号</h1>
+        <p>アチーブメントで解放した称号の一覧です。クリックで表示中の称号を変更できます。</p>
+    </div>
+    <div class="titles-grid" id="titles-grid">
+        <div class="titles-empty">読み込み中...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const token = getAccessToken();
+    if (!token) { window.location.replace('/login/'); }
+
+    /** 称号名からSVGテキストバッジを生成 */
+    function buildTitleSvgBadge(titleName) {
+        const name = titleName || '称号';
+        const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="56" viewBox="0 0 220 56" role="img" aria-label="${escaped}">
+  <defs>
+    <linearGradient id="tbg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#78350f"/>
+      <stop offset="100%" stop-color="#1c1a14"/>
+    </linearGradient>
+    <linearGradient id="tb3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="50%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="218" height="54" rx="8" ry="8" fill="url(#tbg3)" stroke="url(#tb3)" stroke-width="1.5"/>
+  <text x="110" y="14" text-anchor="middle" font-size="6" fill="#fbbf24" opacity="0.8">✦ ✦ ✦</text>
+  <text x="110" y="34" text-anchor="middle" dominant-baseline="middle"
+        font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif"
+        font-size="${name.length > 8 ? 13 : 16}" font-weight="700"
+        fill="#fde68a" letter-spacing="2">${escaped}</text>
+  <text x="110" y="50" text-anchor="middle" font-size="6" fill="#d97706" opacity="0.7" letter-spacing="3">TOYBOX TITLE</text>
+</svg>`;
+    }
+
+    const ACHIEVEMENT_DESCS = {
+        '駆け出しクリエイター': 'TOYBOXに登録した',
+        '見習いクリエイター':   '5作品以上投稿した',
+        '中堅クリエイター':     '20作品以上投稿した',
+        'ベテランクリエイター': '50作品以上投稿した',
+        'ゲームメーカー見習い': 'ゲームを1作品以上投稿した',
+        'ゲームクリエイター':   'ゲームを5作品以上投稿した',
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        document.body.style.visibility = 'visible';
+        try {
+            const res = await fetch('/api/users/me/', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!res.ok) throw new Error('API error');
+            const data = await res.json();
+
+            const earned = data.earnedTitles || data.earned_titles || [];
+            const active = data.activeTitle || data.active_title || '';
+            const grid = document.getElementById('titles-grid');
+
+            if (!earned.length) {
+                grid.innerHTML = '<div class="titles-empty">まだ称号を獲得していません。<br>作品を投稿してアチーブメントを達成しよう！</div>';
+                return;
+            }
+
+            grid.innerHTML = earned.map(titleName => {
+                const isActive = titleName === active;
+                return `<div class="title-card ${isActive ? 'active' : ''}">
+                    <div class="title-badge-wrap">${buildTitleSvgBadge(titleName)}</div>
+                    <div class="title-name">${titleName}</div>
+                    <div class="title-desc">${ACHIEVEMENT_DESCS[titleName] || ''}</div>
+                    ${isActive
+                        ? '<span class="title-active-badge">✓ 表示中</span>'
+                        : `<button class="title-set-btn" onclick="setActiveTitle('${titleName.replace(/'/g,"\\'")}', this)">この称号を使う</button>`
+                    }
+                </div>`;
+            }).join('');
+        } catch (e) {
+            document.getElementById('titles-grid').innerHTML =
+                '<div class="titles-empty">読み込みに失敗しました。</div>';
+        }
+    });
+
+    async function setActiveTitle(titleName, btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = '設定中...';
+        try {
+            const res = await fetch('/api/users/title/', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: titleName }),
+            });
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                alert('設定に失敗しました');
+                btnEl.disabled = false;
+                btnEl.textContent = 'この称号を使う';
+            }
+        } catch {
+            alert('通信エラーが発生しました');
+            btnEl.disabled = false;
+            btnEl.textContent = 'この称号を使う';
+        }
+    }
+</script>
+{% endblock %}

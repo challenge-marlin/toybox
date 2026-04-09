@@ -169,16 +169,8 @@
         border-radius: 8px;
         border: 1px solid var(--steam-iron-700);
         background: var(--steam-iron-900);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .profile-view-submission-item img,
-    .profile-view-submission-item video,
-    .profile-view-submission-item .game-icon {
         aspect-ratio: 1;
-        flex-shrink: 0;
+        overflow: hidden;
     }
     
     .profile-view-submission-item.game {
@@ -192,6 +184,7 @@
     .profile-view-submission-item img,
     .profile-view-submission-item video {
         width: 100%;
+        height: 100%;
         object-fit: contain;
         padding: 0.5rem;
         cursor: pointer;
@@ -199,6 +192,7 @@
     
     .profile-view-submission-item .game-icon {
         width: 100%;
+        height: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -206,48 +200,6 @@
         color: var(--steam-iron-200);
         padding: 0.75rem;
     }
-
-    /* リアクションバー */
-    .profile-reaction-bar {
-        display: flex;
-        align-items: center;
-        gap: 0.2rem;
-        padding: 0.3rem 0.4rem;
-        background: var(--steam-iron-800, #1e1e1e);
-        border-top: 1px solid rgba(255,255,255,0.07);
-        flex-wrap: wrap;
-        flex-shrink: 0;
-    }
-
-    .profile-reaction-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.18rem;
-        padding: 0.18rem 0.4rem;
-        border-radius: 9999px;
-        background: transparent;
-        border: 1px solid rgba(255,255,255,0.12);
-        color: var(--steam-iron-200, #e2e2e2);
-        font-size: 0.72rem;
-        cursor: pointer;
-        transition: background 0.15s, border-color 0.15s, transform 0.1s;
-        line-height: 1;
-    }
-
-    .profile-reaction-btn:hover {
-        background: rgba(255,255,255,0.1);
-        border-color: rgba(255,255,255,0.3);
-        transform: scale(1.1);
-    }
-
-    .profile-reaction-btn.reacted {
-        background: rgba(251, 113, 133, 0.18);
-        border-color: #fb7185;
-        color: #fb7185;
-    }
-
-    .profile-reaction-btn .reaction-emoji { font-size: 0.9rem; line-height: 1; }
-    .profile-reaction-btn .reaction-count { font-size: 0.68rem; min-width: 0.7rem; }
     
     .profile-view-submission-item .game-icon svg {
         color: var(--steam-gold-300);
@@ -260,9 +212,65 @@
         font-weight: 600;
     }
     
-    .profile-view-submission-item .like-button {
-        display: none; /* v2.0: リアクションバーに置き換え */
+    .profile-view-submission-item .like-button { display: none; }
+
+    /* リアクショントリガーボタン（profile_view共通） */
+    .reaction-trigger-btn {
+        position: absolute;
+        bottom: 0.4rem;
+        right: 0.4rem;
+        z-index: 20;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.22rem 0.5rem;
+        border-radius: 9999px;
+        background: rgba(0,0,0,0.6);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #e2e2e2;
+        font-size: 0.8rem;
+        cursor: pointer;
+        backdrop-filter: blur(3px);
+        transition: background 0.15s;
+        line-height: 1;
+        user-select: none;
     }
+    .reaction-trigger-btn:hover { background: rgba(0,0,0,0.85); }
+    .reaction-trigger-btn.has-reacted { border-color: #fb7185; color: #fb7185; }
+
+    /* グローバルドロップダウン（profile_view） */
+    #profile-reaction-dropdown {
+        position: fixed;
+        z-index: 9999;
+        background: var(--steam-iron-900, #111);
+        border: 1px solid var(--steam-iron-700, #333);
+        border-radius: 14px;
+        padding: 0.35rem 0.5rem;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+        display: none;
+        gap: 0.25rem;
+        align-items: center;
+    }
+    .dd-reaction-btn {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.1rem;
+        padding: 0.3rem 0.4rem;
+        border-radius: 10px;
+        background: transparent;
+        border: 1px solid transparent;
+        color: #e2e2e2;
+        font-size: 0.72rem;
+        cursor: pointer;
+        transition: background 0.12s, transform 0.1s;
+        min-width: 2.4rem;
+    }
+    .dd-reaction-btn .dd-emoji { font-size: 1.4rem; line-height: 1; }
+    .dd-reaction-btn .dd-count { font-size: 0.65rem; color: var(--steam-iron-300, #aaa); min-height: 0.8rem; }
+    .dd-reaction-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.12); }
+    .dd-reaction-btn.reacted { background: rgba(251,113,133,0.18); border-color: #fb7185; color: #fb7185; }
+    .dd-reaction-btn.reacted .dd-count { color: #fb7185; }
     
     .profile-view-submission-item .game-link {
         position: absolute;
@@ -414,6 +422,9 @@
 </main>
 
 <!-- ライトボックス -->
+<!-- プロフィールページ用リアクションドロップダウン -->
+<div id="profile-reaction-dropdown"></div>
+
 <div class="lightbox-overlay" id="lightbox-overlay" onclick="closeLightbox()">
     <button class="lightbox-close" onclick="closeLightbox()">×</button>
     <div class="lightbox-content" onclick="event.stopPropagation()" style="display: flex; flex-direction: column; align-items: center; gap: 1rem; max-width: min(80vw, 1200px); width: 100%; padding: 1rem 0; margin: auto;">
@@ -747,24 +758,11 @@
                 content = `<img src="${imageSrc}" alt="submission" onclick="openLightbox('${lightboxImageSrc}', 'image', '${s.id}')">`;
             }
             
-            // リアクションバー
-            const REACTION_TYPES = [
-                { type: 'submit_medal', emoji: '👍' },
-                { type: 'awesome',      emoji: '🤩' },
-                { type: 'cute',         emoji: '🥰' },
-                { type: 'funny',        emoji: '😂' },
-                { type: 'moved',        emoji: '😭' },
-                { type: 'cool',         emoji: '😎' },
-            ];
-            const reactionsMap = {};
-            if (s.allReactions) s.allReactions.forEach(r => { reactionsMap[r.type] = r; });
-            const reactionBarHtml = REACTION_TYPES.map(rt => {
-                const rd = reactionsMap[rt.type] || { count: 0, user_reacted: false };
-                return `<button class="profile-reaction-btn ${rd.user_reacted ? 'reacted' : ''}" data-submission-id="${s.id}" data-reaction-type="${rt.type}" onclick="toggleProfileReaction('${s.id}','${rt.type}',this)" title="${rt.emoji}">
-                    <span class="reaction-emoji">${rt.emoji}</span>
-                    <span class="reaction-count">${rd.count > 0 ? rd.count : ''}</span>
-                </button>`;
-            }).join('');
+            // リアクショントリガーボタン
+            const pTotalReactions = s.allReactions ? s.allReactions.reduce((sum, r) => sum + (r.count||0), 0) : 0;
+            const pUserReaction = s.allReactions ? s.allReactions.find(r => r.user_reacted) : null;
+            const pTriggerEmoji = pUserReaction ? pUserReaction.emoji : '❤';
+            const pTriggerClass = pUserReaction ? 'has-reacted' : '';
 
             return `
                 <div class="profile-view-submission-item ${isGame ? 'game' : (isVideo ? 'video' : '')}" data-submission-id="${s.id}">
@@ -778,7 +776,12 @@
                             開く
                         </div>
                     ` : ''}
-                    <div class="profile-reaction-bar">${reactionBarHtml}</div>
+                    <button class="reaction-trigger-btn ${pTriggerClass}" data-submission-id="${s.id}"
+                            onclick="openProfileReactionDropdown('${s.id}', this, event)">
+                        <span>${pTriggerEmoji}</span>
+                        ${pTotalReactions > 0 ? `<span style="font-size:0.72rem">${pTotalReactions}</span>` : ''}
+                        <span style="font-size:0.65rem;opacity:0.8">▾</span>
+                    </button>
                 </div>
             `;
         }).join('');
@@ -788,32 +791,101 @@
         loadSubmissions();
     }
     
-    // プロフィールページ汎用リアクション
+    // ===== プロフィールページ ドロップダウンリアクション =====
+    const PROFILE_REACTION_DEFS = [
+        { type: 'submit_medal', emoji: '👍', label: 'いいね！' },
+        { type: 'awesome',      emoji: '🤩', label: 'すごい！' },
+        { type: 'cute',         emoji: '🥰', label: 'かわいい！' },
+        { type: 'funny',        emoji: '😂', label: '笑える！' },
+        { type: 'moved',        emoji: '😭', label: '感動した' },
+        { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
+    ];
+    let profileActiveDropdownId = null;
+
+    function openProfileReactionDropdown(submissionId, triggerEl, event) {
+        event.stopPropagation();
+        const dd = document.getElementById('profile-reaction-dropdown');
+        if (profileActiveDropdownId === submissionId) { closeProfileReactionDropdown(); return; }
+        profileActiveDropdownId = submissionId;
+
+        const s = submissions.find(x => x.id === submissionId);
+        const map = {};
+        if (s && s.allReactions) s.allReactions.forEach(r => { map[r.type] = r; });
+
+        dd.innerHTML = PROFILE_REACTION_DEFS.map(rd => {
+            const r = map[rd.type] || { count: 0, user_reacted: false };
+            return `<button class="dd-reaction-btn ${r.user_reacted ? 'reacted' : ''}"
+                        onclick="toggleProfileReaction('${submissionId}','${rd.type}',this);event.stopPropagation()">
+                <span class="dd-emoji">${rd.emoji}</span>
+                <span class="dd-count">${r.count > 0 ? r.count : ''}</span>
+            </button>`;
+        }).join('');
+
+        dd.style.display = 'flex';
+        const rect = triggerEl.getBoundingClientRect();
+        dd.style.left = '0px'; dd.style.top = '0px';
+        requestAnimationFrame(() => {
+            const dw = dd.offsetWidth, dh = dd.offsetHeight;
+            let left = rect.right - dw;
+            if (left < 4) left = 4;
+            if (left + dw > window.innerWidth - 4) left = window.innerWidth - dw - 4;
+            let top = rect.top - dh - 6;
+            if (top < 4) top = rect.bottom + 6;
+            dd.style.left = left + 'px';
+            dd.style.top = top + 'px';
+        });
+    }
+
+    function closeProfileReactionDropdown() {
+        const dd = document.getElementById('profile-reaction-dropdown');
+        if (dd) dd.style.display = 'none';
+        profileActiveDropdownId = null;
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#profile-reaction-dropdown') && !e.target.closest('.reaction-trigger-btn')) {
+            closeProfileReactionDropdown();
+        }
+    });
+
     function toggleProfileReaction(submissionId, reactionType, btnEl) {
         const token = localStorage.getItem('access_token');
         if (!token) { alert('ログインが必要です'); return; }
         const isReacted = btnEl.classList.contains('reacted');
-        const countEl = btnEl.querySelector('.reaction-count');
-        const currentCount = parseInt(countEl.textContent || '0', 10);
-        if (isReacted) {
-            btnEl.classList.remove('reacted');
-            const n = Math.max(0, currentCount - 1);
-            countEl.textContent = n > 0 ? n : '';
-        } else {
-            btnEl.classList.add('reacted');
-            countEl.textContent = currentCount + 1;
+        const countEl = btnEl.querySelector('.dd-count');
+        const currentCount = parseInt((countEl && countEl.textContent) || '0', 10);
+
+        btnEl.classList.toggle('reacted', !isReacted);
+        if (countEl) countEl.textContent = isReacted ? (Math.max(0,currentCount-1)||'') : (currentCount+1);
+
+        // submissionsデータ更新 → トリガーボタン再描画
+        const s = submissions.find(x => x.id === submissionId);
+        if (s && s.allReactions) {
+            const r = s.allReactions.find(x => x.type === reactionType);
+            if (r) { r.user_reacted = !isReacted; r.count = Math.max(0, r.count + (isReacted ? -1 : 1)); }
+            updateProfileTriggerBtn(submissionId, s.allReactions);
         }
+
         fetch(`/api/submissions/${encodeURIComponent(submissionId)}/react/${reactionType}/`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         })
         .then(r => r.json())
         .then(data => {
-            if (!data.ok) { btnEl.classList.toggle('reacted', isReacted); countEl.textContent = currentCount > 0 ? currentCount : ''; return; }
-            const n = data.count || 0;
-            countEl.textContent = n > 0 ? n : '';
+            if (!data.ok) { btnEl.classList.toggle('reacted', isReacted); if(countEl) countEl.textContent = currentCount||''; return; }
+            if (countEl) countEl.textContent = (data.count||0)||'';
         })
-        .catch(() => { btnEl.classList.toggle('reacted', isReacted); countEl.textContent = currentCount > 0 ? currentCount : ''; });
+        .catch(() => { btnEl.classList.toggle('reacted', isReacted); if(countEl) countEl.textContent = currentCount||''; });
+    }
+
+    function updateProfileTriggerBtn(submissionId, allReactions) {
+        const trigger = document.querySelector(`.reaction-trigger-btn[data-submission-id="${submissionId}"]`);
+        if (!trigger) return;
+        const total = allReactions.reduce((s, r) => s + (r.count||0), 0);
+        const userReaction = allReactions.find(r => r.user_reacted);
+        const emoji = userReaction ? userReaction.emoji : '❤';
+        trigger.className = `reaction-trigger-btn ${userReaction ? 'has-reacted' : ''}`;
+        trigger.innerHTML = `<span>${emoji}</span>${total > 0 ? `<span style="font-size:0.72rem">${total}</span>` : ''}<span style="font-size:0.65rem;opacity:0.8">▾</span>`;
     }
 
     // いいねボタンとカウントだけを更新する関数（画像は再読み込みしない）

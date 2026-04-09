@@ -23,6 +23,9 @@ urlpatterns = [
     # Current user endpoint
     path('me/', views.CurrentUserView.as_view(), name='current-user'),
     
+    # 称号変更エンドポイント
+    path('title/', views.SetActiveTitleView.as_view(), name='set-active-title'),
+    
     # Notification endpoints
     path('notifications/', views.NotificationListView.as_view(), name='notifications'),
     path('notifications/read/', views.NotificationReadView.as_view(), name='notifications-read'),

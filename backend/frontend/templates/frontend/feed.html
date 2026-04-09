@@ -45,17 +45,8 @@
         border-radius: 8px;
         border: 1px solid var(--steam-iron-700);
         background: var(--steam-iron-900);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* 画像・動画・ゲームエリアは 1:1 を維持 */
-    .feed-item > img.feed-item-image,
-    .feed-item > .feed-item-video-container,
-    .feed-item > .feed-item-game-container {
         aspect-ratio: 1;
-        flex-shrink: 0;
+        overflow: hidden;
     }
     
     .feed-item.game {
@@ -96,11 +87,10 @@
     
     .feed-item-image {
         width: 100%;
-        aspect-ratio: 1;
+        height: 100%;
         object-fit: contain;
         padding: 0.75rem;
         cursor: zoom-in;
-        flex-shrink: 0;
     }
     
     .feed-item-video-container {
@@ -232,54 +222,63 @@
         color: #fb7185;
     }
 
-    /* リアクションバー */
-    .feed-reactions {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.35rem 0.5rem;
-        background: var(--steam-iron-800, #1e1e1e);
-        border-top: 1px solid rgba(255,255,255,0.07);
-        flex-wrap: wrap;
-    }
-
-    .feed-reaction-btn {
+    /* リアクショントリガーボタン（▼） */
+    .reaction-trigger-btn {
+        position: absolute;
+        bottom: 0.4rem;
+        right: 0.4rem;
+        z-index: 20;
         display: inline-flex;
         align-items: center;
         gap: 0.2rem;
-        padding: 0.2rem 0.45rem;
+        padding: 0.22rem 0.5rem;
         border-radius: 9999px;
-        background: transparent;
-        border: 1px solid rgba(255,255,255,0.12);
-        color: var(--steam-iron-200, #e2e2e2);
-        font-size: 0.78rem;
+        background: rgba(0,0,0,0.6);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #e2e2e2;
+        font-size: 0.8rem;
         cursor: pointer;
-        transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        backdrop-filter: blur(3px);
+        transition: background 0.15s;
         line-height: 1;
+        user-select: none;
     }
+    .reaction-trigger-btn:hover { background: rgba(0,0,0,0.85); }
+    .reaction-trigger-btn.has-reacted { border-color: #fb7185; color: #fb7185; }
 
-    .feed-reaction-btn:hover {
-        background: rgba(255,255,255,0.1);
-        border-color: rgba(255,255,255,0.3);
-        transform: scale(1.1);
+    /* グローバルリアクションドロップダウン */
+    #reaction-dropdown {
+        position: fixed;
+        z-index: 9999;
+        background: var(--steam-iron-900, #111);
+        border: 1px solid var(--steam-iron-700, #333);
+        border-radius: 14px;
+        padding: 0.35rem 0.5rem;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+        display: none;
+        gap: 0.25rem;
+        align-items: center;
     }
-
-    .feed-reaction-btn.reacted {
-        background: rgba(251, 113, 133, 0.18);
-        border-color: #fb7185;
-        color: #fb7185;
-    }
-
-    .feed-reaction-btn .reaction-emoji {
-        font-size: 1rem;
-        line-height: 1;
-    }
-
-    .feed-reaction-btn .reaction-count {
+    .dd-reaction-btn {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.1rem;
+        padding: 0.3rem 0.4rem;
+        border-radius: 10px;
+        background: transparent;
+        border: 1px solid transparent;
+        color: #e2e2e2;
         font-size: 0.72rem;
-        min-width: 0.8rem;
-        text-align: center;
+        cursor: pointer;
+        transition: background 0.12s, transform 0.1s;
+        min-width: 2.4rem;
     }
+    .dd-reaction-btn .dd-emoji { font-size: 1.4rem; line-height: 1; }
+    .dd-reaction-btn .dd-count { font-size: 0.65rem; color: var(--steam-iron-300, #aaa); min-height: 0.8rem; }
+    .dd-reaction-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.12); }
+    .dd-reaction-btn.reacted { background: rgba(251,113,133,0.18); border-color: #fb7185; color: #fb7185; }
+    .dd-reaction-btn.reacted .dd-count { color: #fb7185; }
     
     .feed-game-link {
         position: absolute;
@@ -446,6 +445,11 @@
             </button>
         </div>
     </div>
+</div>
+
+<!-- グローバルリアクションドロップダウン -->
+<div id="reaction-dropdown">
+    <!-- JSで挿入 -->
 </div>
 
 <script>
@@ -647,29 +651,13 @@
             }
         }
         
-        // NOTE: 「みんなの投稿」では称号を表示しない（投稿画像に重なるため）
-        
-        // リアクションバーを構築（全タイプ表示）
-        const REACTION_TYPES = [
-            { type: 'submit_medal', emoji: '👍', label: 'いいね！' },
-            { type: 'awesome',      emoji: '🤩', label: 'すごい！' },
-            { type: 'cute',         emoji: '🥰', label: 'かわいい！' },
-            { type: 'funny',        emoji: '😂', label: '笑える！' },
-            { type: 'moved',        emoji: '😭', label: '感動した' },
-            { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
-        ];
+        // リアクショントリガーボタン用の情報
         const reactionsMap = {};
-        if (item.allReactions) {
-            item.allReactions.forEach(r => { reactionsMap[r.type] = r; });
-        }
-        const reactionBarHtml = REACTION_TYPES.map(rt => {
-            const rd = reactionsMap[rt.type] || { count: 0, user_reacted: false };
-            const reacted = rd.user_reacted ? 'reacted' : '';
-            return `<button class="feed-reaction-btn ${reacted}" data-submission-id="${item.id}" data-reaction-type="${rt.type}" onclick="toggleReaction('${item.id}','${rt.type}',this)" title="${rt.label}">
-                <span class="reaction-emoji">${rt.emoji}</span>
-                <span class="reaction-count">${rd.count > 0 ? rd.count : ''}</span>
-            </button>`;
-        }).join('');
+        if (item.allReactions) item.allReactions.forEach(r => { reactionsMap[r.type] = r; });
+        const totalReactions = item.allReactions ? item.allReactions.reduce((s, r) => s + (r.count || 0), 0) : 0;
+        const userReaction = item.allReactions ? item.allReactions.find(r => r.user_reacted) : null;
+        const triggerEmoji = userReaction ? userReaction.emoji : '❤';
+        const triggerClass = userReaction ? 'has-reacted' : '';
 
         return `
             <div class="feed-item ${itemClass}" data-submission-id="${item.id}">
@@ -687,7 +675,12 @@
                         開く
                     </a>
                 ` : ''}
-                <div class="feed-reactions">${reactionBarHtml}</div>
+                <button class="reaction-trigger-btn ${triggerClass}" data-submission-id="${item.id}"
+                        onclick="openReactionDropdown('${item.id}', this, event)">
+                    <span>${triggerEmoji}</span>
+                    ${totalReactions > 0 ? `<span style="font-size:0.72rem">${totalReactions}</span>` : ''}
+                    <span style="font-size:0.65rem;opacity:0.8">▾</span>
+                </button>
             </div>
         `;
     }
@@ -733,24 +726,84 @@
     }
 
     // 汎用リアクション切り替え
+    // ===== ドロップダウンリアクション =====
+    const REACTION_DEFS = [
+        { type: 'submit_medal', emoji: '👍', label: 'いいね！' },
+        { type: 'awesome',      emoji: '🤩', label: 'すごい！' },
+        { type: 'cute',         emoji: '🥰', label: 'かわいい！' },
+        { type: 'funny',        emoji: '😂', label: '笑える！' },
+        { type: 'moved',        emoji: '😭', label: '感動した' },
+        { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
+    ];
+    let activeDropdownId = null;
+
+    function openReactionDropdown(submissionId, triggerEl, event) {
+        event.stopPropagation();
+        const dd = document.getElementById('reaction-dropdown');
+        if (activeDropdownId === submissionId) { closeReactionDropdown(); return; }
+        activeDropdownId = submissionId;
+
+        const item = items.find(x => x.id === submissionId) || popularItems.find(x => x.id === submissionId);
+        const map = {};
+        if (item && item.allReactions) item.allReactions.forEach(r => { map[r.type] = r; });
+
+        dd.innerHTML = REACTION_DEFS.map(rd => {
+            const r = map[rd.type] || { count: 0, user_reacted: false };
+            return `<button class="dd-reaction-btn ${r.user_reacted ? 'reacted' : ''}"
+                        onclick="toggleReaction('${submissionId}','${rd.type}',this);event.stopPropagation()">
+                <span class="dd-emoji">${rd.emoji}</span>
+                <span class="dd-count">${r.count > 0 ? r.count : ''}</span>
+            </button>`;
+        }).join('');
+
+        dd.style.display = 'flex';
+        const rect = triggerEl.getBoundingClientRect();
+        dd.style.left = '0px'; dd.style.top = '0px';
+        requestAnimationFrame(() => {
+            const dw = dd.offsetWidth, dh = dd.offsetHeight;
+            let left = rect.right - dw;
+            if (left < 4) left = 4;
+            if (left + dw > window.innerWidth - 4) left = window.innerWidth - dw - 4;
+            let top = rect.top - dh - 6;
+            if (top < 4) top = rect.bottom + 6;
+            dd.style.left = left + 'px';
+            dd.style.top = top + 'px';
+        });
+    }
+
+    function closeReactionDropdown() {
+        const dd = document.getElementById('reaction-dropdown');
+        if (dd) dd.style.display = 'none';
+        activeDropdownId = null;
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#reaction-dropdown') && !e.target.closest('.reaction-trigger-btn')) {
+            closeReactionDropdown();
+        }
+    });
+
     function toggleReaction(submissionId, reactionType, btnEl) {
         const token = localStorage.getItem('access_token');
         if (!token) { alert('ログインが必要です'); return; }
 
         const isReacted = btnEl.classList.contains('reacted');
-        const countEl = btnEl.querySelector('.reaction-count');
-        const currentCount = parseInt(countEl.textContent || '0', 10);
+        const countEl = btnEl.querySelector('.dd-count') || btnEl.querySelector('.reaction-count');
+        const currentCount = parseInt((countEl && countEl.textContent) || '0', 10);
 
         // 楽観的更新
-        if (isReacted) {
-            btnEl.classList.remove('reacted');
-            const newCount = Math.max(0, currentCount - 1);
-            countEl.textContent = newCount > 0 ? newCount : '';
-        } else {
-            btnEl.classList.add('reacted');
-            const newCount = currentCount + 1;
-            countEl.textContent = newCount;
-        }
+        btnEl.classList.toggle('reacted', !isReacted);
+        if (countEl) countEl.textContent = isReacted ? (Math.max(0,currentCount-1)||'') : (currentCount+1);
+
+        // itemデータも更新してトリガーボタンを再描画
+        const updateItem = (arr) => {
+            const item = arr.find(x => x.id === submissionId);
+            if (!item || !item.allReactions) return;
+            const r = item.allReactions.find(x => x.type === reactionType);
+            if (r) { r.user_reacted = !isReacted; r.count = Math.max(0, r.count + (isReacted ? -1 : 1)); }
+            updateTriggerBtn(submissionId, item.allReactions);
+        };
+        updateItem(items); updateItem(popularItems);
 
         fetch(`/api/submissions/${encodeURIComponent(submissionId)}/react/${reactionType}/`, {
             method: 'POST',
@@ -758,21 +811,20 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (!data.ok) {
-                // サーバーエラー時は楽観的更新を元に戻す
-                if (isReacted) { btnEl.classList.add('reacted'); countEl.textContent = currentCount > 0 ? currentCount : ''; }
-                else { btnEl.classList.remove('reacted'); countEl.textContent = Math.max(0, currentCount - 1) > 0 ? Math.max(0, currentCount - 1) : ''; }
-                return;
-            }
-            // サーバーの正確なカウントで上書き
-            const serverCount = data.count || 0;
-            countEl.textContent = serverCount > 0 ? serverCount : '';
+            if (!data.ok) { btnEl.classList.toggle('reacted', isReacted); if(countEl) countEl.textContent = currentCount||''; return; }
+            if (countEl) countEl.textContent = (data.count || 0) || '';
         })
-        .catch(() => {
-            // 通信エラー時は楽観的更新を元に戻す
-            btnEl.classList.toggle('reacted', isReacted);
-            countEl.textContent = currentCount > 0 ? currentCount : '';
-        });
+        .catch(() => { btnEl.classList.toggle('reacted', isReacted); if(countEl) countEl.textContent = currentCount||''; });
+    }
+
+    function updateTriggerBtn(submissionId, allReactions) {
+        const trigger = document.querySelector(`.reaction-trigger-btn[data-submission-id="${submissionId}"]`);
+        if (!trigger) return;
+        const total = allReactions.reduce((s, r) => s + (r.count || 0), 0);
+        const userReaction = allReactions.find(r => r.user_reacted);
+        const emoji = userReaction ? userReaction.emoji : '❤';
+        trigger.className = `reaction-trigger-btn ${userReaction ? 'has-reacted' : ''}`;
+        trigger.innerHTML = `<span>${emoji}</span>${total > 0 ? `<span style="font-size:0.72rem">${total}</span>` : ''}<span style="font-size:0.65rem;opacity:0.8">▾</span>`;
     }
     
     function toggleLike(submissionId, currentLiked) {

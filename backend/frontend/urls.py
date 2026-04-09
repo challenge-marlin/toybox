@@ -16,6 +16,7 @@ urlpatterns = [
     path('collection/', views.collection, name='collection'),
     path('profile/', views.profile, name='profile'),
     path('profile/view/', views.profile_view, name='profile-view'),
+    path('titles/', views.titles, name='titles'),
     path('announcement/<int:announcement_id>/', views.announcement_detail, name='announcement-detail'),
     path('announcements/', views.announcements_list, name='announcements-list'),
     path('terms/', views.terms, name='terms'),

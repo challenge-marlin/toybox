@@ -150,6 +150,11 @@ def profile_view(request):
     return render(request, 'frontend/profile_view.html')
 
 
+def titles(request):
+    """獲得称号一覧ページ。"""
+    return render(request, 'frontend/titles.html')
+
+
 def announcements_list(request):
     """Announcements list page."""
     from datetime import datetime, timedelta

@@ -675,29 +675,9 @@ class ProfileGetView(APIView):
                 profile_logger.error(f'[Profile Image Debug] ProfileGetView - Error getting header_url for user {user.id}: {e}', exc_info=True)
                 header_url = None
             
-            # 称号のバナー画像URLを取得（v2.0: 実画像がある場合のみ返す、フォールバックなし）
+            # 称号のバナー画像URLは v2.0 では常に None（SVGバッジをフロントで生成）
+            # 旧 image_url フィールドは廃止、ImageField に実ファイルがある場合のみ返す
             active_title_image_url = None
-            if active_title:
-                try:
-                    from gamification.models import Title
-                    title_obj = Title.objects.filter(name=active_title).first()
-                    if title_obj:
-                        fallback = '/static/frontend/hero/toybox-title.png'
-                        # ImageField に実ファイルがある場合
-                        if title_obj.image and title_obj.image.name:
-                            try:
-                                from toybox.image_utils import build_https_absolute_uri
-                                image_url = title_obj.image.url
-                                active_title_image_url = build_https_absolute_uri(request, image_url) if request else image_url
-                            except Exception:
-                                pass
-                        # image_url フィールドがあり、フォールバックでない場合
-                        elif title_obj.image_url and title_obj.image_url != fallback and not title_obj.image_url.endswith('toybox-title.png'):
-                            active_title_image_url = title_obj.image_url
-                        # それ以外は None のまま（フロントでSVGバッジ表示）
-                except Exception as e:
-                    profile_logger = logging.getLogger(__name__)
-                    profile_logger.warning(f'Failed to get title image for {active_title}: {e}')
             
             # 獲得したいいねの合計を計算
             total_likes = 0

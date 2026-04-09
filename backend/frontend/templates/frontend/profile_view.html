@@ -644,11 +644,8 @@
                 // 称号を表示（v2.0: 有効期限廃止・SVGバッジ対応）
                 const titleEl = document.getElementById('profile-title');
                 if (activeTitle && titleEl) {
-                    if (activeTitleImageUrl && !activeTitleImageUrl.includes('toybox-title')) {
-                        titleEl.innerHTML = `<img src="${activeTitleImageUrl}" alt="${activeTitle}" style="max-width:240px;max-height:60px;width:100%;height:auto;object-fit:contain;border-radius:8px;" onerror="this.outerHTML=buildTitleSvgBadge('${activeTitle.replace(/'/g,'\\\'')}}');">`;
-                    } else {
-                        titleEl.innerHTML = buildTitleSvgBadge(activeTitle);
-                    }
+                    // v2.0: 常にSVGバッジを表示
+                    titleEl.innerHTML = buildTitleSvgBadge(activeTitle);
                 } else if (titleEl) {
                     titleEl.innerHTML = '';
                 }

@@ -53,6 +53,7 @@
                 <a href="/collection/" id="nav-collection" style="color: var(--steam-gold-400); text-decoration: none; display: none;">コレクション</a>
                 <a href="/profile/view/" id="nav-profile" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール</a>
                 <a href="/feed/" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
+                <a href="/titles/" id="nav-titles-main" style="color: var(--steam-gold-400); text-decoration: none; display: none;">⭐ 獲得称号</a>
                 <button type="button" id="nav-id-info" onclick="openIdPopup(); return false;" aria-label="ID・契約案内" style="display: none; background: var(--steam-gold-500); color: #000; border: none; border-radius: 50%; width: 1.5rem; height: 1.5rem; font-weight: bold; font-size: 0.875rem; cursor: pointer; padding: 0; line-height: 1;">!</button>
                 <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
             </nav>
@@ -351,6 +352,8 @@
                 if (navMe) navMe.style.display = 'inline';
                 if (navCollection) navCollection.style.display = 'inline';
                 if (navProfile) navProfile.style.display = 'inline';
+                const navTitlesMain = document.getElementById('nav-titles-main');
+                if (navTitlesMain) navTitlesMain.style.display = 'inline';
                 if (navLogin) navLogin.style.display = 'none';
                 if (userInfo) userInfo.style.display = 'flex';
                 

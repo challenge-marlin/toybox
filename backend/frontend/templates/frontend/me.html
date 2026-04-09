@@ -901,13 +901,8 @@
             
             if (data.activeTitle) {
                 if (titleElement) {
-                    // v2.0: activeTitleImageUrl は実画像のみ（フォールバックは返さない）
-                    const imageUrl = data.activeTitleImageUrl || data.active_title_image_url;
-                    if (imageUrl && !imageUrl.includes('toybox-title')) {
-                        titleElement.innerHTML = `<img src="${imageUrl}" alt="${data.activeTitle}" style="max-width:280px;max-height:80px;width:100%;height:auto;object-fit:contain;border-radius:8px;" onerror="this.outerHTML=buildTitleSvgBadge('${data.activeTitle.replace(/'/g,'\\\'')}}');">`;
-                    } else {
-                        titleElement.innerHTML = buildTitleSvgBadge(data.activeTitle);
-                    }
+                    // v2.0: 常にSVGバッジを表示
+                    titleElement.innerHTML = buildTitleSvgBadge(data.activeTitle);
                     titleElement.style.display = 'flex';
                 }
                 if (titleUntilElement) {

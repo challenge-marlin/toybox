@@ -60,6 +60,21 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.warning(f'[Point] submission point award failed: {e}')
     
+    @action(detail=True, methods=['post'], url_path='game-played')
+    def game_played(self, request, pk=None):
+        """ゲームが30秒プレイされたときに呼び出すエンドポイント。
+        プレイヤーに5TP、投稿者に10TPを付与（1日1ゲームにつき1回）。"""
+        submission = self.get_object()
+        if not submission.game_url:
+            return Response({'error': 'Not a game submission'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            from gamification.services import award_game_played
+            result = award_game_played(request.user, submission)
+        except Exception as e:
+            logger.warning(f'[Point] game_played award failed: {e}')
+            result = {'player_awarded': False, 'author_awarded': False}
+        return Response({'ok': True, **result})
+
     @action(detail=True, methods=['post'], url_path='react/submit_medal')
     def react_submit_medal(self, request, pk=None):
         """React to submission with submit_medal (後方互換エンドポイント)."""
@@ -117,8 +132,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             # ポイント付与（投稿者本人以外からのリアクションのみ）
             if submission.author != request.user:
                 try:
-                    from gamification.services import award_reaction_received_points
+                    from gamification.services import award_reaction_received_points, award_points
                     award_reaction_received_points(submission.author, reaction_type)
+                    # リアクションを送ったユーザーにも1TP付与
+                    award_points(request.user, 'reaction_given', 1, 'リアクションをした')
                 except Exception as e:
                     logger.warning(f'[Point] reaction point award failed: {e}')
 

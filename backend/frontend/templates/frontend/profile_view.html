@@ -514,7 +514,7 @@
                     </svg>
                     <div id="lightbox-game-label" style="font-size: 1.25rem; letter-spacing: 0.1em; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem;">GAME</div>
                 </div>
-                <a id="lightbox-game-link" href="" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: var(--steam-gold-500); color: black; font-size: 0.875rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-gold-400)'" onmouseout="this.style.background='var(--steam-gold-500)'">
+                <a id="lightbox-game-link" href="" target="_blank" rel="noreferrer" onclick="onGameLinkClick()" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: var(--steam-gold-500); color: black; font-size: 0.875rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-gold-400)'" onmouseout="this.style.background='var(--steam-gold-500)'">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                         <polyline points="15 3 21 3 21 9"></polyline>
@@ -1177,6 +1177,23 @@
         } catch (e) { console.error('lightbox reaction error', e); }
     }
 
+    let _gamePlayTimer = null;
+
+    function onGameLinkClick() {
+        if (_gamePlayTimer) { clearTimeout(_gamePlayTimer); _gamePlayTimer = null; }
+        const submissionId = currentLightboxAssetId;
+        if (!submissionId) return;
+        _gamePlayTimer = setTimeout(function() {
+            _gamePlayTimer = null;
+            const t = token || localStorage.getItem('access_token');
+            if (!t) return;
+            fetch(`/api/submissions/${submissionId}/game-played/`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
+            }).catch(() => {});
+        }, 30000);
+    }
+
     function closeLightbox() {
         const overlay = document.getElementById('lightbox-overlay');
         const video = document.getElementById('lightbox-video');
@@ -1188,6 +1205,8 @@
             video.pause();
             video.src = '';
         }
+
+        if (_gamePlayTimer) { clearTimeout(_gamePlayTimer); _gamePlayTimer = null; }
         
         currentLightboxAssetId = null;
     }

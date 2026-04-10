@@ -53,6 +53,15 @@
         .rainbow-stop1 { animation: rainbow-shift 3s linear infinite; }
         .rainbow-stop2 { animation: rainbow-shift 3s linear infinite 1s; }
         .rainbow-stop3 { animation: rainbow-shift 3s linear infinite 2s; }
+        @keyframes official-shift {
+            0%   { stop-color: #00e5ff; }
+            33%  { stop-color: #2979ff; }
+            66%  { stop-color: #7c4dff; }
+            100% { stop-color: #00e5ff; }
+        }
+        .official-stop1 { animation: official-shift 2s linear infinite; }
+        .official-stop2 { animation: official-shift 2s linear infinite 0.67s; }
+        .official-stop3 { animation: official-shift 2s linear infinite 1.33s; }
         @keyframes official-border-pulse {
             0%, 100% { box-shadow: 0 0 0 3px #00e5ff, 0 0 10px rgba(0,229,255,0.55); }
             50%       { box-shadow: 0 0 0 3px #2979ff, 0 0 16px rgba(41,121,255,0.7); }
@@ -226,6 +235,7 @@
             'レジェンドクリエイター':'rainbow','ゲームの神様':'rainbow','創造神':'rainbow',
             '深淵のクリエイター':'rainbow','時を超える者':'rainbow','全知全能':'rainbow',
             'TOYBOXの使者':'rainbow','AYATORI':'rainbow',
+            'TOYBOX!公式':'official',
         };
         let _svgId = 0;
         window.getTitleColor = function(n){ return _TCM[n] || 'gold'; };
@@ -236,6 +246,22 @@
             const fs      = name.length > 9 ? 10 : name.length > 6 ? 12 : 14;
             const W = 180, H = 44;
             const uid = ++_svgId;
+            if (color === 'official'){
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escaped}">
+  <defs>
+    <linearGradient id="ofbg${uid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#071428"/><stop offset="100%" stop-color="#030a1a"/></linearGradient>
+    <linearGradient id="ofb${uid}" x1="0" y1="0" x2="1" y2="0">
+      <stop class="official-stop1" offset="0%" stop-color="#00e5ff"/>
+      <stop class="official-stop2" offset="50%" stop-color="#2979ff"/>
+      <stop class="official-stop3" offset="100%" stop-color="#7c4dff"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="${W-2}" height="${H-2}" rx="7" ry="7" fill="url(#ofbg${uid})" stroke="url(#ofb${uid})" stroke-width="2"/>
+  <text x="${W/2}" y="12" text-anchor="middle" font-size="5.5" fill="#00e5ff" opacity="0.85" letter-spacing="2">★ ★ ★</text>
+  <text x="${W/2}" y="${H/2+3}" text-anchor="middle" dominant-baseline="middle" font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif" font-size="${fs}" font-weight="700" fill="#e0f7fa" letter-spacing="1">${escaped}</text>
+  <text x="${W/2}" y="${H-5}" text-anchor="middle" font-size="4.5" fill="#00bcd4" opacity="0.85" letter-spacing="3">OFFICIAL</text>
+</svg>`;
+            }
             if (color === 'rainbow'){
                 return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escaped}">
   <defs>

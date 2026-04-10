@@ -692,3 +692,46 @@ def get_point_summary(user) -> dict:
         'total_points': up.total_points,
         'history': history,
     }
+
+
+def award_game_played(player, submission) -> dict:
+    """
+    ゲームが30秒プレイされたときのポイント付与。
+    - プレイヤー: 5TP（自分の投稿は対象外、1ゲームにつき1日1回）
+    - 投稿者: 10TP（同条件）
+    戻り値: {'player_awarded': bool, 'author_awarded': bool}
+    """
+    if submission.author == player:
+        return {'player_awarded': False, 'author_awarded': False}
+
+    today = timezone.now().date()
+    sub_id = str(submission.id)
+
+    player_already = PointHistory.objects.filter(
+        user=player,
+        action_type='game_played_player',
+        created_at__date=today,
+        description__icontains=sub_id,
+    ).exists()
+    player_awarded = False
+    if not player_already:
+        award_points(player, 'game_played_player', 5, f'ゲームをプレイした (id:{sub_id})')
+        player_awarded = True
+
+    author_already = PointHistory.objects.filter(
+        user=submission.author,
+        action_type='game_played_author',
+        created_at__date=today,
+        description__icontains=f'player:{player.id}',
+    ).exists()
+    author_awarded = False
+    if not author_already:
+        award_points(
+            submission.author,
+            'game_played_author',
+            10,
+            f'ゲームがプレイされた (id:{sub_id}, player:{player.id})',
+        )
+        author_awarded = True
+
+    return {'player_awarded': player_awarded, 'author_awarded': author_awarded}

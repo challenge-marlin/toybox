@@ -1310,3 +1310,18 @@ class PointSummaryView(APIView):
             if hasattr(item['created_at'], 'isoformat'):
                 item['created_at'] = item['created_at'].isoformat()
         return Response(data)
+
+
+class DailyCheckinView(APIView):
+    """毎日ログインボーナスを付与するチェックインエンドポイント。
+    ページロード時に呼び出し、1日1回 30TP を付与する。"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            from gamification.services import award_daily_login
+            awarded = award_daily_login(request.user)
+            return Response({'ok': True, 'awarded': awarded, 'points': 30 if awarded else 0})
+        except Exception as e:
+            logger.warning(f'[Point] daily checkin failed for user {request.user.id}: {e}')
+            return Response({'ok': False, 'awarded': False, 'points': 0})

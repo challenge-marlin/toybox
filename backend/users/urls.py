@@ -29,6 +29,7 @@ urlpatterns = [
 
     # ポイントエンドポイント
     path('points/', views.PointSummaryView.as_view(), name='point-summary'),
+    path('daily-checkin/', views.DailyCheckinView.as_view(), name='daily-checkin'),
     
     # Notification endpoints
     path('notifications/', views.NotificationListView.as_view(), name='notifications'),

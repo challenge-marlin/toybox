@@ -115,6 +115,7 @@ class PointHistory(models.Model):
         GAME_PLAYED = 'game_played', 'ゲームプレイされた'
         FOLLOW_GIVEN = 'follow_given', 'フォローした'
         FOLLOW_RECEIVED = 'follow_received', 'フォローされた'
+        REPOST = 'repost', 'リポスト'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -585,6 +585,26 @@ def award_points(user, action_type: str, points: int, description: str = '') -> 
     return history
 
 
+@transaction.atomic
+def spend_points(user, action_type: str, points: int, description: str = ''):
+    """TP を消費する。残高不足のときは None を返す。"""
+    if points <= 0:
+        return None
+    up = UserPoint.objects.select_for_update().get_or_create(user=user)[0]
+    if up.total_points < points:
+        return None
+    up.total_points -= points
+    up.save(update_fields=['total_points', 'updated_at'])
+    history = PointHistory.objects.create(
+        user=user,
+        action_type=action_type,
+        points=-points,
+        description=(description or '')[:200],
+    )
+    logger.info(f'[Point] user={user.id} -{points}pt ({action_type}) total={up.total_points}')
+    return history
+
+
 def award_registration_bonus(user) -> bool:
     """初回登録ボーナス（100pt）。既に付与済みなら False を返す。"""
     up, created = UserPoint.objects.get_or_create(user=user)

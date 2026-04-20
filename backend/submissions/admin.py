@@ -4,7 +4,7 @@ Submissions app admin.
 from django.contrib import admin
 from django.utils.html import format_html
 from django.conf import settings
-from .models import Submission, Reaction
+from .models import Submission, Reaction, SubmissionRepost
 
 
 @admin.register(Submission)
@@ -122,3 +122,11 @@ class ReactionAdmin(admin.ModelAdmin):
             'description': 'リアクションの作成日時です。'
         }),
     )
+
+
+@admin.register(SubmissionRepost)
+class SubmissionRepostAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'submission', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['user__email', 'user__display_id']
+    readonly_fields = ['created_at']

@@ -371,6 +371,57 @@
         overflow-x: hidden;
         max-width: 100%;
     }
+
+    .me-follow-card {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .me-follow-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem;
+        margin-top: 0.25rem;
+        padding-top: 0.4rem;
+        border-top: 1px solid var(--steam-iron-700);
+    }
+    .me-follow-rx {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.12rem;
+        padding: 0.12rem 0.32rem;
+        font-size: 0.68rem;
+        line-height: 1.1;
+        border-radius: 6px;
+        border: 1px solid var(--steam-iron-600);
+        background: var(--steam-iron-800);
+        color: var(--steam-iron-100);
+        cursor: pointer;
+        transition: background 0.12s, border-color 0.12s;
+    }
+    .me-follow-rx:hover { background: rgba(255,255,255,0.06); }
+    .me-follow-rx.reacted {
+        border-color: #fb7185;
+        color: #fb7185;
+        background: rgba(251,113,133,0.12);
+    }
+    .me-follow-repost-btn {
+        font-size: 0.68rem;
+        padding: 0.15rem 0.45rem;
+        border-radius: 6px;
+        border: 1px solid var(--steam-gold-500);
+        background: transparent;
+        color: var(--steam-gold-400);
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .me-follow-repost-btn:hover:not(:disabled) {
+        background: rgba(212,175,55,0.12);
+    }
+    .me-follow-repost-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
     .me-feed-row {
         max-width: 100%;
         box-sizing: border-box;
@@ -1440,7 +1491,7 @@
         if (it.gameUrl) open = "openLightbox('" + String(it.gameUrl).replace(/'/g, "\\'") + "','game','" + it.id + "')";
         else if (it.videoUrl) open = "openLightbox('" + String(it.videoUrl).replace(/'/g, "\\'") + "','video','" + it.id + "')";
         else if (it.displayImageUrl || it.imageUrl) {
-            var u = it.displayImageUrl || it.imageUrl;
+            var u = it.imageUrl || it.displayImageUrl;
             open = "openLightbox('" + String(u).replace(/'/g, "\\'") + "','image','" + it.id + "')";
         }
         var cursorStyle = open ? 'cursor:pointer;' : '';
@@ -1510,6 +1561,93 @@
         });
     }
 
+    const REACTION_DEFS = [
+        { type: 'submit_medal', emoji: '👍', label: 'いいね！' },
+        { type: 'awesome',      emoji: '🤩', label: 'すごい！' },
+        { type: 'cute',         emoji: '🥰', label: 'かわいい！' },
+        { type: 'funny',        emoji: '😂', label: '笑える！' },
+        { type: 'moved',        emoji: '😭', label: '感動した' },
+        { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
+    ];
+
+    async function toggleFollowTimelineReaction(ev, btnEl) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        var sid = btnEl.getAttribute('data-sid');
+        var rt = btnEl.getAttribute('data-rtype');
+        if (!token || !sid || !rt) return;
+        try {
+            var res = await fetch('/api/submissions/' + sid + '/react/' + rt + '/', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
+            });
+            if (!res.ok) return;
+            var data = await res.json();
+            var reacted = (data.reacted === true) || (data.action === 'added');
+            btnEl.classList.toggle('reacted', reacted);
+            var cntEl = btnEl.querySelector('span:nth-child(2)');
+            if (cntEl) cntEl.textContent = (data.count > 0 ? String(data.count) : '');
+            var item = followFeedItems.find(function(x) { return String(x.id) === String(sid); });
+            if (item) {
+                if (!item.allReactions) item.allReactions = [];
+                var ar = item.allReactions;
+                var ex = ar.find(function(r) { return r.type === rt; });
+                if (ex) {
+                    ex.count = data.count;
+                    ex.user_reacted = reacted;
+                } else if (reacted) {
+                    ar.push({ type: rt, count: data.count, user_reacted: true });
+                }
+            }
+        } catch (e) { console.error('toggleFollowTimelineReaction', e); }
+    }
+
+    async function repostFromFollowTimeline(ev, btnEl) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        var sid = btnEl.getAttribute('data-sid');
+        if (!token || !sid) return;
+        btnEl.disabled = true;
+        try {
+            var res = await fetch('/api/submissions/' + sid + '/repost/', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
+            });
+            var data = await res.json().catch(function() { return {}; });
+            if (!res.ok) {
+                showToast('error', data.error || 'リポストに失敗しました');
+                btnEl.disabled = false;
+                return;
+            }
+            var item = followFeedItems.find(function(x) { return String(x.id) === String(sid); });
+            if (item) {
+                item.userReposted = true;
+                item.repostCount = data.repostCount != null ? data.repostCount : ((item.repostCount || 0) + 1);
+            }
+            var card = document.getElementById('follow-card-' + sid);
+            if (card) {
+                var cntSpan = card.querySelector('.me-repost-count');
+                if (cntSpan) cntSpan.textContent = '×' + (data.repostCount != null ? data.repostCount : '');
+                var repWrap = card.querySelector('.me-follow-actions');
+                if (repWrap) {
+                    var rb = repWrap.querySelector('.me-follow-repost-btn');
+                    if (rb) {
+                        var done = document.createElement('span');
+                        done.style.cssText = 'font-size:0.65rem;color:var(--steam-iron-400);';
+                        done.textContent = 'リポスト済み';
+                        rb.replaceWith(done);
+                    }
+                }
+            }
+            showToast('success', '🔁 リポストしました（−5TP）');
+            if (typeof loadPoints === 'function') setTimeout(loadPoints, 400);
+        } catch (e) {
+            console.error('repostFromFollowTimeline', e);
+            showToast('error', 'リポストに失敗しました');
+            btnEl.disabled = false;
+        }
+    }
+
     let followFeedItems = [];
     let followFeedCursor = null;
     let followFeedLoading = false;
@@ -1525,8 +1663,8 @@
         if (it.gameUrl) open = "openLightbox('" + String(it.gameUrl).replace(/'/g, "\\'") + "', 'game', '" + it.id + "')";
         else if (it.videoUrl) open = "openLightbox('" + String(it.videoUrl).replace(/'/g, "\\'") + "', 'video', '" + it.id + "')";
         else if (it.displayImageUrl || it.imageUrl) {
-            var u = it.displayImageUrl || it.imageUrl;
-            open = "openLightbox('" + String(u).replace(/'/g, "\\'") + "', 'image', '" + it.id + "')";
+            var uLb = it.imageUrl || it.displayImageUrl;
+            open = "openLightbox('" + String(uLb).replace(/'/g, "\\'") + "', 'image', '" + it.id + "')";
         }
         var hashtags = Array.isArray(it.hashtags) ? it.hashtags.filter(Boolean) : [];
         var hashtagsHtml = hashtags.length
@@ -1538,14 +1676,36 @@
         var titleHtml = title ? '<div style="font-size:0.85rem;font-weight:600;color:var(--steam-iron-100);margin-top:0.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + '</div>' : '';
         var captionHtml = caption ? '<div style="font-size:0.78rem;color:var(--steam-iron-300);margin-top:0.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + caption + '</div>' : '';
         var cursorStyle = open ? 'cursor:pointer;' : '';
-        return '<div class="me-feed-row" onclick="' + open + '" style="display:flex;gap:0.75rem;align-items:flex-start;padding:0.6rem;border-radius:8px;border:1px solid var(--steam-iron-700);background:var(--steam-iron-900);' + cursorStyle + 'transition:background 0.15s;" onmouseover="if(\'' + (open ? '1' : '') + '\')this.style.background=\'var(--steam-iron-800)\'" onmouseout="this.style.background=\'var(--steam-iron-900)\'">' +
+        var rowClick = open ? ('onclick="' + open + '"') : '';
+        var ar = it.allReactions || [];
+        function rxState(t) {
+            for (var i = 0; i < ar.length; i++) {
+                if (ar[i].type === t) return { c: ar[i].count || 0, u: !!ar[i].user_reacted };
+            }
+            return { c: 0, u: false };
+        }
+        var rxBtns = REACTION_DEFS.map(function(rd) {
+            var s = rxState(rd.type);
+            var cls = 'me-follow-rx' + (s.u ? ' reacted' : '');
+            var cnt = s.c > 0 ? String(s.c) : '';
+            return '<button type="button" class="' + cls + '" title="' + rd.label + '" data-sid="' + it.id + '" data-rtype="' + rd.type + '" onclick="toggleFollowTimelineReaction(event,this)"><span>' + rd.emoji + '</span><span style="font-size:0.58rem;min-width:0.65rem;text-align:center">' + cnt + '</span></button>';
+        }).join('');
+        var rc = it.repostCount != null ? it.repostCount : 0;
+        var ur = !!it.userReposted;
+        var repPart = ur
+            ? '<span style="font-size:0.65rem;color:var(--steam-iron-400);">リポスト済み</span>'
+            : '<button type="button" class="me-follow-repost-btn" data-sid="' + it.id + '" onclick="repostFromFollowTimeline(event,this)">🔁 リポスト <span style="opacity:0.85;">−5TP</span></button>';
+        var actionsRow = '<div class="me-follow-actions" onclick="event.stopPropagation()">' + rxBtns + '<span style="flex:1;min-width:0.25rem"></span>' + repPart +
+            '<span class="me-repost-count" data-sid="' + it.id + '" style="font-size:0.65rem;color:var(--steam-iron-400);margin-left:0.25rem;">×' + rc + '</span></div>';
+        return '<div class="me-feed-row me-follow-card" id="follow-card-' + it.id + '" style="display:flex;flex-direction:column;gap:0.2rem;padding:0.6rem;border-radius:8px;border:1px solid var(--steam-iron-700);background:var(--steam-iron-900);max-width:100%;box-sizing:border-box;">' +
+            '<div ' + rowClick + ' style="display:flex;gap:0.75rem;align-items:flex-start;' + cursorStyle + 'transition:background 0.15s;border-radius:6px;padding:0.1rem;margin:-0.1rem;" onmouseover="if(\'' + (open ? '1' : '') + '\')this.style.background=\'var(--steam-iron-800)\'" onmouseout="this.style.background=\'transparent\'">' +
             '<div style="width:72px;height:72px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--steam-iron-800);">' +
                 (thumb ? '<img src="'+thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--steam-iron-500);">—</div>') +
             '</div>' +
             '<div class="me-feed-text" style="flex:1;min-width:0;">' +
                 '<div style="font-size:0.75rem;"><a href="/profile/view/?user=' + encodeURIComponent(uid) + '" onclick="event.stopPropagation()" style="color:var(--steam-gold-400);font-weight:600;">' + name + '</a> <span style="color:var(--steam-iron-500);font-size:0.65rem;">' + when + '</span></div>' +
                 titleHtml + captionHtml + hashtagsHtml +
-            '</div>' +
+            '</div></div>' + actionsRow +
         '</div>';
     }
 
@@ -2799,16 +2959,6 @@
         }
     }
 
-    // ライトボックス リアクション定義
-    const REACTION_DEFS = [
-        { type: 'submit_medal', emoji: '👍', label: 'いいね！' },
-        { type: 'awesome',      emoji: '🤩', label: 'すごい！' },
-        { type: 'cute',         emoji: '🥰', label: 'かわいい！' },
-        { type: 'funny',        emoji: '😂', label: '笑える！' },
-        { type: 'moved',        emoji: '😭', label: '感動した' },
-        { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
-    ];
-
     function renderLightboxReactions(allReactions) {
         const bar = document.getElementById('lightbox-reaction-bar');
         if (!bar) return;
@@ -2834,7 +2984,7 @@
             });
             if (!res.ok) return;
             const data = await res.json();
-            const reacted = data.reacted;
+            const reacted = (data.reacted === true) || (data.action === 'added');
             btnEl.classList.toggle('reacted', reacted);
             const countEl = btnEl.querySelector('.r-count');
             if (countEl) countEl.textContent = data.count > 0 ? data.count : '';

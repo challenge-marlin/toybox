@@ -128,3 +128,38 @@ class Reaction(models.Model):
     
     def __str__(self):
         return f'{self.user.display_id} - {self.type} on {self.submission.id}'
+
+
+class SubmissionRepost(models.Model):
+    """他ユーザーの投稿をリポスト（5TP消費・1投稿につき1ユーザー1回）。"""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='submission_reposts',
+        verbose_name='リポストしたユーザー',
+    )
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name='reposts',
+        verbose_name='投稿',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'submission_reposts'
+        verbose_name = 'リポスト'
+        verbose_name_plural = 'リポスト'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'submission'],
+                name='uniq_submission_repost_user_submission',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['submission', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'repost {self.user_id} -> submission {self.submission_id}'

@@ -11,7 +11,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Q, Count, F, IntegerField, Sum, Case, When, Value
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Submission, Reaction
+from .models import Submission, Reaction, SubmissionRepost
 from .serializers import SubmissionSerializer, SubmissionCreateSerializer, ReactionSerializer
 from users.models import UserMeta, User, UserFollow
 from lottery.services import handle_submission_and_lottery
@@ -75,6 +75,66 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             logger.warning(f'[Point] game_played award failed: {e}')
             result = {'player_awarded': False, 'author_awarded': False}
         return Response({'ok': True, **result})
+
+    @action(detail=True, methods=['post'], url_path='repost')
+    def repost(self, request, pk=None):
+        """リポスト（5TP消費・同一投稿につき1回・自分の投稿は不可）。"""
+        from django.db import transaction
+        from gamification.models import PointHistory, UserPoint
+        from gamification.services import spend_points
+
+        submission = self.get_object()
+        if submission.author_id == request.user.id:
+            return Response({'error': '自分の投稿はリポストできません'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            link, created = SubmissionRepost.objects.get_or_create(
+                user=request.user,
+                submission=submission,
+            )
+            if not created:
+                return Response({'error': 'すでにリポスト済みです'}, status=status.HTTP_400_BAD_REQUEST)
+            hist = spend_points(
+                request.user,
+                PointHistory.ActionType.REPOST,
+                5,
+                f'repost submission:{submission.id}',
+            )
+            if not hist:
+                SubmissionRepost.objects.filter(pk=link.pk).delete()
+                up0 = UserPoint.objects.filter(user=request.user).first()
+                bal0 = int(up0.total_points) if up0 else 0
+                return Response(
+                    {'error': 'TPが不足しています', 'required': 5, 'balance': bal0},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        repost_count = SubmissionRepost.objects.filter(submission=submission).count()
+        new_bal = int(UserPoint.objects.get(user=request.user).total_points)
+
+        if submission.author_id != request.user.id:
+            try:
+                target_meta, _ = UserMeta.objects.get_or_create(user=submission.author)
+                actor_meta, _ = UserMeta.objects.get_or_create(user=request.user)
+                actor_name = actor_meta.display_name or request.user.display_id
+                notifications = list(target_meta.notifications or [])
+                notifications.append({
+                    'type': 'repost',
+                    'fromAnonId': request.user.display_id,
+                    'fromDisplayName': actor_name,
+                    'submissionId': str(submission.id),
+                    'message': f'{actor_name} さんがあなたの投稿をリポストしました',
+                    'read': False,
+                    'createdAt': str(timezone.now().isoformat()),
+                })
+                if len(notifications) > 50:
+                    notifications = notifications[-50:]
+                target_meta.notifications = notifications
+                target_meta.save(update_fields=['notifications'])
+            except Exception as e:
+                logger.warning(f'Repost notification failed: {e}')
+
+        return Response({'ok': True, 'repostCount': repost_count, 'spentTp': 5, 'balance': new_bal})
 
     @action(detail=True, methods=['post'], url_path='react/submit_medal')
     def react_submit_medal(self, request, pk=None):
@@ -141,11 +201,17 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                     logger.warning(f'[Point] reaction point award failed: {e}')
 
             total = Reaction.objects.filter(submission=submission, type=reaction_type).count()
-            return Response({'ok': True, 'action': 'added', 'count': total}, status=status.HTTP_201_CREATED)
+            return Response(
+                {'ok': True, 'action': 'added', 'count': total, 'reacted': True},
+                status=status.HTTP_201_CREATED,
+            )
         else:
             reaction.delete()
             total = Reaction.objects.filter(submission=submission, type=reaction_type).count()
-            return Response({'ok': True, 'action': 'removed', 'count': total}, status=status.HTTP_200_OK)
+            return Response(
+                {'ok': True, 'action': 'removed', 'count': total, 'reacted': False},
+                status=status.HTTP_200_OK,
+            )
     
     @action(detail=True, methods=['post', 'delete'], url_path='like')
     def like(self, request, pk=None):
@@ -640,7 +706,7 @@ class SubmitView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def _build_feed_item_payload(request, item, logger):
+def _build_feed_item_payload(request, item, logger, user_reposted_ids=None):
     """Serialize one submission for feed JSON (camelCase)."""
     serializer = SubmissionSerializer(item, context={'request': request})
     item_data = serializer.data
@@ -668,6 +734,13 @@ def _build_feed_item_payload(request, item, logger):
     if not title:
         title = item_data.get('caption') or None
 
+    repost_count = getattr(item, 'repost_count', None)
+    if repost_count is None:
+        repost_count = 0
+    user_reposted = False
+    if user_reposted_ids is not None and item.id in user_reposted_ids:
+        user_reposted = True
+
     return {
         'id': str(item_data.get('id', '')),
         'anonId': item_data.get('author_display_id') or 'unknown',
@@ -693,6 +766,8 @@ def _build_feed_item_payload(request, item, logger):
         'activeTitle': item_data.get('active_title'),
         'activeTitleImageUrl': item_data.get('active_title_image_url'),
         'titleColor': item_data.get('title_color'),
+        'repostCount': int(repost_count) if repost_count else 0,
+        'userReposted': user_reposted,
     }
 
 
@@ -766,19 +841,30 @@ class FeedView(APIView):
                         + F('_c_mov') * Value(4)
                         + F('_c_cool') * Value(5)
                     ),
+                    repost_count=Count('reposts'),
                 ).filter(_total_rx__gte=3).order_by('-_score', '-created_at')
             else:
                 queryset = queryset.order_by('-created_at')
                 queryset = queryset.select_related('author', 'author__meta').annotate(
-                    reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
+                    reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL)),
+                    repost_count=Count('reposts'),
                 )
 
             items = list(queryset[:limit])
 
+            user_reposted_ids = None
+            if request.user.is_authenticated and items:
+                ids = [i.id for i in items]
+                user_reposted_ids = frozenset(
+                    SubmissionRepost.objects.filter(user=request.user, submission_id__in=ids).values_list(
+                        'submission_id', flat=True
+                    )
+                )
+
             feed_items = []
             for item in items:
                 try:
-                    feed_items.append(_build_feed_item_payload(request, item, logger))
+                    feed_items.append(_build_feed_item_payload(request, item, logger, user_reposted_ids=user_reposted_ids))
                 except Exception as e:
                     logger.error(f'Error serializing submission {getattr(item, "id", "unknown")}: {str(e)}', exc_info=True)
                     continue
@@ -831,7 +917,8 @@ class FollowingFeedView(APIView):
                 deleted_at__isnull=True,
                 author_id__in=following_ids,
             ).select_related('author', 'author__meta').annotate(
-                reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
+                reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL)),
+                repost_count=Count('reposts'),
             ).order_by('-created_at')
             if cursor:
                 try:
@@ -839,10 +926,18 @@ class FollowingFeedView(APIView):
                 except (ValueError, TypeError):
                     pass
             items = list(queryset[:limit])
+            user_reposted_ids = None
+            if items:
+                ids = [i.id for i in items]
+                user_reposted_ids = frozenset(
+                    SubmissionRepost.objects.filter(user=request.user, submission_id__in=ids).values_list(
+                        'submission_id', flat=True
+                    )
+                )
             feed_items = []
             for item in items:
                 try:
-                    feed_items.append(_build_feed_item_payload(request, item, logger))
+                    feed_items.append(_build_feed_item_payload(request, item, logger, user_reposted_ids=user_reposted_ids))
                 except Exception as e:
                     logger.error(f'FollowingFeed serialize error: {e}', exc_info=True)
             next_cursor = str(items[-1].id) if len(items) == limit and items else None

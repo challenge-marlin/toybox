@@ -57,18 +57,42 @@ class FollowToggleView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, anon_id):
+        from gamification.services import award_points
+        from gamification.models import PointHistory
+
         target = _resolve_user_by_anon_id(anon_id, request)
         if not target:
             return Response({'error': 'ユーザーが見つかりません'}, status=status.HTTP_404_NOT_FOUND)
         if target.id == request.user.id:
             return Response({'error': '自分自身はフォローできません'}, status=status.HTTP_400_BAD_REQUEST)
         link = UserFollow.objects.filter(follower=request.user, following=target).first()
+        follower_awarded = False
+        followed_awarded = False
         if link:
             link.delete()
             following = False
         else:
-            UserFollow.objects.get_or_create(follower=request.user, following=target)
+            _, created = UserFollow.objects.get_or_create(follower=request.user, following=target)
             following = True
+            if created:
+                # フォロワー: 10TP（一度だけ）
+                already_given = PointHistory.objects.filter(
+                    user=request.user,
+                    action_type=PointHistory.ActionType.FOLLOW_GIVEN,
+                    description__contains=f'user:{target.id}',
+                ).exists()
+                if not already_given:
+                    award_points(request.user, PointHistory.ActionType.FOLLOW_GIVEN, 10, f'フォローした user:{target.id}')
+                    follower_awarded = True
+                # フォローされた側: 10TP（一度だけ）
+                already_received = PointHistory.objects.filter(
+                    user=target,
+                    action_type=PointHistory.ActionType.FOLLOW_RECEIVED,
+                    description__contains=f'by:{request.user.id}',
+                ).exists()
+                if not already_received:
+                    award_points(target, PointHistory.ActionType.FOLLOW_RECEIVED, 10, f'フォローされた by:{request.user.id}')
+                    followed_awarded = True
         followers_count = UserFollow.objects.filter(following=target).count()
         following_count = UserFollow.objects.filter(follower=target).count()
         mutual = False
@@ -80,6 +104,8 @@ class FollowToggleView(APIView):
             'mutualFollow': mutual,
             'targetFollowersCount': followers_count,
             'targetFollowingCount': following_count,
+            'followerAwarded': follower_awarded,
+            'followedAwarded': followed_awarded,
         })
 
 

@@ -792,6 +792,9 @@
             }
             const mutualB = document.getElementById('profile-mutual-badge');
             if (mutualB) mutualB.style.display = data.mutualFollow ? 'block' : 'none';
+            if (data.following && data.followerAwarded) {
+                showToast('success', '⭐ フォロー +10TP！');
+            }
         } catch (e) {
             console.error('toggleProfileFollow', e);
         }

@@ -113,6 +113,8 @@ class PointHistory(models.Model):
         SUBMISSION_GAME = 'submission_game', 'ゲーム投稿'
         REACTION_RECEIVED = 'reaction_received', 'リアクション受取'
         GAME_PLAYED = 'game_played', 'ゲームプレイされた'
+        FOLLOW_GIVEN = 'follow_given', 'フォローした'
+        FOLLOW_RECEIVED = 'follow_received', 'フォローされた'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -78,10 +78,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='repost')
     def repost(self, request, pk=None):
-        """リポスト（5TP消費・同一投稿につき1回・自分の投稿は不可）。"""
+        """リポスト（5TP消費・同一投稿につき1回・自分の投稿は不可）。元投稿者に5TP付与。"""
         from django.db import transaction
         from gamification.models import PointHistory, UserPoint
-        from gamification.services import spend_points
+        from gamification.services import award_points, spend_points
 
         submission = self.get_object()
         if submission.author_id == request.user.id:
@@ -108,6 +108,16 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                     {'error': 'TPが不足しています', 'required': 5, 'balance': bal0},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            try:
+                award_points(
+                    submission.author,
+                    PointHistory.ActionType.REPOST_RECEIVED,
+                    5,
+                    f'repost received submission:{submission.id}',
+                )
+            except Exception as e:
+                logger.warning(f'[Point] repost_received award failed: {e}', exc_info=True)
+                raise
 
         repost_count = SubmissionRepost.objects.filter(submission=submission).count()
         new_bal = int(UserPoint.objects.get(user=request.user).total_points)

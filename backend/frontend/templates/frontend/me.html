@@ -70,35 +70,6 @@
         object-fit: cover;
     }
     
-    .submissions-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
-    }
-    
-    @media (min-width: 768px) {
-        .submissions-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
-    
-    .submission-item {
-        position: relative;
-        border-radius: 8px;
-        border: 1px solid var(--steam-iron-700);
-        background: var(--steam-iron-900);
-        aspect-ratio: 1;
-        overflow: hidden;
-    }
-    
-    .submission-item.game {
-        border-color: #a855f7;
-    }
-    
-    .submission-item.video {
-        border-color: #0ea5e9;
-    }
-    
     .upload-area {
         display: flex;
         flex-direction: column;
@@ -526,13 +497,6 @@
                 <div id="follow-feed-stream" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
             </div>
             <button type="button" id="follow-feed-more-btn" onclick="loadMoreFollowingFeed()" style="display: none; margin-top: 0.35rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;">もっと見る</button>
-        </div>
-        
-        <div style="margin-bottom: 0.75rem;">
-            <h2 style="color: var(--steam-gold-300); font-weight: 600;">自分の提出物</h2>
-        </div>
-        <div class="submissions-grid" id="submissions-grid">
-            <!-- 提出物がここに表示されます -->
         </div>
     </section>
     
@@ -1016,7 +980,6 @@
         function initializePage() {
             loadProfile();
             loadAnnouncements();
-            loadSubmissions();
             loadOwnRecent();
             loadFollowingFeed();
             loadRecommendedUsers();
@@ -1058,6 +1021,10 @@
         submission_game:    '🎮 ゲーム投稿',
         reaction_received:  '💬 リアクション受取',
         reaction_given:     '👍 リアクション送信',
+        repost:             '🔁 リポスト（消費）',
+        repost_received:    '🔁 リポストされた',
+        follow_given:       '👤 フォローした',
+        follow_received:    '👤 フォローされた',
         game_played_player: '🎮 ゲームをプレイした',
         game_played_author: '🕹️ ゲームがプレイされた',
         game_played:        '▶️ ゲームプレイ',
@@ -1088,7 +1055,9 @@
                 const label = ACTION_LABELS[item.action_type] || item.description || item.action_type;
                 const dt = new Date(item.created_at);
                 const dateStr = `${dt.getMonth()+1}/${dt.getDate()}`;
-                li.innerHTML = `<span style="color:var(--steam-iron-100);">${label}</span><span style="color:var(--steam-gold-300);font-weight:600;white-space:nowrap;margin-left:0.5rem;">+${item.points} TP <span style="color:var(--steam-iron-400);font-weight:400;">${dateStr}</span></span>`;
+                const pts = Number(item.points);
+                const ptsStr = (pts >= 0 ? '+' : '') + pts + ' TP';
+                li.innerHTML = `<span style="color:var(--steam-iron-100);">${label}</span><span style="color:var(--steam-gold-300);font-weight:600;white-space:nowrap;margin-left:0.5rem;">${ptsStr} <span style="color:var(--steam-iron-400);font-weight:400;">${dateStr}</span></span>`;
                 list.appendChild(li);
             });
         })
@@ -1348,146 +1317,6 @@
             if (container) {
                 container.innerHTML = '<div style="color: var(--steam-iron-300); font-size: 0.875rem; padding: 1rem; text-align: center;">お知らせの読み込みに失敗しました</div>';
             }
-        });
-    }
-    
-    function loadSubmissions() {
-        // 自分のユーザーIDを取得
-        fetch('/api/users/me/meta/', {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            }
-        })
-        .then(res => {
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-            return res.json();
-        })
-        .then(metaData => {
-            if (!metaData.display_id) {
-                document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物がありません</div>';
-                return;
-            }
-            
-            // 自分の提出物を取得
-            return fetch(`/api/user/submissions/${encodeURIComponent(metaData.display_id)}/?limit=12`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                }
-            });
-        })
-        .then(res => {
-            if (!res) return null;
-            if (!res.ok) {
-                console.error('Failed to load submissions:', res.status, res.statusText);
-                throw new Error(`HTTP ${res.status}`);
-            }
-            return res.json();
-        })
-        .then(data => {
-            if (!data) return;
-            const grid = document.getElementById('submissions-grid');
-            if (!grid) {
-                console.error('submissions-grid element not found');
-                return;
-            }
-            if (data.items && data.items.length > 0) {
-                // ゲーム名を取得する関数
-                function getGameName(item) {
-                    // captionフィールドがあればそれを使用
-                    if (item.caption && item.caption.trim()) {
-                        return item.caption.trim();
-                    }
-                    // ゲームURLから推測（例: /media/games/ayatori/1763521258/tetris/index.html）
-                    if (item.gameUrl) {
-                        const urlParts = item.gameUrl.split('/');
-                        const gameNameIndex = urlParts.findIndex(part => part === 'games');
-                        if (gameNameIndex >= 0 && gameNameIndex + 2 < urlParts.length) {
-                            const potentialName = urlParts[gameNameIndex + 2];
-                            if (potentialName && potentialName !== 'index.html') {
-                                return potentialName;
-                            }
-                        }
-                    }
-                    return 'GAME';
-                }
-                
-                grid.innerHTML = data.items.map(item => {
-                    const isGame = item.gameUrl;
-                    const isVideo = item.videoUrl;
-                    const itemClass = isGame ? 'game' : (isVideo ? 'video' : '');
-                    // サムネイルURLを優先的に使用（画像投稿の場合）
-                    const thumbnailUrl = item.imageThumbnailUrl || item.displayImageUrl;
-                    const originalImageUrl = item.imageUrl || item.displayImageUrl;
-                    const imageUrl = thumbnailUrl || originalImageUrl;
-                    
-                    let content = '';
-                    let onClickHandler = '';
-                    let assetType = '';
-                    let assetUrl = '';
-                    
-                    if (isGame) {
-                        const gameName = getGameName(item);
-                        assetType = 'game';
-                        assetUrl = item.gameUrl || '';
-                        onClickHandler = `onclick="openLightbox('${assetUrl}', 'game', '${item.id}')"`;
-                        // サムネイル画像があれば表示、なければアイコンを表示
-                        if (imageUrl) {
-                            content = `<img src="${imageUrl}" alt="ゲームサムネイル" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" ${onClickHandler}>`;
-                        } else {
-                            content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; user-select: none;" ${onClickHandler}><div style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--steam-iron-200);"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--steam-gold-300); margin-bottom: 0.25rem;"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/></svg><div style="font-size: 0.75rem; letter-spacing: 0.1em; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 0.25rem;">${gameName}</div></div></div>`;
-                        }
-                    } else if (isVideo) {
-                        assetUrl = item.videoUrl || '';
-                        assetType = 'video';
-                        onClickHandler = `onclick="openLightbox('${assetUrl}', 'video', '${item.id}')"`;
-                        content = `<div style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.75rem; cursor: pointer; position: relative;" ${onClickHandler}><video src="${assetUrl}" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px;" muted preload="metadata"></video><div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><div style="height: 3rem; width: 3rem; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></div></div></div>`;
-                    } else {
-                        // 画像投稿の場合：サムネイルを表示、クリック時は元画像を表示
-                        const imageSrc = thumbnailUrl || originalImageUrl || imageUrl || '';
-                        const lightboxImageSrc = originalImageUrl || imageSrc;
-                        assetUrl = lightboxImageSrc;
-                        assetType = 'image';
-                        onClickHandler = `onclick="openLightbox('${lightboxImageSrc}', 'image', '${item.id}')"`;
-                        content = `<img src="${imageSrc}" alt="submission" style="width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; cursor: zoom-in;" ${onClickHandler}>`;
-                    }
-                    
-                    return `
-                        <div class="submission-item ${itemClass}" style="position: relative;">
-                            ${content}
-                            ${isGame && assetUrl ? `
-                                <a href="${assetUrl}" target="_blank" rel="noreferrer" style="position: absolute; top: 0.5rem; left: 0.5rem; z-index: 10; display: inline-flex; align-items: center; gap: 0.25rem; border-radius: 4px; background: rgba(0, 0, 0, 0.6); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; text-decoration: none; cursor: pointer; pointer-events: auto;" onclick="event.stopPropagation()" title="ゲームを開く">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09c-.69 0-1.32.28-1.77.73-.45.45-.73 1.08-.73 1.77z"/>
-                                    </svg>
-                                    開く
-                                </a>
-                            ` : ''}
-                            <button onclick="deleteSubmission('${item.id}')" style="display: none; position: absolute; top: 0.5rem; right: 0.5rem; border-radius: 9999px; background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border: none; cursor: pointer; z-index: 10; pointer-events: auto;" class="submission-delete-btn">削除</button>
-                        </div>
-                    `;
-                }).join('');
-                
-                // ホバーで削除ボタン表示
-                document.querySelectorAll('.submission-item').forEach(item => {
-                    item.addEventListener('mouseenter', function() {
-                        const btn = this.querySelector('.submission-delete-btn');
-                        if (btn) btn.style.display = 'block';
-                    });
-                    item.addEventListener('mouseleave', function() {
-                        const btn = this.querySelector('.submission-delete-btn');
-                        if (btn) btn.style.display = 'none';
-                    });
-                });
-            } else {
-                grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物がありません</div>';
-            }
-        })
-        .catch(err => {
-            console.error('Failed to load submissions:', err);
-            document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--steam-iron-300);">提出物の読み込みに失敗しました</div>';
         });
     }
     
@@ -2015,7 +1844,9 @@
         })
         .then(res => {
             if (res.ok) {
-                loadSubmissions();
+                loadOwnRecent();
+                loadFollowingFeed();
+                loadPoints();
             } else {
                 alert('削除に失敗しました');
             }
@@ -2807,7 +2638,6 @@
                     showTpToast(submitData.earnedPoints);
                 }
                 setTimeout(() => {
-                    loadSubmissions();
                     loadProfile();
                     loadSubmitters();
                     loadRanking();
@@ -2837,7 +2667,6 @@
         // 最新のデータを再読み込み
         setTimeout(() => {
             loadProfile();
-            loadSubmissions();
             loadSubmitters();
             loadRanking();
             loadOwnRecent();

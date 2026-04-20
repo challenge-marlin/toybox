@@ -778,6 +778,11 @@ def _build_feed_item_payload(request, item, logger, user_reposted_ids=None):
         'titleColor': item_data.get('title_color'),
         'repostCount': int(repost_count) if repost_count else 0,
         'userReposted': user_reposted,
+        'isOwnPost': bool(
+            getattr(request, 'user', None) is not None
+            and getattr(request.user, 'is_authenticated', False)
+            and getattr(item, 'author_id', None) == getattr(request.user, 'pk', None)
+        ),
     }
 
 
@@ -910,10 +915,14 @@ class FollowingFeedView(APIView):
         import logging
         logger = logging.getLogger(__name__)
         try:
-            following_ids = list(
-                UserFollow.objects.filter(follower=request.user).values_list('following_id', flat=True)
-            )
-            author_q = Q(author_id=request.user.id)
+            following_ids = [
+                fid
+                for fid in UserFollow.objects.filter(follower=request.user).values_list(
+                    'following_id', flat=True
+                )
+                if fid != request.user.pk
+            ]
+            author_q = Q(author_id=request.user.pk)
             if following_ids:
                 author_q |= Q(author_id__in=following_ids)
 

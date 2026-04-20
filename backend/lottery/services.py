@@ -195,5 +195,6 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         'jackpotRecordedAt': None,
         'newlyGrantedTitles': newly_granted_titles,
         'earnedPoints': earned_points,
+        'submissionId': str(submission.id),
     }
 

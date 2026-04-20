@@ -371,6 +371,18 @@
         overflow-x: hidden;
         max-width: 100%;
     }
+    /* フォロー中TL: 縦長になりすぎないよう約5〜6件分の高さでスクロール */
+    .follow-feed-scroll {
+        max-height: min(30rem, 52vh);
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 0.25rem;
+        margin-bottom: 0.35rem;
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-700);
+        background: var(--steam-iron-900);
+        padding: 0.45rem 0.35rem 0.45rem 0.45rem;
+    }
 
     .me-follow-card {
         max-width: 100%;
@@ -509,8 +521,11 @@
         </div>
         <div id="follow-feed-section" style="margin-bottom: 1.5rem;">
             <h2 style="color: var(--steam-gold-300); font-weight: 600; margin-bottom: 0.75rem; font-size: 1.25rem;">フォロー中のタイムライン</h2>
-            <div id="follow-feed-stream" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
-            <button type="button" id="follow-feed-more-btn" onclick="loadMoreFollowingFeed()" style="display: none; margin-top: 0.5rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;">さらに読む</button>
+            <p style="font-size: 0.72rem; color: var(--steam-iron-400); margin: 0 0 0.5rem 0;">フォロー中の投稿とあなたの投稿を新しい順に表示します（枠内でスクロールできます）。</p>
+            <div class="follow-feed-scroll" id="follow-feed-scroll-wrap">
+                <div id="follow-feed-stream" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
+            </div>
+            <button type="button" id="follow-feed-more-btn" onclick="loadMoreFollowingFeed()" style="display: none; margin-top: 0.35rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;">もっと見る</button>
         </div>
         
         <div style="margin-bottom: 0.75rem;">
@@ -1715,16 +1730,21 @@
         var stream = document.getElementById('follow-feed-stream');
         var moreBtn = document.getElementById('follow-feed-more-btn');
         if (stream) stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">読み込み中...</div>';
-        fetch('/api/feed/following/?limit=12', { headers: { 'Authorization': 'Bearer ' + token } })
+        fetch('/api/feed/following/?limit=6', { headers: { 'Authorization': 'Bearer ' + token } })
         .then(function(r) { return r.ok ? r.json() : { items: [] }; })
         .then(function(data) {
             followFeedItems = data.items || [];
             followFeedCursor = data.nextCursor || null;
             if (stream) {
-                if (!followFeedItems.length) stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">フォロー中のユーザーがいないか、まだ投稿がありません。</div>';
+                if (!followFeedItems.length) stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">まだ表示できる投稿がありません。</div>';
                 else stream.innerHTML = followFeedItems.map(renderFollowFeedCard).join('');
             }
-            if (moreBtn) moreBtn.style.display = followFeedCursor ? 'block' : 'none';
+            if (moreBtn) {
+                moreBtn.style.display = followFeedCursor ? 'block' : 'none';
+                moreBtn.textContent = 'もっと見る';
+            }
+            var wrap = document.getElementById('follow-feed-scroll-wrap');
+            if (wrap) wrap.scrollTop = 0;
         })
         .catch(function() {
             if (stream) stream.innerHTML = '<div style="color:var(--steam-iron-400);">読み込みに失敗しました</div>';
@@ -1736,15 +1756,19 @@
         if (followFeedLoading || !followFeedCursor) return;
         followFeedLoading = true;
         var stream = document.getElementById('follow-feed-stream');
-        fetch('/api/feed/following/?limit=12&cursor=' + encodeURIComponent(followFeedCursor), { headers: { 'Authorization': 'Bearer ' + token } })
+        var moreBtn = document.getElementById('follow-feed-more-btn');
+        if (moreBtn) moreBtn.textContent = '読み込み中…';
+        fetch('/api/feed/following/?limit=6&cursor=' + encodeURIComponent(followFeedCursor), { headers: { 'Authorization': 'Bearer ' + token } })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var inc = data.items || [];
             followFeedItems = followFeedItems.concat(inc);
             followFeedCursor = data.nextCursor || null;
             if (stream) stream.innerHTML = followFeedItems.map(renderFollowFeedCard).join('');
-            var moreBtn = document.getElementById('follow-feed-more-btn');
-            if (moreBtn) moreBtn.style.display = followFeedCursor ? 'block' : 'none';
+            if (moreBtn) {
+                moreBtn.style.display = followFeedCursor ? 'block' : 'none';
+                moreBtn.textContent = 'もっと見る';
+            }
         })
         .finally(function() { followFeedLoading = false; });
     }

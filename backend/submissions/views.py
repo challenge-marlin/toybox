@@ -893,7 +893,7 @@ class FeedView(APIView):
 
 
 class FollowingFeedView(APIView):
-    """フォロー中ユーザーの投稿のみ（新しい順）。要ログイン。"""
+    """フォロー中ユーザーと自分自身の投稿（新しい順）。要ログイン。"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -903,20 +903,20 @@ class FollowingFeedView(APIView):
             following_ids = list(
                 UserFollow.objects.filter(follower=request.user).values_list('following_id', flat=True)
             )
-            if not following_ids:
-                return Response({'items': [], 'nextCursor': None})
+            author_q = Q(author_id=request.user.id)
+            if following_ids:
+                author_q |= Q(author_id__in=following_ids)
 
             try:
-                limit = int(request.query_params.get('limit', 24))
+                limit = int(request.query_params.get('limit', 6))
                 limit = max(1, min(50, limit))
             except (ValueError, TypeError):
-                limit = 24
+                limit = 6
 
             cursor = request.query_params.get('cursor')
             queryset = Submission.objects.filter(
                 deleted_at__isnull=True,
-                author_id__in=following_ids,
-            ).select_related('author', 'author__meta').annotate(
+            ).filter(author_q).select_related('author', 'author__meta').annotate(
                 reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL)),
                 repost_count=Count('reposts'),
             ).order_by('-created_at')

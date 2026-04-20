@@ -320,6 +320,36 @@
         opacity: 0.6;
         cursor: not-allowed;
     }
+
+    /* ライトボックス リアクションバー */
+    .lightbox-reaction-bar {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+    }
+    .lightbox-reaction-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.1rem;
+        padding: 0.4rem 0.6rem;
+        border-radius: 8px;
+        border: 1px solid var(--steam-iron-600);
+        background: var(--steam-iron-800);
+        color: var(--steam-iron-100);
+        cursor: pointer;
+        transition: all 0.15s;
+        min-width: 3rem;
+    }
+    .lightbox-reaction-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.12); }
+    .lightbox-reaction-btn.reacted { background: rgba(251,113,133,0.18); border-color: #fb7185; color: #fb7185; }
+    .lightbox-reaction-btn.reacted .r-count { color: #fb7185; }
+    .lightbox-reaction-btn .r-emoji { font-size: 1.05rem; }
+    .lightbox-reaction-btn .r-label { font-size: 0.65rem; color: var(--steam-iron-400); white-space: nowrap; }
+    .lightbox-reaction-btn.reacted .r-label { color: #fb7185; }
+    .lightbox-reaction-btn .r-count { font-size: 0.75rem; min-width: 0.8rem; }
 </style>
 {% endblock %}
 
@@ -394,14 +424,14 @@
                 <!-- お知らせがここにリスト形式で表示されます -->
             </div>
         </div>
+        <div id="recommended-users-section" style="margin-bottom: 1.5rem; display: none;">
+            <h2 style="color: var(--steam-gold-300); font-weight: 600; margin-bottom: 0.75rem; font-size: 1.25rem;">おすすめユーザー</h2>
+            <div id="recommended-users-list" style="display: flex; flex-direction: column; gap: 0.6rem;"></div>
+        </div>
         <div id="follow-feed-section" style="margin-bottom: 1.5rem;">
             <h2 style="color: var(--steam-gold-300); font-weight: 600; margin-bottom: 0.75rem; font-size: 1.25rem;">フォロー中のタイムライン</h2>
             <div id="follow-feed-stream" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
             <button type="button" id="follow-feed-more-btn" onclick="loadMoreFollowingFeed()" style="display: none; margin-top: 0.5rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;">さらに読む</button>
-        </div>
-        <div id="recommended-users-section" style="margin-bottom: 1rem; display: none;">
-            <h3 style="color: var(--steam-gold-300); font-size: 1rem; margin-bottom: 0.5rem;">おすすめユーザー</h3>
-            <div id="recommended-users-list" style="display: flex; flex-direction: column; gap: 0.6rem;"></div>
         </div>
         
         <div style="margin-bottom: 0.75rem;">
@@ -1457,7 +1487,8 @@
 
     function renderFollowFeedCard(it) {
         var thumb = it.imageThumbnailUrl || it.displayImageUrl || it.imageUrl || '';
-        var title = it.title || it.caption || '投稿';
+        var title = it.title || '';
+        var caption = it.caption || '';
         var name = it.displayName || it.anonId || '';
         var uid = it.anonUrlId || it.anonId || '';
         var when = it.createdAt ? new Date(it.createdAt).toLocaleString('ja-JP') : '';
@@ -1468,15 +1499,25 @@
             var u = it.displayImageUrl || it.imageUrl;
             open = "openLightbox('" + String(u).replace(/'/g, "\\'") + "', 'image', '" + it.id + "')";
         }
-        return `<div style="display:flex; gap:0.75rem; align-items:flex-start; padding:0.6rem; border-radius:8px; border:1px solid var(--steam-iron-700); background:var(--steam-iron-900);">
-            <div onclick="${open}" style="width:72px;height:72px;flex-shrink:0;border-radius:6px;overflow:hidden;cursor:pointer;background:var(--steam-iron-800);">
-                ${thumb ? '<img src="'+thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--steam-iron-500);">—</div>'}
-            </div>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:0.78rem;"><a href="/profile/view/?user=${encodeURIComponent(uid)}" style="color:var(--steam-gold-400);font-weight:600;">${name}</a> <span style="color:var(--steam-iron-500);font-size:0.68rem;">${when}</span></div>
-                <div style="font-size:0.85rem;color:var(--steam-iron-100);margin-top:0.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
-            </div>
-        </div>`;
+        var hashtags = Array.isArray(it.hashtags) ? it.hashtags.filter(Boolean) : [];
+        var hashtagsHtml = hashtags.length
+            ? '<div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;">' +
+              hashtags.map(function(t) {
+                return '<span style="display:inline-block;padding:0.15rem 0.4rem;border-radius:4px;background:var(--steam-gold-500);color:black;font-size:0.65rem;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();filterByHashtag(\'' + t.replace(/'/g,"\\'") + '\')">#' + t + '</span>';
+              }).join('') + '</div>'
+            : '';
+        var titleHtml = title ? '<div style="font-size:0.85rem;font-weight:600;color:var(--steam-iron-100);margin-top:0.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + '</div>' : '';
+        var captionHtml = caption ? '<div style="font-size:0.78rem;color:var(--steam-iron-300);margin-top:0.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + caption + '</div>' : '';
+        var cursorStyle = open ? 'cursor:pointer;' : '';
+        return '<div onclick="' + open + '" style="display:flex;gap:0.75rem;align-items:flex-start;padding:0.6rem;border-radius:8px;border:1px solid var(--steam-iron-700);background:var(--steam-iron-900);' + cursorStyle + 'transition:background 0.15s;" onmouseover="if(\'' + (open ? '1' : '') + '\')this.style.background=\'var(--steam-iron-800)\'" onmouseout="this.style.background=\'var(--steam-iron-900)\'">' +
+            '<div style="width:72px;height:72px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--steam-iron-800);">' +
+                (thumb ? '<img src="'+thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--steam-iron-500);">—</div>') +
+            '</div>' +
+            '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:0.75rem;"><a href="/profile/view/?user=' + encodeURIComponent(uid) + '" onclick="event.stopPropagation()" style="color:var(--steam-gold-400);font-weight:600;">' + name + '</a> <span style="color:var(--steam-iron-500);font-size:0.65rem;">' + when + '</span></div>' +
+                titleHtml + captionHtml + hashtagsHtml +
+            '</div>' +
+        '</div>';
     }
 
     function loadFollowingFeed() {
@@ -2630,101 +2671,85 @@
             lightboxImage.src = url;
         }
         
-        // Discordシェアボタンを表示（画像と動画のみ）
+        // アクションエリアを常時表示。Discordシェアは画像・動画のみ
+        lightboxActions.style.display = 'flex';
+        const discordBtn = document.getElementById('discord-share-btn');
+        if (discordBtn) discordBtn.style.display = (type === 'image' || type === 'video') ? 'inline-flex' : 'none';
         if (type === 'image' || type === 'video') {
-            lightboxActions.style.display = 'flex';
-            // Discord認証状態を確認してボタンを更新
-            if (token) {
-                checkDiscordStatus();
-            }
-        } else {
-            lightboxActions.style.display = 'none';
+            if (token) checkDiscordStatus();
         }
-        
-        // 投稿詳細情報を取得
+        // 即時空のリアクションバーを描画
+        renderLightboxReactions([]);
+
+        // 投稿詳細情報を取得（バックグラウンド）
         if (assetId) {
-            try {
-                const token = localStorage.getItem('access_token');
-                const res = await fetch(`/api/submissions/${assetId}/`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    
-                    // ゲーム投稿の場合、サムネイルを表示
-                    if (type === 'game') {
-                        const thumbnailImg = document.getElementById('lightbox-game-thumbnail');
-                        const gameIcon = document.getElementById('lightbox-game-icon');
-                        const displayImageUrl = data.display_image_url || data.thumbnail_url || (data.thumbnail ? data.thumbnail : null);
-                        
-                        if (thumbnailImg && gameIcon) {
-                            if (displayImageUrl) {
-                                thumbnailImg.src = displayImageUrl;
-                                thumbnailImg.style.display = 'block';
-                                gameIcon.style.display = 'none';
-                            } else {
-                                thumbnailImg.style.display = 'none';
-                                gameIcon.style.display = 'flex';
-                            }
-                        }
-                    }
-                    
-                    // タイトルを表示
-                    if (data.title) {
-                        lightboxTitle.textContent = data.title;
-                        lightboxTitle.style.display = 'block';
-                    } else {
-                        lightboxTitle.style.display = 'none';
-                    }
-                    // キャプションを表示
-                    if (data.caption) {
-                        lightboxCaption.textContent = data.caption;
-                        lightboxCaption.style.display = 'block';
-                    } else {
-                        lightboxCaption.style.display = 'none';
-                    }
-                    // ハッシュタグを表示（大文字小文字を保持）
-                    lightboxHashtags.innerHTML = '';
-                    if (data.hashtags && Array.isArray(data.hashtags) && data.hashtags.length > 0) {
-                        data.hashtags.forEach(tag => {
-                            if (tag && tag.trim()) {
-                                const tagNormalized = tag.trim();  // 大文字小文字を保持
-                                const tagEl = document.createElement('span');
-                                tagEl.textContent = `#${tagNormalized}`;
-                                tagEl.style.cssText = 'display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-gold-500); color: black; font-size: 0.75rem; cursor: pointer; font-weight: 600;';
-                                tagEl.onclick = (e) => {
-                                    e.stopPropagation();
-                                    filterByHashtag(tagNormalized);
-                                    closeLightbox();
-                                };
-                                lightboxHashtags.appendChild(tagEl);
-                            }
-                        });
-                    }
-                    const spellWrap = document.getElementById('lightbox-spell-wrap');
-                    const spellPre = document.getElementById('lightbox-spell-text');
-                    const aiToolLine = document.getElementById('lightbox-ai-tool');
-                    if (spellWrap && spellPre && aiToolLine) {
-                        const spellText = String(data.spell || '').trim();
-                        const aiDisp = data.ai_tool_label || data.aiToolLabel || data.ai_tool || data.aiTool || '';
-                        if (spellText || aiDisp) {
-                            spellWrap.style.display = 'block';
-                            spellPre.textContent = spellText || '（なし）';
-                            aiToolLine.textContent = aiDisp || '—';
+            fetch(`/api/submissions/${assetId}/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).then(function(res) {
+                if (!res.ok) { lightboxInfo.style.display = 'none'; return null; }
+                return res.json();
+            }).then(function(data) {
+                if (!data) return;
+
+                // ゲーム投稿のサムネイル
+                if (type === 'game') {
+                    const thumbnailImg = document.getElementById('lightbox-game-thumbnail');
+                    const gameIcon = document.getElementById('lightbox-game-icon');
+                    const displayImageUrl = data.display_image_url || data.thumbnail_url || (data.thumbnail ? data.thumbnail : null);
+                    if (thumbnailImg && gameIcon) {
+                        if (displayImageUrl) {
+                            thumbnailImg.src = displayImageUrl;
+                            thumbnailImg.style.display = 'block';
+                            gameIcon.style.display = 'none';
                         } else {
-                            spellWrap.style.display = 'none';
+                            thumbnailImg.style.display = 'none';
+                            gameIcon.style.display = 'flex';
                         }
                     }
-                    lightboxInfo.style.display = 'block';
-                } else {
-                    lightboxInfo.style.display = 'none';
                 }
-            } catch (err) {
+
+                // リアクションバーを最新データで更新
+                renderLightboxReactions(data.all_reactions || data.allReactions || []);
+
+                // タイトルを表示
+                if (data.title) { lightboxTitle.textContent = data.title; lightboxTitle.style.display = 'block'; }
+                else { lightboxTitle.style.display = 'none'; }
+                // キャプションを表示
+                if (data.caption) { lightboxCaption.textContent = data.caption; lightboxCaption.style.display = 'block'; }
+                else { lightboxCaption.style.display = 'none'; }
+                // ハッシュタグを表示
+                lightboxHashtags.innerHTML = '';
+                if (data.hashtags && Array.isArray(data.hashtags) && data.hashtags.length > 0) {
+                    data.hashtags.forEach(function(tag) {
+                        if (!tag || !tag.trim()) return;
+                        const tagNormalized = tag.trim();
+                        const tagEl = document.createElement('span');
+                        tagEl.textContent = '#' + tagNormalized;
+                        tagEl.style.cssText = 'display:inline-block;padding:0.25rem 0.5rem;border-radius:4px;background:var(--steam-gold-500);color:black;font-size:0.75rem;cursor:pointer;font-weight:600;';
+                        tagEl.onclick = function(e) { e.stopPropagation(); filterByHashtag(tagNormalized); closeLightbox(); };
+                        lightboxHashtags.appendChild(tagEl);
+                    });
+                }
+                // 呪文・AIツール
+                const spellWrap = document.getElementById('lightbox-spell-wrap');
+                const spellPre = document.getElementById('lightbox-spell-text');
+                const aiToolLine = document.getElementById('lightbox-ai-tool');
+                if (spellWrap && spellPre && aiToolLine) {
+                    const spellText = String(data.spell || '').trim();
+                    const aiDisp = data.ai_tool_label || data.aiToolLabel || data.ai_tool || data.aiTool || '';
+                    if (spellText || aiDisp) {
+                        spellWrap.style.display = 'block';
+                        spellPre.textContent = spellText || '（なし）';
+                        aiToolLine.textContent = aiDisp || '—';
+                    } else {
+                        spellWrap.style.display = 'none';
+                    }
+                }
+                lightboxInfo.style.display = 'block';
+            }).catch(function(err) {
                 console.error('Failed to load submission details:', err);
                 lightboxInfo.style.display = 'none';
-            }
+            });
         } else {
             lightboxInfo.style.display = 'none';
         }
@@ -2743,6 +2768,48 @@
                 if (typeof showToast === 'function') showToast('success', '呪文をコピーしました');
             }).catch(function() {});
         }
+    }
+
+    // ライトボックス リアクション定義
+    const REACTION_DEFS = [
+        { type: 'submit_medal', emoji: '👍', label: 'いいね！' },
+        { type: 'awesome',      emoji: '🤩', label: 'すごい！' },
+        { type: 'cute',         emoji: '🥰', label: 'かわいい！' },
+        { type: 'funny',        emoji: '😂', label: '笑える！' },
+        { type: 'moved',        emoji: '😭', label: '感動した' },
+        { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
+    ];
+
+    function renderLightboxReactions(allReactions) {
+        const bar = document.getElementById('lightbox-reaction-bar');
+        if (!bar) return;
+        const map = {};
+        if (allReactions) allReactions.forEach(function(r) { map[r.type] = r; });
+        bar.innerHTML = REACTION_DEFS.map(function(rd) {
+            const r = map[rd.type] || { count: 0, user_reacted: false };
+            return '<button class="lightbox-reaction-btn ' + (r.user_reacted ? 'reacted' : '') + '" data-rtype="' + rd.type + '" onclick="toggleLightboxReaction(event,\'' + rd.type + '\',this)">' +
+                '<span class="r-emoji">' + rd.emoji + '</span>' +
+                '<span class="r-label">' + rd.label + '</span>' +
+                '<span class="r-count">' + (r.count > 0 ? r.count : '') + '</span>' +
+            '</button>';
+        }).join('');
+    }
+
+    async function toggleLightboxReaction(event, reactionType, btnEl) {
+        event.stopPropagation();
+        if (!currentLightboxAssetId || !token) return;
+        try {
+            const res = await fetch('/api/submissions/' + currentLightboxAssetId + '/react/' + reactionType + '/', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            const reacted = data.reacted;
+            btnEl.classList.toggle('reacted', reacted);
+            const countEl = btnEl.querySelector('.r-count');
+            if (countEl) countEl.textContent = data.count > 0 ? data.count : '';
+        } catch (e) { console.error('lightbox reaction error', e); }
     }
 
     // ハッシュタグで絞り込む関数
@@ -3073,7 +3140,10 @@
                 <button type="button" id="lightbox-copy-spell" onclick="copyLightboxSpell()" style="margin-top: 0.45rem; font-size: 0.72rem; padding: 0.3rem 0.65rem; border-radius: 4px; border: 1px solid var(--steam-gold-500); background: transparent; color: var(--steam-gold-400); cursor: pointer;">呪文をコピー</button>
             </div>
         </div>
-        <div id="lightbox-actions" style="display: none; margin-top: 1rem;">
+        <div id="lightbox-actions" style="display: none; margin-top: 1rem; gap: 0.6rem; align-items: center; justify-content: center; flex-direction: column; flex-wrap: wrap;">
+            <div class="lightbox-reaction-bar" id="lightbox-reaction-bar">
+                <!-- リアクションボタンはJSで挿入 -->
+            </div>
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>

@@ -89,36 +89,6 @@
         background: rgba(31, 35, 42, 0.5);
     }
     
-    .timeline-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.875rem;
-        color: var(--steam-iron-100);
-        margin-bottom: 0.5rem;
-    }
-    
-    .timeline-avatar {
-        height: 1.5rem;
-        width: 1.5rem;
-        overflow: hidden;
-        border-radius: 50%;
-        border: 1px solid var(--steam-iron-700);
-        background: var(--steam-iron-800);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--steam-iron-300);
-        font-size: 0.625rem;
-        flex-shrink: 0;
-    }
-    
-    .timeline-avatar img {
-        height: 100%;
-        width: 100%;
-        object-fit: cover;
-    }
-    
     .official-badge {
         display: inline-flex;
         align-items: center;
@@ -336,8 +306,7 @@
     .lightbox-reaction-btn.reacted .r-label { color: #fb7185; }
     .lightbox-reaction-btn .r-count { font-size: 0.75rem; min-width: 0.8rem; }
 
-    /* 左・中央のフィードカードが列幅を突き破らないように */
-    #timeline-list,
+    /* 中央のフィードカードが列幅を突き破らないように */
     #follow-feed-stream {
         overflow-x: hidden;
         max-width: 100%;
@@ -467,13 +436,6 @@
                     <span>StudySphereへ移動</span>
                 </a>
             </div>
-        </section>
-        
-        <!-- TOYBOXの最新投稿 -->
-        <section class="me-section">
-            <h2>TOYBOXの最新投稿</h2>
-            <div id="timeline-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-            <button id="timeline-load-more" onclick="loadMoreOwnRecent()" style="display: none; margin-top: 0.5rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;" onmouseover="this.style.background='var(--steam-iron-700)'" onmouseout="this.style.background='var(--steam-iron-800)'">続きを見る</button>
         </section>
         
     </aside>
@@ -980,7 +942,6 @@
         function initializePage() {
             loadProfile();
             loadAnnouncements();
-            loadOwnRecent();
             loadFollowingFeed();
             loadRecommendedUsers();
             loadSubmitters();
@@ -1330,91 +1291,6 @@
         });
     }
     
-    let timelineItems = [];
-    let timelineNextCursor = null;
-    let timelineLoading = false;
-    let ownRecentUrlId = null;
-
-    function renderRecentFeedCard(it) {
-        var thumb = it.imageThumbnailUrl || it.displayImageUrl || it.imageUrl || '';
-        var name = it.displayName || it.anonId || '';
-        var uid = it.anonUrlId || it.anonId || '';
-        var caption = it.title || it.caption || '';
-        var when = it.createdAt ? new Date(it.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        var open = '';
-        if (it.gameUrl) open = "openLightbox('" + String(it.gameUrl).replace(/'/g, "\\'") + "','game','" + it.id + "')";
-        else if (it.videoUrl) open = "openLightbox('" + String(it.videoUrl).replace(/'/g, "\\'") + "','video','" + it.id + "')";
-        else if (it.displayImageUrl || it.imageUrl) {
-            var u = it.imageUrl || it.displayImageUrl;
-            open = "openLightbox('" + String(u).replace(/'/g, "\\'") + "','image','" + it.id + "')";
-        }
-        var cursorStyle = open ? 'cursor:pointer;' : '';
-        return '<div class="me-feed-row" onclick="' + open + '" style="display:flex;gap:0.5rem;align-items:flex-start;padding:0.4rem;border-radius:6px;border:1px solid var(--steam-iron-700);background:var(--steam-iron-900);' + cursorStyle + 'transition:background 0.15s;" onmouseover="if(\'' + (open?'1':'') + '\')this.style.background=\'var(--steam-iron-800)\'" onmouseout="this.style.background=\'var(--steam-iron-900)\'">' +
-            '<div style="width:52px;height:52px;flex-shrink:0;border-radius:4px;overflow:hidden;background:var(--steam-iron-800);">' +
-                (thumb ? '<img src="'+thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:var(--steam-iron-500);">—</div>') +
-            '</div>' +
-            '<div class="me-feed-text" style="flex:1;min-width:0;">' +
-                '<div style="font-size:0.7rem;"><a href="/profile/view/?user=' + encodeURIComponent(uid) + '" onclick="event.stopPropagation()" style="color:var(--steam-gold-400);font-weight:600;">' + name + '</a></div>' +
-                (caption ? '<div style="font-size:0.75rem;color:var(--steam-iron-200);margin-top:0.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + caption + '</div>' : '') +
-                '<div style="font-size:0.65rem;color:var(--steam-iron-500);margin-top:0.1rem;">' + when + '</div>' +
-            '</div>' +
-        '</div>';
-    }
-
-    function renderTimeline() {
-        const list = document.getElementById('timeline-list');
-        const loadMoreBtn = document.getElementById('timeline-load-more');
-        if (!list) return;
-        if (timelineItems.length === 0) {
-            list.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.8rem;">データなし</div>';
-            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
-        } else {
-            list.innerHTML = timelineItems.map(renderRecentFeedCard).join('');
-            if (loadMoreBtn) loadMoreBtn.style.display = timelineNextCursor ? 'block' : 'none';
-        }
-    }
-
-    function loadOwnRecent() {
-        if (timelineLoading) return;
-        timelineLoading = true;
-        const list = document.getElementById('timeline-list');
-        if (timelineItems.length === 0 && list) list.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.8rem;">読み込み中...</div>';
-        fetch('/api/feed/?limit=6', { headers: { 'Authorization': 'Bearer ' + token } })
-        .then(function(r) { return r.ok ? r.json() : { items: [] }; })
-        .then(function(data) {
-            timelineItems = data.items || [];
-            timelineNextCursor = data.nextCursor || null;
-            renderTimeline();
-        })
-        .catch(function() {
-            if (list) list.innerHTML = '<div style="color:var(--steam-iron-300);font-size:0.8rem;">データなし</div>';
-            var loadMoreBtn = document.getElementById('timeline-load-more');
-            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
-        })
-        .finally(function() { timelineLoading = false; });
-    }
-
-    function loadMoreOwnRecent() {
-        if (timelineLoading || !timelineNextCursor) return;
-        timelineLoading = true;
-        var loadMoreBtn = document.getElementById('timeline-load-more');
-        if (loadMoreBtn) loadMoreBtn.textContent = '読み込み中...';
-        fetch('/api/feed/?limit=6&cursor=' + encodeURIComponent(timelineNextCursor), {
-            headers: { 'Authorization': 'Bearer ' + token }
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            timelineItems = timelineItems.concat(data.items || []);
-            timelineNextCursor = data.nextCursor || null;
-            renderTimeline();
-        })
-        .catch(function() {})
-        .finally(function() {
-            timelineLoading = false;
-            if (loadMoreBtn) loadMoreBtn.textContent = '続きを見る';
-        });
-    }
-
     const REACTION_DEFS = [
         { type: 'submit_medal', emoji: '👍', label: 'いいね！' },
         { type: 'awesome',      emoji: '🤩', label: 'すごい！' },
@@ -1854,7 +1730,6 @@
         })
         .then(res => {
             if (res.ok) {
-                loadOwnRecent();
                 loadFollowingFeed();
                 loadPoints();
             } else {
@@ -2651,7 +2526,6 @@
                     loadProfile();
                     loadSubmitters();
                     loadRanking();
-                    loadOwnRecent();
                     loadFollowingFeed();
                 }, 500);
             }
@@ -2679,7 +2553,6 @@
             loadProfile();
             loadSubmitters();
             loadRanking();
-            loadOwnRecent();
             loadFollowingFeed();
         }, 500);
     }

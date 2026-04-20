@@ -1021,14 +1021,24 @@
         submission_game:    '🎮 ゲーム投稿',
         reaction_received:  '💬 リアクション受取',
         reaction_given:     '👍 リアクション送信',
-        repost:             '🔁 リポスト（消費）',
-        repost_received:    '🔁 リポストされた',
+        repost:             'リポストした',
+        repost_received:    'リポストされた',
         follow_given:       '👤 フォローした',
         follow_received:    '👤 フォローされた',
         game_played_player: '🎮 ゲームをプレイした',
         game_played_author: '🕹️ ゲームがプレイされた',
         game_played:        '▶️ ゲームプレイ',
     };
+
+    function pointHistoryRowLabel(item) {
+        const at = String(item.action_type || item.actionType || '').trim();
+        const desc = String(item.description || '').trim();
+        if (at === 'follow_given' || /^フォローした\s*user:/i.test(desc)) return ACTION_LABELS.follow_given;
+        if (at === 'follow_received' || /^フォローされた\s*by:/i.test(desc)) return ACTION_LABELS.follow_received;
+        if (at === 'repost' || /^repost\s+submission:/i.test(desc)) return ACTION_LABELS.repost;
+        if (at === 'repost_received' || /^repost received submission:/i.test(desc)) return ACTION_LABELS.repost_received;
+        return ACTION_LABELS[at] || desc || at || '—';
+    }
 
     function loadPoints() {
         const token = localStorage.getItem('access_token');
@@ -1052,7 +1062,7 @@
             data.history.forEach(item => {
                 const li = document.createElement('li');
                 li.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0;border-bottom:1px solid var(--steam-iron-800);';
-                const label = ACTION_LABELS[item.action_type] || item.description || item.action_type;
+                const label = pointHistoryRowLabel(item);
                 const dt = new Date(item.created_at);
                 const dateStr = `${dt.getMonth()+1}/${dt.getDate()}`;
                 const pts = Number(item.points);

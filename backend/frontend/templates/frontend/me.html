@@ -313,7 +313,7 @@
     }
     /* フォロー中TL: 縦長になりすぎないよう約5〜6件分の高さでスクロール */
     .follow-feed-scroll {
-        max-height: min(30rem, 52vh);
+        max-height: min(44rem, 72vh);
         overflow-y: auto;
         overflow-x: hidden;
         padding-right: 0.25rem;
@@ -441,6 +441,14 @@
                     <span>StudySphereへ移動</span>
                 </a>
             </div>
+        </section>
+
+        <section class="me-section">
+            <h2>本日の投稿</h2>
+            <div style="font-size: 0.875rem; color: var(--steam-iron-100); margin-bottom: 0.5rem;" id="left-submitters-count">0名</div>
+            <ul id="left-submitters-list" style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--steam-iron-200); max-height: 12rem; overflow: auto;">
+                <li>データなし</li>
+            </ul>
         </section>
         
     </aside>
@@ -1534,6 +1542,8 @@
         .then(data => {
             const list = document.getElementById('submitters-list');
             const countElement = document.getElementById('submitters-count');
+            const leftList = document.getElementById('left-submitters-list');
+            const leftCountElement = document.getElementById('left-submitters-count');
             
             // Remove duplicates by anonId (in case API returns duplicates)
             const uniqueSubmitters = [];
@@ -1553,30 +1563,47 @@
                 if (countElement) {
                     countElement.textContent = `${uniqueCount}名`;
                 }
-                list.innerHTML = uniqueSubmitters.map(s => {
+                if (leftCountElement) {
+                    leftCountElement.textContent = `${uniqueCount}名`;
+                }
+                const submittersHtml = uniqueSubmitters.map(s => {
                     const displayName = s.displayName || s.anonId;
                     const urlId = s.anonUrlId || s.anonId;
                     return `<li style="display: flex; align-items: center; gap: 0.5rem;">
                         <a href="/profile/view/?user=${encodeURIComponent(urlId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
                     </li>`;
                 }).join('');
+                if (list) list.innerHTML = submittersHtml;
+                if (leftList) leftList.innerHTML = submittersHtml;
             } else {
                 // カウントを0に更新
                 if (countElement) {
                     countElement.textContent = '0名';
                 }
-                list.innerHTML = '<li>データなし</li>';
+                if (leftCountElement) {
+                    leftCountElement.textContent = '0名';
+                }
+                if (list) list.innerHTML = '<li>データなし</li>';
+                if (leftList) leftList.innerHTML = '<li>データなし</li>';
             }
         })
         .catch(err => {
             console.error('Failed to load submitters:', err);
             const countElement = document.getElementById('submitters-count');
+            const leftCountElement = document.getElementById('left-submitters-count');
             if (countElement) {
                 countElement.textContent = '0名';
             }
+            if (leftCountElement) {
+                leftCountElement.textContent = '0名';
+            }
             const list = document.getElementById('submitters-list');
+            const leftList = document.getElementById('left-submitters-list');
             if (list) {
                 list.innerHTML = '<li>データなし</li>';
+            }
+            if (leftList) {
+                leftList.innerHTML = '<li>データなし</li>';
             }
         });
     }

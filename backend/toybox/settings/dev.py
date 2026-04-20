@@ -5,7 +5,10 @@ from .base import *
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'toybox.ayatori-inc.co.jp']
+_env_allowed_hosts = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
+if _env_allowed_hosts:
+    ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS + _env_allowed_hosts))
 
 # Development-specific apps
 # Note: django_extensions is optional and may not be installed in all environments
@@ -51,4 +54,7 @@ CACHES = {
 
 # CORS for development
 CORS_ALLOW_ALL_ORIGINS = True
+
+# ローカルに画像ファイルがないため、画像URLを本番サーバーに向ける
+MEDIA_URL = 'https://toybox.ayatori-inc.co.jp/uploads/'
 

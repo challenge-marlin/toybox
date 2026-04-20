@@ -46,6 +46,64 @@
         font-weight: 600;
         font-size: 0.875rem;
     }
+
+    /* 新着投稿カードグリッド */
+    .new-arrivals-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    .new-arrival-card {
+        background: var(--steam-iron-800);
+        border: 1px solid var(--steam-iron-700);
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: border-color 0.15s;
+        text-decoration: none;
+    }
+    .new-arrival-card:hover {
+        border-color: var(--steam-gold-500);
+    }
+    .new-arrival-thumb {
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: cover;
+        background: var(--steam-iron-900);
+        display: block;
+    }
+    .new-arrival-thumb-placeholder {
+        width: 100%;
+        aspect-ratio: 1;
+        background: var(--steam-iron-900);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    .new-arrival-meta {
+        padding: 0.3rem 0.4rem 0.35rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        min-width: 0;
+    }
+    .new-arrival-avatar {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: var(--steam-iron-700);
+    }
+    .new-arrival-name {
+        font-size: 0.68rem;
+        color: var(--steam-iron-200);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     
     .profile-avatar {
         width: min(200px, 100%);
@@ -443,12 +501,11 @@
             </div>
         </section>
 
-        <section class="me-section">
-            <h2>本日の投稿</h2>
-            <div style="font-size: 0.875rem; color: var(--steam-iron-100); margin-bottom: 0.5rem;" id="left-submitters-count">0名</div>
-            <ul id="left-submitters-list" style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--steam-iron-200); max-height: 12rem; overflow: auto;">
-                <li>データなし</li>
-            </ul>
+        <section class="me-section" id="new-arrivals-section">
+            <h2>新着投稿</h2>
+            <div id="new-arrivals-grid" class="new-arrivals-grid">
+                <div style="color:var(--steam-iron-400);font-size:0.8rem;">読み込み中…</div>
+            </div>
         </section>
         
     </aside>
@@ -958,6 +1015,7 @@
             loadFollowingFeed();
             loadRecommendedUsers();
             loadSubmitters();
+            loadNewArrivals();
             loadRanking();
             loadPoints();
             dailyCheckin();
@@ -1534,18 +1592,12 @@
     function loadSubmitters() {
         fetch('/api/submitters/today/')
         .then(res => {
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return res.json();
         })
         .then(data => {
             const list = document.getElementById('submitters-list');
             const countElement = document.getElementById('submitters-count');
-            const leftList = document.getElementById('left-submitters-list');
-            const leftCountElement = document.getElementById('left-submitters-count');
-            
-            // Remove duplicates by anonId (in case API returns duplicates)
             const uniqueSubmitters = [];
             const seenIds = new Set();
             if (data.submitters && data.submitters.length > 0) {
@@ -1556,55 +1608,78 @@
                     }
                 }
             }
-            
             if (uniqueSubmitters.length > 0) {
-                // Use unique count
-                const uniqueCount = uniqueSubmitters.length;
-                if (countElement) {
-                    countElement.textContent = `${uniqueCount}名`;
-                }
-                if (leftCountElement) {
-                    leftCountElement.textContent = `${uniqueCount}名`;
-                }
+                if (countElement) countElement.textContent = `${uniqueSubmitters.length}名`;
                 const submittersHtml = uniqueSubmitters.map(s => {
                     const displayName = s.displayName || s.anonId;
                     const urlId = s.anonUrlId || s.anonId;
-                    return `<li style="display: flex; align-items: center; gap: 0.5rem;">
-                        <a href="/profile/view/?user=${encodeURIComponent(urlId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
+                    return `<li style="display:flex;align-items:center;gap:0.5rem;">
+                        <a href="/profile/view/?user=${encodeURIComponent(urlId)}" style="color:var(--steam-gold-400);text-decoration:underline;">${displayName}</a>
                     </li>`;
                 }).join('');
                 if (list) list.innerHTML = submittersHtml;
-                if (leftList) leftList.innerHTML = submittersHtml;
             } else {
-                // カウントを0に更新
-                if (countElement) {
-                    countElement.textContent = '0名';
-                }
-                if (leftCountElement) {
-                    leftCountElement.textContent = '0名';
-                }
+                if (countElement) countElement.textContent = '0名';
                 if (list) list.innerHTML = '<li>データなし</li>';
-                if (leftList) leftList.innerHTML = '<li>データなし</li>';
             }
         })
         .catch(err => {
             console.error('Failed to load submitters:', err);
             const countElement = document.getElementById('submitters-count');
-            const leftCountElement = document.getElementById('left-submitters-count');
-            if (countElement) {
-                countElement.textContent = '0名';
-            }
-            if (leftCountElement) {
-                leftCountElement.textContent = '0名';
-            }
+            if (countElement) countElement.textContent = '0名';
             const list = document.getElementById('submitters-list');
-            const leftList = document.getElementById('left-submitters-list');
-            if (list) {
-                list.innerHTML = '<li>データなし</li>';
+            if (list) list.innerHTML = '<li>データなし</li>';
+        });
+    }
+
+    function loadNewArrivals() {
+        const grid = document.getElementById('new-arrivals-grid');
+        if (!grid) return;
+        fetch('/api/feed/?mode=recent&limit=6')
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(data => {
+            const items = data.items || [];
+            if (!items.length) {
+                grid.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.8rem;grid-column:1/-1;">投稿なし</div>';
+                return;
             }
-            if (leftList) {
-                leftList.innerHTML = '<li>データなし</li>';
-            }
+            grid.innerHTML = items.map(item => {
+                const urlId = encodeURIComponent(item.anonUrlId || item.anonId || '');
+                const postUrl = `/profile/view/?user=${urlId}`;
+                const submissionUrl = `/submission/${item.id}/` || postUrl;
+                const displayName = item.displayName || item.anonId || '';
+                let thumbHtml;
+                const thumb = item.imageThumbnailUrl || item.displayImageUrl || item.imageUrl;
+                if (item.gameUrl && !thumb) {
+                    thumbHtml = `<div class="new-arrival-thumb-placeholder">🎮</div>`;
+                } else if (item.videoUrl && !thumb) {
+                    thumbHtml = `<div class="new-arrival-thumb-placeholder">🎬</div>`;
+                } else if (thumb) {
+                    thumbHtml = `<img class="new-arrival-thumb" src="${thumb}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+                } else {
+                    thumbHtml = `<div class="new-arrival-thumb-placeholder">🖼️</div>`;
+                }
+                let avHtml = '';
+                if (item.avatarUrl) {
+                    avHtml = `<img class="new-arrival-avatar" src="${item.avatarUrl}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+                } else {
+                    avHtml = `<span class="new-arrival-avatar" style="display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--steam-iron-400);">👤</span>`;
+                }
+                return `<a class="new-arrival-card" href="${postUrl}" title="${displayName}">
+                    ${thumbHtml}
+                    <div class="new-arrival-meta">
+                        ${avHtml}
+                        <span class="new-arrival-name">${displayName}</span>
+                    </div>
+                </a>`;
+            }).join('');
+        })
+        .catch(err => {
+            console.error('Failed to load new arrivals:', err);
+            if (grid) grid.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.8rem;grid-column:1/-1;">読み込み失敗</div>';
         });
     }
     
@@ -2565,6 +2640,7 @@
                 setTimeout(() => {
                     loadProfile();
                     loadSubmitters();
+                    loadNewArrivals();
                     loadRanking();
                     loadFollowingFeed();
                 }, 500);
@@ -2593,6 +2669,7 @@
         setTimeout(() => {
             loadProfile();
             loadSubmitters();
+            loadNewArrivals();
             loadRanking();
             loadFollowingFeed();
         }, 500);

@@ -93,6 +93,27 @@ class FollowToggleView(APIView):
                 if not already_received:
                     award_points(target, PointHistory.ActionType.FOLLOW_RECEIVED, 10, f'フォローされた by:{request.user.id}')
                     followed_awarded = True
+                try:
+                    target_meta, _ = UserMeta.objects.get_or_create(user=target)
+                    actor_meta, _ = UserMeta.objects.get_or_create(user=request.user)
+                    actor_name = actor_meta.display_name or request.user.display_id
+                    notifications = list(target_meta.notifications or [])
+                    notifications.append(
+                        {
+                            'type': 'follow',
+                            'fromAnonId': request.user.display_id,
+                            'fromDisplayName': actor_name,
+                            'message': f'{actor_name} さんがあなたをフォローしました',
+                            'read': False,
+                            'createdAt': str(timezone.now().isoformat()),
+                        }
+                    )
+                    if len(notifications) > 50:
+                        notifications = notifications[-50:]
+                    target_meta.notifications = notifications
+                    target_meta.save(update_fields=['notifications'])
+                except Exception as e:
+                    logger.warning('Follow notification failed: %s', e, exc_info=True)
         followers_count = UserFollow.objects.filter(following=target).count()
         following_count = UserFollow.objects.filter(follower=target).count()
         mutual = False

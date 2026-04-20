@@ -323,6 +323,11 @@
         background: var(--steam-iron-900);
         padding: 0.45rem 0.35rem 0.45rem 0.45rem;
     }
+    .follow-feed-scroll.is-expanded {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0.35rem;
+    }
 
     .me-follow-card {
         max-width: 100%;
@@ -1449,6 +1454,8 @@
         followFeedLoading = true;
         var stream = document.getElementById('follow-feed-stream');
         var moreBtn = document.getElementById('follow-feed-more-btn');
+        var wrap = document.getElementById('follow-feed-scroll-wrap');
+        if (wrap) wrap.classList.remove('is-expanded');
         if (stream) stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">読み込み中...</div>';
         fetch('/api/feed/following/?limit=6', { headers: { 'Authorization': 'Bearer ' + token } })
         .then(function(r) { return r.ok ? r.json() : { items: [] }; })
@@ -1463,7 +1470,6 @@
                 moreBtn.style.display = followFeedCursor ? 'block' : 'none';
                 moreBtn.textContent = 'もっと見る';
             }
-            var wrap = document.getElementById('follow-feed-scroll-wrap');
             if (wrap) wrap.scrollTop = 0;
         })
         .catch(function() {
@@ -1477,6 +1483,8 @@
         followFeedLoading = true;
         var stream = document.getElementById('follow-feed-stream');
         var moreBtn = document.getElementById('follow-feed-more-btn');
+        var wrap = document.getElementById('follow-feed-scroll-wrap');
+        if (wrap) wrap.classList.add('is-expanded');
         if (moreBtn) moreBtn.textContent = '読み込み中…';
         fetch('/api/feed/following/?limit=6&cursor=' + encodeURIComponent(followFeedCursor), { headers: { 'Authorization': 'Bearer ' + token } })
         .then(function(r) { return r.json(); })

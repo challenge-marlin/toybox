@@ -8,11 +8,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.utils import timezone
-from django.db.models import Q, Count
+from datetime import timedelta
+from django.db.models import Q, Count, F, IntegerField, Sum, Case, When, Value
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Submission, Reaction
 from .serializers import SubmissionSerializer, SubmissionCreateSerializer, ReactionSerializer
-from users.models import UserMeta, User
+from users.models import UserMeta, User, UserFollow
 from lottery.services import handle_submission_and_lottery
 
 logger = logging.getLogger(__name__)
@@ -572,6 +573,8 @@ class SubmitView(APIView):
         title = request.data.get('title')
         caption = request.data.get('caption')
         hashtags = request.data.get('hashtags')
+        spell = request.data.get('spell') or request.data.get('呪文')
+        ai_tool = request.data.get('aiTool') or request.data.get('ai_tool')
         
         # Handle hashtags: if it's a JSON string (from FormData), parse it
         if hashtags is not None:
@@ -616,7 +619,9 @@ class SubmitView(APIView):
                 title=title,
                 caption=caption,
                 hashtags=hashtags,
-                thumbnail=thumbnail
+                thumbnail=thumbnail,
+                spell=spell,
+                ai_tool=ai_tool,
             )
             return Response(result)
         except ValueError as e:
@@ -635,138 +640,160 @@ class SubmitView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+def _build_feed_item_payload(request, item, logger):
+    """Serialize one submission for feed JSON (camelCase)."""
+    serializer = SubmissionSerializer(item, context={'request': request})
+    item_data = serializer.data
+    image_url = item_data.get('image') or item_data.get('image_url')
+    display_image_url = item_data.get('display_image_url') or image_url
+    image_thumbnail_url = item_data.get('image_thumbnail_url') or None
+    reactions_count = item_data.get('reactions_count', 0)
+    all_reactions = item_data.get('all_reactions', []) or []
+    total_reactions = sum(int(x.get('count') or 0) for x in all_reactions)
+
+    display_name = item_data.get('author_display_id') or 'unknown'
+    try:
+        author = item.author
+        if hasattr(author, 'meta'):
+            meta = author.meta
+            if meta and meta.display_name:
+                display_name = meta.display_name
+            elif meta and meta.bio:
+                display_name = meta.bio
+    except (AttributeError, Exception):
+        pass
+
+    avatar_url = item_data.get('author_avatar_url') or None
+    title = item_data.get('title') or None
+    if not title:
+        title = item_data.get('caption') or None
+
+    return {
+        'id': str(item_data.get('id', '')),
+        'anonId': item_data.get('author_display_id') or 'unknown',
+        'anonUrlId': item_data.get('author_url_id') or item_data.get('author_display_id') or 'unknown',
+        'displayName': display_name,
+        'avatarUrl': avatar_url,
+        'createdAt': item_data.get('created_at', ''),
+        'imageUrl': image_url,
+        'imageThumbnailUrl': image_thumbnail_url,
+        'videoUrl': item_data.get('video_url'),
+        'displayImageUrl': display_image_url,
+        'title': title,
+        'caption': item_data.get('caption'),
+        'hashtags': item_data.get('hashtags', []),
+        'spell': item_data.get('spell') or '',
+        'aiTool': item_data.get('ai_tool') or '',
+        'aiToolLabel': item_data.get('ai_tool_label'),
+        'gameUrl': item_data.get('game_url'),
+        'likesCount': reactions_count or 0,
+        'totalReactionsCount': total_reactions,
+        'liked': item_data.get('user_reacted', False),
+        'allReactions': all_reactions,
+        'activeTitle': item_data.get('active_title'),
+        'activeTitleImageUrl': item_data.get('active_title_image_url'),
+        'titleColor': item_data.get('title_color'),
+    }
+
+
 class FeedView(APIView):
     """Feed endpoint compatible with Next.js format. 未認証でも閲覧可能（ログインループ防止）。"""
     permission_classes = [AllowAny]
 
     def get(self, request):
-        """Get feed items."""
+        """Get feed items. mode=recent|recommended, hashtag_contains=部分一致検索。"""
         import logging
         logger = logging.getLogger(__name__)
-        
+
         try:
+            mode = (request.query_params.get('mode') or 'recent').strip().lower()
             queryset = Submission.objects.filter(deleted_at__isnull=True)
-            
-            # Filter by hashtag if provided (大文字小文字を無視してフィルタリング)
+
+            hashtag_contains = request.query_params.get('hashtag_contains') or request.query_params.get('hashtagSearch')
+            if hashtag_contains and str(hashtag_contains).strip():
+                ql = str(hashtag_contains).strip().lower()
+                cand_ids = []
+                for sid, tags in Submission.objects.filter(deleted_at__isnull=True).order_by('-created_at').values_list('id', 'hashtags')[:5000]:
+                    if not tags or not isinstance(tags, list):
+                        continue
+                    if any(isinstance(t, str) and ql in t.strip().lower() for t in tags):
+                        cand_ids.append(sid)
+                queryset = queryset.filter(id__in=cand_ids) if cand_ids else queryset.none()
+
             hashtag = request.query_params.get('hashtag')
-            if hashtag and hashtag.strip():  # 空文字列や空白のみの場合はフィルタリングしない
-                hashtag_query = hashtag.strip().lower()  # 検索用に小文字に変換
-                # PostgreSQLのJSONFieldでは大文字小文字を区別するため、Python側でフィルタリング
-                # 大文字小文字を無視して同じ綴りのハッシュタグを持つ投稿をすべて取得
+            if hashtag and hashtag.strip():
+                hashtag_query = hashtag.strip().lower()
                 submission_ids = []
                 for sub in queryset:
                     if sub.hashtags and isinstance(sub.hashtags, list):
-                        # 大文字小文字を無視して比較（同じ綴りならすべて表示）
                         for tag in sub.hashtags:
                             if tag and isinstance(tag, str) and tag.strip().lower() == hashtag_query:
                                 submission_ids.append(sub.id)
-                                break  # 1つの投稿に複数の一致があっても1回だけ追加
+                                break
                 queryset = queryset.filter(id__in=submission_ids)
-            
-            # Get pagination params
+
             try:
                 limit = int(request.query_params.get('limit', 24))
-                limit = max(1, min(50, limit))  # Clamp between 1 and 50
+                limit = max(1, min(50, limit))
             except (ValueError, TypeError):
                 limit = 24
-            
+
             cursor = request.query_params.get('cursor')
-            
-            # If cursor provided, decode and filter
             if cursor:
                 try:
-                    # Cursor is typically the last item's ID or timestamp
-                    # For simplicity, we'll use ID-based pagination
                     cursor_id = int(cursor)
                     queryset = queryset.filter(id__lt=cursor_id)
                 except (ValueError, TypeError):
                     pass
-            
-            # Order by created_at descending
-            queryset = queryset.order_by('-created_at')
-            
-            # Annotate with reactions count and select related for performance
-            queryset = queryset.select_related('author', 'author__meta').annotate(
-                reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
-            )
-            
-            # Get items
+
+            if mode == 'recommended':
+                cutoff = timezone.now() - timedelta(hours=24)
+                queryset = queryset.filter(created_at__gte=cutoff)
+                queryset = queryset.select_related('author', 'author__meta').annotate(
+                    reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL)),
+                    _c_awe=Count('reactions', filter=Q(reactions__type=Reaction.Type.AWESOME)),
+                    _c_cute=Count('reactions', filter=Q(reactions__type=Reaction.Type.CUTE)),
+                    _c_fun=Count('reactions', filter=Q(reactions__type=Reaction.Type.FUNNY)),
+                    _c_mov=Count('reactions', filter=Q(reactions__type=Reaction.Type.MOVED)),
+                    _c_cool=Count('reactions', filter=Q(reactions__type=Reaction.Type.COOL)),
+                ).annotate(
+                    _total_rx=F('reactions_count') + F('_c_awe') + F('_c_cute') + F('_c_fun') + F('_c_mov') + F('_c_cool'),
+                    _score=(
+                        F('reactions_count') * Value(3)
+                        + F('_c_awe') * Value(5)
+                        + F('_c_cute') * Value(4)
+                        + F('_c_fun') * Value(4)
+                        + F('_c_mov') * Value(4)
+                        + F('_c_cool') * Value(5)
+                    ),
+                ).filter(_total_rx__gte=3).order_by('-_score', '-created_at')
+            else:
+                queryset = queryset.order_by('-created_at')
+                queryset = queryset.select_related('author', 'author__meta').annotate(
+                    reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
+                )
+
             items = list(queryset[:limit])
-            
-            # Serialize items with error handling
+
             feed_items = []
             for item in items:
                 try:
-                    serializer = SubmissionSerializer(item, context={'request': request})
-                    item_data = serializer.data
-                    
-                    # Get image URL (シリアライザーのdisplay_image_urlを使用、サムネイル優先)
-                    image_url = item_data.get('image') or item_data.get('image_url')
-                    display_image_url = item_data.get('display_image_url') or image_url  # サムネイル優先
-                    image_thumbnail_url = item_data.get('image_thumbnail_url') or None
-                    
-                    # Get reactions_count from serializer (it will use annotated field if available)
-                    reactions_count = item_data.get('reactions_count', 0)
-                    
-                    # Get display name from UserMeta if available
-                    display_name = item_data.get('author_display_id') or 'unknown'
-                    try:
-                        author = item.author
-                        if hasattr(author, 'meta'):
-                            meta = author.meta
-                            if meta and meta.display_name:
-                                display_name = meta.display_name
-                            elif meta and meta.bio:
-                                display_name = meta.bio
-                    except (AttributeError, Exception):
-                        pass
-                    
-                    # Get avatar URL
-                    avatar_url = item_data.get('author_avatar_url') or None
-                    
-                    # Get title - use title field, fallback to caption, but never use "submission"
-                    title = item_data.get('title') or None
-                    if not title:
-                        title = item_data.get('caption') or None
-                    
-                    feed_items.append({
-                        'id': str(item_data.get('id', '')),
-                        'anonId': item_data.get('author_display_id') or 'unknown',
-                        'anonUrlId': item_data.get('author_url_id') or item_data.get('author_display_id') or 'unknown',
-                        'displayName': display_name,
-                        'avatarUrl': avatar_url,
-                        'createdAt': item_data.get('created_at', ''),
-                        'imageUrl': image_url,
-                        'imageThumbnailUrl': image_thumbnail_url,
-                        'videoUrl': item_data.get('video_url'),
-                        'displayImageUrl': display_image_url,
-                        'title': title,
-                        'caption': item_data.get('caption'),
-                        'hashtags': item_data.get('hashtags', []),
-                        'gameUrl': item_data.get('game_url'),
-                        'likesCount': reactions_count or 0,
-                        'liked': item_data.get('user_reacted', False),
-                        'allReactions': item_data.get('all_reactions', []),  # 全リアクション
-                        'activeTitle': item_data.get('active_title'),
-                        'activeTitleImageUrl': item_data.get('active_title_image_url'),
-                        'titleColor': item_data.get('title_color'),
-                    })
+                    feed_items.append(_build_feed_item_payload(request, item, logger))
                 except Exception as e:
                     logger.error(f'Error serializing submission {getattr(item, "id", "unknown")}: {str(e)}', exc_info=True)
-                    # エラーが発生した場合はスキップして続行
                     continue
-            
-            # Determine next cursor
+
             next_cursor = None
             if len(items) == limit and len(items) > 0:
                 try:
                     next_cursor = str(items[-1].id)
                 except (AttributeError, IndexError):
                     next_cursor = None
-            
+
             return Response({
                 'items': feed_items,
-                'nextCursor': next_cursor
+                'nextCursor': next_cursor,
+                'mode': mode,
             })
         except Exception as e:
             logger.error(f'FeedView error: {str(e)}', exc_info=True)
@@ -777,6 +804,52 @@ class FeedView(APIView):
                 'error': 'フィードの読み込みに失敗しました',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class FollowingFeedView(APIView):
+    """フォロー中ユーザーの投稿のみ（新しい順）。要ログイン。"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            following_ids = list(
+                UserFollow.objects.filter(follower=request.user).values_list('following_id', flat=True)
+            )
+            if not following_ids:
+                return Response({'items': [], 'nextCursor': None})
+
+            try:
+                limit = int(request.query_params.get('limit', 24))
+                limit = max(1, min(50, limit))
+            except (ValueError, TypeError):
+                limit = 24
+
+            cursor = request.query_params.get('cursor')
+            queryset = Submission.objects.filter(
+                deleted_at__isnull=True,
+                author_id__in=following_ids,
+            ).select_related('author', 'author__meta').annotate(
+                reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
+            ).order_by('-created_at')
+            if cursor:
+                try:
+                    queryset = queryset.filter(id__lt=int(cursor))
+                except (ValueError, TypeError):
+                    pass
+            items = list(queryset[:limit])
+            feed_items = []
+            for item in items:
+                try:
+                    feed_items.append(_build_feed_item_payload(request, item, logger))
+                except Exception as e:
+                    logger.error(f'FollowingFeed serialize error: {e}', exc_info=True)
+            next_cursor = str(items[-1].id) if len(items) == limit and items else None
+            return Response({'items': feed_items, 'nextCursor': next_cursor})
+        except Exception as e:
+            logger.error(f'FollowingFeedView error: {e}', exc_info=True)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class HashtagsView(APIView):
@@ -1142,6 +1215,8 @@ class UserSubmissionsView(APIView):
                     except Exception as e:
                         logger.warning(f'Failed to get reactions for submission {sub.id}: {e}')
 
+                    from submissions.constants import AI_TOOL_LABELS
+                    total_rx = sum(int(x.get('count') or 0) for x in all_reactions)
                     items.append({
                         'id': str(sub.id),
                         'imageUrl': image_url,
@@ -1151,8 +1226,13 @@ class UserSubmissionsView(APIView):
                         'gameUrl': game_url,
                         'title': title,
                         'caption': caption,
+                        'hashtags': sub.hashtags or [],
+                        'spell': getattr(sub, 'spell', '') or '',
+                        'aiTool': getattr(sub, 'ai_tool', '') or '',
+                        'aiToolLabel': AI_TOOL_LABELS.get(sub.ai_tool) if getattr(sub, 'ai_tool', None) else None,
                         'createdAt': created_at_str,
                         'likesCount': likes_count,
+                        'totalReactionsCount': total_rx,
                         'liked': liked,
                         'allReactions': all_reactions,
                         'activeTitle': active_title,
@@ -1254,57 +1334,79 @@ class SubmittersTodayView(APIView):
         })
 
 
-class RankingDailyView(APIView):
-    """Get daily ranking of submissions."""
-    permission_classes = [AllowAny]
-    
-    def get(self, request):
-        """Get daily ranking by submission count."""
-        from datetime import datetime
-        
-        today = timezone.now().date()
-        start = timezone.make_aware(datetime.combine(today, datetime.min.time()))
-        end = timezone.make_aware(datetime.combine(today, datetime.max.time()))
-        
-        # Count submissions per user for today
-        submissions = Submission.objects.filter(
+def _reaction_score_case():
+    """リアクション1件あたりのTP相当重み（gamification.services.REACTION_POINTS と一致）。"""
+    from gamification.services import REACTION_POINTS
+    return Case(
+        *[When(type=k, then=Value(v)) for k, v in REACTION_POINTS.items()],
+        default=Value(0),
+        output_field=IntegerField(),
+    )
+
+
+def _ranking_users_by_reaction_score(start, end, limit=20):
+    """期間内に付いたリアクションの重み付き合計でユーザーをランキング。"""
+    rows = (
+        Reaction.objects.filter(
             created_at__gte=start,
             created_at__lte=end,
-            deleted_at__isnull=True
-        ).values('author').annotate(count=Count('id')).order_by('-count')[:10]
-        
-        ranking = []
-        for sub_data in submissions:
-            user_id = sub_data['author']
-            count = sub_data['count']
-            try:
-                user = User.objects.select_related('meta').get(id=user_id)
-                meta = getattr(user, 'meta', None)
-                
-                # Get display name from display_name field, fallback to display_id
-                # StudySphere経由のユーザーの場合、IDを非表示にする
-                anon_id = 'StudySphereUser' if (user.studysphere_user_id or user.studysphere_login_code) else user.display_id
-                display_name = None
-                if meta and meta.display_name:
-                    display_name = meta.display_name
-                else:
-                    display_name = anon_id
-                
-                # URL用のID（StudySphereユーザーの場合はトークン）
-                url_id = user.studysphere_login_code if (user.studysphere_user_id or user.studysphere_login_code) else anon_id
-                
-                ranking.append({
-                    'anonId': anon_id,
-                    'anonUrlId': url_id,  # URL用のID
-                    'displayName': display_name,
-                    'count': count
-                })
-            except User.DoesNotExist:
-                continue
-        
-        return Response({
-            'ranking': ranking
-        })
+            submission__deleted_at__isnull=True,
+        )
+        .values('submission__author')
+        .annotate(score=Sum(_reaction_score_case()))
+        .order_by('-score')[:limit]
+    )
+    ranking = []
+    for row in rows:
+        user_id = row['submission__author']
+        score = row['score'] or 0
+        if score <= 0:
+            continue
+        try:
+            user = User.objects.select_related('meta').get(id=user_id)
+            meta = getattr(user, 'meta', None)
+            anon_id = 'StudySphereUser' if (user.studysphere_user_id or user.studysphere_login_code) else user.display_id
+            display_name = meta.display_name if meta and meta.display_name else anon_id
+            url_id = user.studysphere_login_code if (user.studysphere_user_id or user.studysphere_login_code) else anon_id
+            ranking.append({
+                'anonId': anon_id,
+                'anonUrlId': url_id,
+                'displayName': display_name,
+                'score': int(score),
+            })
+        except User.DoesNotExist:
+            continue
+    return ranking
+
+
+class RankingDailyView(APIView):
+    """本日（ローカル日付）に付いたリアクションの重み付きスコアでユーザーランキング。"""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from datetime import datetime
+
+        today = timezone.localdate()
+        start = timezone.make_aware(datetime.combine(today, datetime.min.time()))
+        end = timezone.make_aware(datetime.combine(today, datetime.max.time()))
+        ranking = _ranking_users_by_reaction_score(start, end, limit=20)
+        return Response({'ranking': ranking, 'period': 'daily'})
+
+
+class RankingWeeklyView(APIView):
+    """今週（月曜始まり・ローカル日付）のリアクション重み付きスコアでユーザーランキング。"""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from datetime import datetime
+
+        today = timezone.localdate()
+        monday = today - timedelta(days=today.weekday())
+        sunday = monday + timedelta(days=6)
+        start = timezone.make_aware(datetime.combine(monday, datetime.min.time()))
+        end = timezone.make_aware(datetime.combine(sunday, datetime.max.time()))
+        ranking = _ranking_users_by_reaction_score(start, end, limit=20)
+        return Response({'ranking': ranking, 'period': 'weekly'})
 
 
 class TimelineView(APIView):

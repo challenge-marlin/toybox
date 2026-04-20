@@ -18,7 +18,7 @@ from django.utils.decorators import method_decorator
 from django.utils import timezone
 from django.conf import settings
 from .serializers import UserMetaSerializer, CustomTokenObtainPairSerializer, RegisterSerializer, UserSerializer
-from .models import UserMeta, UserCard, UserRegistration
+from .models import UserMeta, UserCard, UserRegistration, UserFollow
 from django.contrib.auth import get_user_model
 from .discord_oauth import (
     get_discord_oauth_url,
@@ -37,6 +37,114 @@ User = get_user_model()
 
 # 公式スタッフ専用称号を表示するユーザーの display_id セット
 OFFICIAL_DISPLAY_IDS = frozenset(['ramchan', 'km1010'])
+
+
+def _resolve_user_by_anon_id(anon_id, request):
+    """プロフィールURL等と同じルールでユーザーを解決。"""
+    if anon_id == 'StudySphereUser' and request.user.is_authenticated:
+        return request.user
+    try:
+        return User.objects.get(display_id=anon_id)
+    except User.DoesNotExist:
+        try:
+            return User.objects.get(studysphere_login_code=anon_id)
+        except User.DoesNotExist:
+            return None
+
+
+class FollowToggleView(APIView):
+    """フォロー / アンフォローをトグル（POST）。"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, anon_id):
+        target = _resolve_user_by_anon_id(anon_id, request)
+        if not target:
+            return Response({'error': 'ユーザーが見つかりません'}, status=status.HTTP_404_NOT_FOUND)
+        if target.id == request.user.id:
+            return Response({'error': '自分自身はフォローできません'}, status=status.HTTP_400_BAD_REQUEST)
+        link = UserFollow.objects.filter(follower=request.user, following=target).first()
+        if link:
+            link.delete()
+            following = False
+        else:
+            UserFollow.objects.get_or_create(follower=request.user, following=target)
+            following = True
+        followers_count = UserFollow.objects.filter(following=target).count()
+        following_count = UserFollow.objects.filter(follower=target).count()
+        mutual = False
+        if following:
+            mutual = UserFollow.objects.filter(follower=target, following=request.user).exists()
+        return Response({
+            'ok': True,
+            'following': following,
+            'mutualFollow': mutual,
+            'targetFollowersCount': followers_count,
+            'targetFollowingCount': following_count,
+        })
+
+
+class RecommendedUsersView(APIView):
+    """自分の直近投稿のハッシュタグと重なるユーザーを最大12件（フォロー済み・自分は除外）。"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from collections import defaultdict
+        from submissions.models import Submission
+
+        user = request.user
+        my_tags = set()
+        recent = Submission.objects.filter(author=user, deleted_at__isnull=True).order_by('-created_at')[:40]
+        for sub in recent:
+            for t in (sub.hashtags or []):
+                if isinstance(t, str) and t.strip():
+                    my_tags.add(t.strip().lower())
+        excluded_ids = {user.id}
+        excluded_ids.update(
+            UserFollow.objects.filter(follower=user).values_list('following_id', flat=True)
+        )
+        scores = defaultdict(int)
+        tag_hit = defaultdict(set)
+        since = timezone.now() - timedelta(days=90)
+        for sub in (
+            Submission.objects.filter(deleted_at__isnull=True, created_at__gte=since)
+            .exclude(author_id__in=excluded_ids)
+            .select_related('author', 'author__meta')
+            .only('id', 'author_id', 'hashtags')[:2500]
+        ):
+            for t in (sub.hashtags or []):
+                if not isinstance(t, str) or not t.strip():
+                    continue
+                tl = t.strip().lower()
+                if tl in my_tags:
+                    scores[sub.author_id] += 1
+                    tag_hit[sub.author_id].add(tl)
+        ranked = sorted(scores.items(), key=lambda x: -x[1])[:12]
+        out = []
+        for uid, sc in ranked:
+            try:
+                u = User.objects.select_related('meta').get(id=uid)
+            except User.DoesNotExist:
+                continue
+            meta = getattr(u, 'meta', None)
+            anon_id = 'StudySphereUser' if (u.studysphere_user_id or u.studysphere_login_code) else u.display_id
+            display_name = (meta.display_name if meta and meta.display_name else None) or anon_id
+            url_id = u.studysphere_login_code if (u.studysphere_user_id or u.studysphere_login_code) else anon_id
+            sample_tags = list(tag_hit.get(uid, set()))[:3]
+            reason = '共通のハッシュタグ: ' + ', '.join('#' + x for x in sample_tags) if sample_tags else 'おすすめユーザー'
+            from toybox.image_utils import get_image_url
+            av = None
+            if u.avatar_url:
+                av = get_image_url(image_url_field=u.avatar_url, request=request, verify_exists=False)
+            cap = (meta.bio[:80] + '…') if meta and meta.bio and len(meta.bio) > 80 else (meta.bio if meta else '')
+            out.append({
+                'anonId': anon_id,
+                'anonUrlId': url_id,
+                'displayName': display_name,
+                'avatarUrl': av,
+                'caption': cap or '',
+                'recommendationReason': reason,
+            })
+        return Response({'users': out})
 
 
 class LoginView(TokenObtainPairView):
@@ -700,19 +808,40 @@ class ProfileGetView(APIView):
             # 旧 image_url フィールドは廃止、ImageField に実ファイルがある場合のみ返す
             active_title_image_url = None
             
-            # 獲得したいいねの合計を計算
-            total_likes = 0
+            # もらったリアクション（全種）件数と TP 相当スコア合計
+            total_reactions = 0
+            total_reaction_score = 0
             try:
                 from submissions.models import Reaction
-                total_likes = Reaction.objects.filter(
+                from django.db.models import Sum, Case, When, Value, IntegerField
+                from gamification.services import REACTION_POINTS
+
+                total_reactions = Reaction.objects.filter(
                     submission__author=user,
                     submission__deleted_at__isnull=True,
-                    type=Reaction.Type.SUBMIT_MEDAL
                 ).count()
+                when_clauses = [When(type=k, then=Value(v)) for k, v in REACTION_POINTS.items()]
+                agg = Reaction.objects.filter(
+                    submission__author=user,
+                    submission__deleted_at__isnull=True,
+                ).aggregate(
+                    s=Sum(Case(*when_clauses, default=Value(0), output_field=IntegerField()))
+                )
+                total_reaction_score = int(agg['s'] or 0)
             except Exception as e:
                 profile_logger = logging.getLogger(__name__)
-                profile_logger.warning(f'Failed to get total_likes for user {user.id}: {e}')
-            
+                profile_logger.warning(f'Failed to get reaction stats for user {user.id}: {e}')
+
+            follower_count = UserFollow.objects.filter(following=user).count()
+            following_count = UserFollow.objects.filter(follower=user).count()
+            is_following = False
+            is_follower = False
+            mutual_follow = False
+            if request.user.is_authenticated and request.user.id != user.id:
+                is_following = UserFollow.objects.filter(follower=request.user, following=user).exists()
+                is_follower = UserFollow.objects.filter(follower=user, following=request.user).exists()
+                mutual_follow = is_following and is_follower
+
             is_official = 'TOYBOX!公式' in (meta.earned_titles or [])
             response_data = {
                 'anonId': anon_id,
@@ -727,7 +856,13 @@ class ProfileGetView(APIView):
                 'earnedTitles': list(meta.earned_titles or []),
                 'isOfficial': is_official,
                 'updatedAt': meta.updated_at.isoformat() if meta.updated_at else None,
-                'totalLikes': total_likes
+                'totalReactions': total_reactions,
+                'totalReactionScore': total_reaction_score,
+                'followerCount': follower_count,
+                'followingCount': following_count,
+                'isFollowing': is_following,
+                'isFollower': is_follower,
+                'mutualFollow': mutual_follow,
             }
             
             # Log response data for debugging (especially for StudySphere users)
@@ -803,18 +938,38 @@ class NotificationListView(APIView):
     def get(self, request):
         """Get notifications."""
         meta, _ = UserMeta.objects.get_or_create(user=request.user)
-        notifications = meta.notifications or []
-        
+        notifications = list(meta.notifications or [])
+
+        def _sort_key(n):
+            return str(n.get('createdAt') or n.get('created_at') or '')
+
+        notifications.sort(key=_sort_key, reverse=True)
+
         # 未読の通知数を計算
         unread_count = sum(1 for n in notifications if not n.get('read', False))
-        
+
+        try:
+            limit = int(request.query_params.get('limit', 20))
+            limit = max(1, min(100, limit))
+        except (ValueError, TypeError):
+            limit = 20
+        try:
+            offset = int(request.query_params.get('offset', 0))
+            offset = max(0, offset)
+        except (ValueError, TypeError):
+            offset = 0
+
+        page = notifications[offset : offset + limit]
+        next_offset = offset + len(page) if offset + len(page) < len(notifications) else None
+
         # フロントエンドとの互換性のため、items と unread も返す
         return Response({
-            'items': notifications,
-            'notifications': notifications,  # 後方互換性
+            'items': page,
+            'notifications': page,  # 後方互換性
             'unread': unread_count,
             'unreadCount': unread_count,  # 後方互換性
-            'nextOffset': None  # 将来のページネーション用
+            'nextOffset': next_offset,
+            'total': len(notifications),
         })
 
 

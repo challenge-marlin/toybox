@@ -30,6 +30,8 @@ urlpatterns = [
     # ポイントエンドポイント
     path('points/', views.PointSummaryView.as_view(), name='point-summary'),
     path('daily-checkin/', views.DailyCheckinView.as_view(), name='daily-checkin'),
+    path('follow/<str:anon_id>/', views.FollowToggleView.as_view(), name='follow-toggle'),
+    path('recommended-users/', views.RecommendedUsersView.as_view(), name='recommended-users'),
     
     # Notification endpoints
     path('notifications/', views.NotificationListView.as_view(), name='notifications'),

@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.http import HttpResponseRedirect
-from .models import UserRegistration, UserMeta, UserCard
+from .models import UserRegistration, UserMeta, UserCard, UserFollow
 
 User = get_user_model()
 
@@ -494,3 +494,13 @@ class UserCardAdmin(admin.ModelAdmin):
             'description': '獲得したカードと獲得日時を表示します。'
         }),
     )
+
+
+@admin.register(UserFollow)
+class UserFollowAdmin(admin.ModelAdmin):
+    """フォロー関係（Ver 2.10）。"""
+    list_display = ['id', 'follower', 'following', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['follower__display_id', 'following__display_id', 'follower__email', 'following__email']
+    readonly_fields = ['created_at']
+    ordering = ['-created_at']

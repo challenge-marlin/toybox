@@ -10,9 +10,9 @@ from .models import Submission, Reaction
 @admin.register(Submission)
 class SubmissionAdmin(admin.ModelAdmin):
     """投稿管理 - ユーザーが投稿した画像・動画・ゲームの管理ができます。"""
-    list_display = ['id', 'image_preview', 'author', 'caption', 'status', 'deleted_at', 'created_at']
+    list_display = ['id', 'image_preview', 'author', 'caption', 'ai_tool', 'status', 'deleted_at', 'created_at']
     list_filter = ['status', 'deleted_at', 'created_at', 'comment_enabled']
-    search_fields = ['author__email', 'author__display_id', 'caption', 'old_id']
+    search_fields = ['author__email', 'author__display_id', 'caption', 'spell', 'old_id']
     readonly_fields = ['created_at', 'updated_at', 'image_preview_detail', 'video_preview', 'game_link']
     date_hierarchy = 'created_at'
     
@@ -76,8 +76,8 @@ class SubmissionAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('投稿内容', {
-            'fields': ('author', 'image', 'image_preview_detail', 'caption', 'comment_enabled'),
-            'description': '投稿者、画像、キャプション、コメント機能の有効/無効を設定します。'
+            'fields': ('author', 'image', 'image_preview_detail', 'title', 'caption', 'spell', 'ai_tool', 'hashtags', 'comment_enabled'),
+            'description': '投稿者、画像、キャプション、呪文（プロンプト）、使用AI、ハッシュタグ、コメント有効を設定します。'
         }),
         ('動画・ゲーム', {
             'fields': ('video_url', 'video_preview', 'game_url', 'game_link'),

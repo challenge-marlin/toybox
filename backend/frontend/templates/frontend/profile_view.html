@@ -478,9 +478,15 @@
     <div class="profile-view-info">
         <div class="profile-view-name" id="profile-name">—</div>
         <div class="profile-view-id" id="profile-id">—</div>
+        <div id="profile-follow-stats" style="margin-top: 0.35rem; font-size: 0.78rem; color: var(--steam-iron-400);"></div>
+        <div id="profile-mutual-badge" style="display: none; margin-top: 0.2rem; font-size: 0.75rem; color: #34d399; font-weight: 600;">相互フォロー</div>
+        <div id="profile-follow-row" style="margin-top: 0.5rem;">
+            <button type="button" id="profile-follow-btn" onclick="toggleProfileFollow()" style="display: none; padding: 0.4rem 1rem; border-radius: 9999px; border: 1px solid var(--steam-gold-500); background: transparent; color: var(--steam-gold-400); font-size: 0.8rem; font-weight: 600; cursor: pointer;">フォロー</button>
+        </div>
         <div class="profile-view-title" id="profile-title"></div>
         <div class="profile-view-total-likes" id="profile-total-likes-entry" style="margin-top: 0.5rem; color: var(--steam-gold-300); font-size: 0.875rem;">
-            <span style="color: var(--steam-iron-300);">獲得したいいね:</span> <span id="total-likes-count">0</span>
+            <span style="color: var(--steam-iron-300);">もらったリアクション:</span> <span id="total-reactions-count">0</span> 件
+            <span style="color: var(--steam-iron-400); font-size: 0.75rem; margin-left: 0.35rem;">（TP相当 <span id="total-reaction-score">0</span>）</span>
         </div>
     </div>
     
@@ -529,6 +535,13 @@
             <div id="lightbox-title" style="font-size: 1.125rem; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem; display: none;"></div>
             <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
             <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+            <div id="lightbox-spell-wrap" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--steam-iron-700);">
+                <div style="font-size: 0.72rem; color: var(--steam-iron-400); margin-bottom: 0.2rem;">使用ツール</div>
+                <div id="lightbox-ai-tool" style="font-size: 0.85rem; color: var(--steam-gold-300); margin-bottom: 0.45rem;"></div>
+                <div style="font-size: 0.72rem; color: var(--steam-iron-400); margin-bottom: 0.2rem;">呪文（プロンプト）</div>
+                <pre id="lightbox-spell-text" style="white-space: pre-wrap; word-break: break-word; font-size: 0.78rem; color: var(--steam-iron-100); max-height: 12rem; overflow: auto; margin: 0; background: var(--steam-iron-900); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--steam-iron-700); font-family: inherit;"></pre>
+                <button type="button" onclick="copyProfileLightboxSpell()" style="margin-top: 0.45rem; font-size: 0.72rem; padding: 0.3rem 0.65rem; border-radius: 4px; border: 1px solid var(--steam-gold-500); background: transparent; color: var(--steam-gold-400); cursor: pointer;">呪文をコピー</button>
+            </div>
         </div>
         <div id="lightbox-actions" style="display: none; margin-top: 1rem; gap: 0.6rem; align-items: center; justify-content: center; flex-direction: column; flex-wrap: wrap;">
             <div class="lightbox-reaction-bar" id="lightbox-reaction-bar">
@@ -716,15 +729,71 @@
                     document.getElementById('profile-bio').style.display = 'none';
                 }
                 
-                // 獲得したいいねの合計を表示
-                const totalLikes = metaData.totalLikes || 0;
-                document.getElementById('total-likes-count').textContent = totalLikes;
+                const trc = document.getElementById('total-reactions-count');
+                const trs = document.getElementById('total-reaction-score');
+                if (trc) trc.textContent = metaData.totalReactions != null ? String(metaData.totalReactions) : '0';
+                if (trs) trs.textContent = metaData.totalReactionScore != null ? String(metaData.totalReactionScore) : '0';
+
+                const meMetaRes = await fetch('/api/users/me/meta/', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const meMeta = await meMetaRes.json();
+                const myKeys = new Set([meMeta.display_id, meMeta.url_id].filter(Boolean));
+                const isSelf = myKeys.has(targetDisplayId);
+
+                const followStats = document.getElementById('profile-follow-stats');
+                const mutualB = document.getElementById('profile-mutual-badge');
+                const followBtn = document.getElementById('profile-follow-btn');
+                if (followStats) {
+                    const fc = metaData.followerCount != null ? metaData.followerCount : 0;
+                    const fg = metaData.followingCount != null ? metaData.followingCount : 0;
+                    followStats.textContent = 'フォロワー ' + fc + ' · フォロー中 ' + fg;
+                }
+                if (mutualB) mutualB.style.display = metaData.mutualFollow ? 'block' : 'none';
+                if (followBtn) {
+                    if (isSelf) {
+                        followBtn.style.display = 'none';
+                    } else {
+                        followBtn.style.display = 'inline-block';
+                        followBtn.textContent = metaData.isFollowing ? 'フォロー解除' : 'フォローする';
+                    }
+                }
                 
                 // 提出物を読み込み
                 loadSubmissions();
             }
         } catch (err) {
             console.error('Failed to load profile:', err);
+        }
+    }
+
+    async function toggleProfileFollow() {
+        if (!currentUserId || !token) return;
+        try {
+            const res = await fetch('/api/users/follow/' + encodeURIComponent(currentUserId) + '/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: '{}'
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            const followBtn = document.getElementById('profile-follow-btn');
+            if (followBtn) {
+                followBtn.textContent = data.following ? 'フォロー解除' : 'フォローする';
+            }
+            const followStats = document.getElementById('profile-follow-stats');
+            if (followStats && data.targetFollowersCount != null) {
+                const fg = data.targetFollowingCount != null ? data.targetFollowingCount : 0;
+                followStats.textContent = 'フォロワー ' + data.targetFollowersCount + ' · フォロー中 ' + fg;
+            }
+            const mutualB = document.getElementById('profile-mutual-badge');
+            if (mutualB) mutualB.style.display = data.mutualFollow ? 'block' : 'none';
+        } catch (e) {
+            console.error('toggleProfileFollow', e);
         }
     }
     
@@ -1033,6 +1102,8 @@
         const lightboxHashtags = document.getElementById('lightbox-hashtags');
         const lightboxGame = document.getElementById('lightbox-game');
         const lightboxGameLink = document.getElementById('lightbox-game-link');
+        const spellWrap0 = document.getElementById('lightbox-spell-wrap');
+        if (spellWrap0) spellWrap0.style.display = 'none';
         
         currentLightboxAssetId = assetId;
         
@@ -1119,6 +1190,20 @@
                         lightboxHashtags.appendChild(tagEl);
                     });
                 }
+                const spellWrap = document.getElementById('lightbox-spell-wrap');
+                const spellPre = document.getElementById('lightbox-spell-text');
+                const aiToolLine = document.getElementById('lightbox-ai-tool');
+                if (spellWrap && spellPre && aiToolLine) {
+                    const spellText = String(data.spell || '').trim();
+                    const aiDisp = data.ai_tool_label || data.aiToolLabel || data.ai_tool || data.aiTool || '';
+                    if (spellText || aiDisp) {
+                        spellWrap.style.display = 'block';
+                        spellPre.textContent = spellText || '（なし）';
+                        aiToolLine.textContent = aiDisp || '—';
+                    } else {
+                        spellWrap.style.display = 'none';
+                    }
+                }
                 lightboxInfo.style.display = 'block';
             }).catch(err => {
                 console.error('Failed to load submission details:', err);
@@ -1190,8 +1275,28 @@
             fetch(`/api/submissions/${submissionId}/game-played/`, {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
-            }).catch(() => {});
+            })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.player_awarded && typeof showToast === 'function') {
+                    showToast('success', '🎮 ゲームプレイ +5TP！');
+                    if (typeof loadPoints === 'function') setTimeout(loadPoints, 800);
+                }
+            })
+            .catch(() => {});
         }, 30000);
+    }
+
+    function copyProfileLightboxSpell() {
+        const pre = document.getElementById('lightbox-spell-text');
+        if (!pre) return;
+        const t = pre.textContent || '';
+        if (!t || t === '（なし）') return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(t).then(function() {
+                if (typeof showToast === 'function') showToast('success', '呪文をコピーしました');
+            }).catch(function() {});
+        }
     }
 
     function closeLightbox() {
@@ -1207,6 +1312,8 @@
         }
 
         if (_gamePlayTimer) { clearTimeout(_gamePlayTimer); _gamePlayTimer = null; }
+        const sw = document.getElementById('lightbox-spell-wrap');
+        if (sw) sw.style.display = 'none';
         
         currentLightboxAssetId = null;
     }

@@ -232,7 +232,13 @@ class UserMetaSerializer(serializers.ModelSerializer):
         else:
             data['active_title_image_url'] = None
             logger.info(f'[UserMetaSerializer] User {user.id} - No active_title')
-        
+
+        from users.models import UserFollow
+        uu = instance.user
+        data['follower_count'] = UserFollow.objects.filter(following=uu).count()
+        data['following_count'] = UserFollow.objects.filter(follower=uu).count()
+        data['app_version'] = '2.10'
+
         return data
     
     class Meta:

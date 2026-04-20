@@ -40,6 +40,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
     image_thumbnail_url = serializers.SerializerMethodField()
     thumbnail = serializers.SerializerMethodField()
     thumbnail_url = serializers.SerializerMethodField()
+    ai_tool_label = serializers.SerializerMethodField()
     
     class Meta:
         model = Submission
@@ -47,12 +48,18 @@ class SubmissionSerializer(serializers.ModelSerializer):
             'id', 'author', 'author_display_id', 'author_url_id', 'author_avatar_url',
             'image', 'display_image_url', 'image_thumbnail_url', 'thumbnail', 'thumbnail_url',
             'image_url', 'video_url', 'game_url',
-            'title', 'caption', 'hashtags', 'comment_enabled', 'status',
+            'title', 'caption', 'hashtags', 'spell', 'ai_tool', 'ai_tool_label', 'comment_enabled', 'status',
             'active_title', 'active_title_image_url', 'title_color',
             'reactions_count', 'user_reacted', 'all_reactions',
             'created_at', 'deleted_at'
         ]
         read_only_fields = ['id', 'author', 'created_at', 'deleted_at', 'status']
+    
+    def get_ai_tool_label(self, obj):
+        from submissions.constants import AI_TOOL_LABELS
+        if not getattr(obj, 'ai_tool', None):
+            return None
+        return AI_TOOL_LABELS.get(obj.ai_tool, obj.ai_tool)
     
     def get_author_avatar_url(self, obj):
         """Get absolute URL for author avatar."""
@@ -358,7 +365,7 @@ class SubmissionCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Submission
-        fields = ['image', 'thumbnail', 'title', 'caption', 'hashtags', 'comment_enabled']
+        fields = ['image', 'thumbnail', 'title', 'caption', 'hashtags', 'spell', 'ai_tool', 'comment_enabled']
     
     def validate_title(self, value):
         """Validate title length."""

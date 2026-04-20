@@ -25,6 +25,15 @@ class Submission(models.Model):
     title = models.CharField('題名', max_length=20, blank=True)
     caption = models.TextField('キャプション', max_length=140, blank=True)
     hashtags = models.JSONField('ハッシュタグ', default=list, blank=True)
+    # Ver 2.10: 任意のプロンプト（呪文）・使用生成AI
+    spell = models.TextField('呪文（プロンプト）', blank=True, help_text='任意。投稿の拡大表示などで表示されます。')
+    ai_tool = models.CharField(
+        '使用した生成AI',
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text='定義済みキー（chatgpt 等）。未選択は空文字。',
+    )
     comment_enabled = models.BooleanField('コメント有効', default=True)
     
     # Status and moderation

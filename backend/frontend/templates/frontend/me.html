@@ -335,6 +335,8 @@
                     <span>未設定</span>
                 </div>
                 <div style="color: var(--steam-iron-100); font-weight: 600; font-size: 0.875rem;" id="profile-name">—</div>
+                <div id="profile-follow-stats" style="font-size: 0.72rem; color: var(--steam-iron-400); margin-top: 0.25rem;"></div>
+                <div id="profile-mutual-badge" style="display: none; font-size: 0.7rem; color: #34d399; margin-top: 0.15rem; font-weight: 600;">相互フォロー</div>
                 <div id="profile-title" style="display: none; justify-content: center; margin: 0.25rem 0;"></div>
                 <div style="font-size: 0.75rem; line-height: 1.6; color: var(--steam-iron-200); text-align: center; padding: 0 0.25rem;">
                     <span id="profile-bio">—</span>
@@ -373,25 +375,33 @@
             </div>
         </section>
         
-        <!-- タイムライン -->
+        <!-- 最近の投稿（自分） -->
         <section class="me-section">
-            <h2>タイムライン</h2>
+            <h2>最近の投稿</h2>
             <ul id="timeline-list" style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--steam-iron-100);">
                 <li>読み込み中...</li>
             </ul>
-            <button id="timeline-load-more" onclick="loadMoreTimeline()" style="display: none; margin-top: 0.5rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;" onmouseover="this.style.background='var(--steam-iron-700)'" onmouseout="this.style.background='var(--steam-iron-800)'">続きを見る</button>
+            <button id="timeline-load-more" onclick="loadMoreOwnRecent()" style="display: none; margin-top: 0.5rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;" onmouseover="this.style.background='var(--steam-iron-700)'" onmouseout="this.style.background='var(--steam-iron-800)'">続きを見る</button>
         </section>
         
     </aside>
     
     <!-- 中央カラム -->
     <section>
-        <!-- お知らせ表示エリア -->
         <div style="margin-bottom: 1.5rem;">
             <h2 style="color: var(--steam-gold-300); font-weight: 600; margin-bottom: 0.75rem; font-size: 1.25rem;">お知らせ</h2>
             <div id="announcements-container" style="background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); border-radius: 8px; padding: 1rem;">
                 <!-- お知らせがここにリスト形式で表示されます -->
             </div>
+        </div>
+        <div id="follow-feed-section" style="margin-bottom: 1.5rem;">
+            <h2 style="color: var(--steam-gold-300); font-weight: 600; margin-bottom: 0.75rem; font-size: 1.25rem;">フォロー中のタイムライン</h2>
+            <div id="follow-feed-stream" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
+            <button type="button" id="follow-feed-more-btn" onclick="loadMoreFollowingFeed()" style="display: none; margin-top: 0.5rem; width: 100%; padding: 0.5rem; background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-700); border-radius: 9999px; cursor: pointer; font-size: 0.875rem;">さらに読む</button>
+        </div>
+        <div id="recommended-users-section" style="margin-bottom: 1rem; display: none;">
+            <h3 style="color: var(--steam-gold-300); font-size: 1rem; margin-bottom: 0.5rem;">おすすめユーザー</h3>
+            <div id="recommended-users-list" style="display: flex; flex-direction: column; gap: 0.6rem;"></div>
         </div>
         
         <div style="margin-bottom: 0.75rem;">
@@ -504,6 +514,12 @@
                 <li>データなし</li>
             </ol>
         </section>
+        <section class="me-section">
+            <h2>週間ランキング</h2>
+            <ol id="ranking-weekly-list" style="list-style: decimal; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: var(--steam-iron-100);">
+                <li>データなし</li>
+            </ol>
+        </section>
     </aside>
 </div>
 
@@ -547,6 +563,32 @@
                 <textarea id="submit-caption" maxlength="140" placeholder="キャプションを入力（任意）" rows="4" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--steam-iron-700); background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem; resize: vertical;"></textarea>
                 <div style="font-size: 0.75rem; color: var(--steam-iron-400); margin-top: 0.25rem;"><span id="submit-caption-count">0</span>/140</div>
             </div>
+            <div>
+                <label style="display: block; font-size: 0.875rem; color: var(--steam-gold-300); margin-bottom: 0.25rem;">呪文（プロンプト・任意）</label>
+                <textarea id="submit-spell" maxlength="8000" rows="3" placeholder="使用したプロンプトがあれば入力（拡大表示でコピー可能になります）" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--steam-iron-700); background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem; resize: vertical;"></textarea>
+            </div>
+            <div>
+                <label style="display: block; font-size: 0.875rem; color: var(--steam-gold-300); margin-bottom: 0.25rem;">使用した生成AI（任意）</label>
+                <select id="submit-ai-tool" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--steam-iron-700); background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem;">
+                    <option value="">（未選択）</option>
+                    <option value="chatgpt">ChatGPT</option>
+                    <option value="claude">Claude</option>
+                    <option value="gemini">Google Gemini</option>
+                    <option value="copilot">Microsoft Copilot</option>
+                    <option value="midjourney">Midjourney</option>
+                    <option value="dall_e">DALL·E</option>
+                    <option value="stable_diffusion">Stable Diffusion</option>
+                    <option value="adobe_firefly">Adobe Firefly</option>
+                    <option value="leonardo">Leonardo.Ai</option>
+                    <option value="runway">Runway</option>
+                    <option value="pika">Pika</option>
+                    <option value="nijijourney">niji・journey</option>
+                    <option value="canva_ai">Canva AI</option>
+                    <option value="imagefx">Google ImageFX</option>
+                    <option value="bing_image_creator">Bing Image Creator</option>
+                    <option value="other">その他</option>
+                </select>
+            </div>
             
             <!-- サムネイルアップロード（ゲームの場合のみ表示） -->
             <div id="submit-thumbnail-section" style="display: none;">
@@ -572,7 +614,8 @@
                     <!-- ハッシュタグ入力フィールドは動的に追加 -->
                 </div>
                 <div style="font-size: 0.75rem; color: var(--steam-iron-400); margin-top: 0.25rem;"><span id="submit-hashtags-count">0</span>/3</div>
-                <button id="add-hashtag-btn" onclick="addHashtagInput()" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--steam-gold-400); text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0;">+ ハッシュタグを追加</button>
+                <p style="font-size: 0.65rem; color: var(--steam-iron-500); margin: 0.35rem 0 0 0;">Enter でタグを確定し、空の欄があれば次の欄に進みます。#は付けずに入力してください。</p>
+                <button id="add-hashtag-btn" onclick="addHashtagInput()" type="button" style="margin-top: 0.35rem; font-size: 0.8rem; color: var(--steam-iron-400); text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0;">+ タグ欄を追加（最大3）</button>
             </div>
             
             <!-- ゲーム投稿時の同意チェックボックス -->
@@ -850,7 +893,9 @@
             loadProfile();
             loadAnnouncements();
             loadSubmissions();
-            loadTimeline();
+            loadOwnRecent();
+            loadFollowingFeed();
+            loadRecommendedUsers();
             loadSubmitters();
             loadRanking();
             loadPoints();
@@ -1014,6 +1059,17 @@
                 const officialBadge = isOfficial ? '<span class="official-badge" title="公式アカウント"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : '';
                 profileNameElement.innerHTML = displayName + officialBadge;
                 console.log('Set profile name to:', displayName, 'Official:', isOfficial);
+            }
+
+            const followStatsEl = document.getElementById('profile-follow-stats');
+            if (followStatsEl) {
+                const fc = data.followerCount != null ? data.followerCount : 0;
+                const fg = data.followingCount != null ? data.followingCount : 0;
+                followStatsEl.textContent = 'フォロワー ' + fc + ' · フォロー中 ' + fg;
+            }
+            const mutualBadge = document.getElementById('profile-mutual-badge');
+            if (mutualBadge) {
+                mutualBadge.style.display = data.mutualFollow ? 'block' : 'none';
             }
             
             // プロフィール文を表示
@@ -1314,100 +1370,175 @@
     let timelineItems = [];
     let timelineNextCursor = null;
     let timelineLoading = false;
-    
-    function renderTimelineItem(item) {
-        const displayName = item.displayName || item.anonId;
-        const typeText = item.type === 'ゲーム' ? 'ゲーム' : (item.type === '動画' ? '動画' : '画像');
-        const avatarUrl = item.avatarUrl || item.avatar_url;
-        
-        let avatarHtml = '';
-        if (avatarUrl) {
-            avatarHtml = `<div class="timeline-avatar"><img src="${avatarUrl}" alt="${displayName}" onerror="this.parentElement.innerHTML='<span>${displayName.charAt(0)}</span>'"></div>`;
-        } else {
-            avatarHtml = `<div class="timeline-avatar"><span>${displayName.charAt(0)}</span></div>`;
-        }
-        
-        return `<li class="timeline-item">
-            ${avatarHtml}
-            <a href="/profile/view/?user=${encodeURIComponent(item.anonUrlId || item.anonId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
-            <span>さんが${typeText}を投稿しました。</span>
+    let ownRecentUrlId = null;
+
+    function renderOwnRecentRow(it) {
+        const when = it.createdAt ? new Date(it.createdAt).toLocaleString('ja-JP') : '';
+        return `<li class="timeline-item" style="border-left: 2px solid var(--steam-gold-600); padding-left: 0.45rem;">
+            <span style="color: var(--steam-gold-400); font-weight: 600;">あなた</span>
+            <span> · ${it.typeText}を投稿 · <span style="color: var(--steam-iron-400); font-size: 0.72rem;">${when}</span></span>
         </li>`;
     }
-    
+
     function renderTimeline() {
         const list = document.getElementById('timeline-list');
         const loadMoreBtn = document.getElementById('timeline-load-more');
-        
+        if (!list) return;
         if (timelineItems.length === 0) {
             list.innerHTML = '<li>データなし</li>';
             if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         } else {
-            list.innerHTML = timelineItems.map(item => renderTimelineItem(item)).join('');
-            if (loadMoreBtn) {
-                loadMoreBtn.style.display = timelineNextCursor ? 'block' : 'none';
-            }
+            list.innerHTML = timelineItems.map(renderOwnRecentRow).join('');
+            if (loadMoreBtn) loadMoreBtn.style.display = timelineNextCursor ? 'block' : 'none';
         }
     }
-    
-    function loadTimeline() {
+
+    function _mapSubToRecent(it) {
+        let typeText = '画像';
+        if (it.gameUrl) typeText = 'ゲーム';
+        else if (it.videoUrl) typeText = '動画';
+        return { typeText, createdAt: it.createdAt, id: it.id };
+    }
+
+    function loadOwnRecent() {
         if (timelineLoading) return;
         timelineLoading = true;
-        
         const list = document.getElementById('timeline-list');
-        if (timelineItems.length === 0) {
-            list.innerHTML = '<li>読み込み中...</li>';
-        }
-        
-        // Timeline API doesn't require authentication
-        fetch('/api/timeline/?limit=10')
-        .then(res => {
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-            return res.json();
+        if (timelineItems.length === 0 && list) list.innerHTML = '<li>読み込み中...</li>';
+        fetch('/api/users/me/meta/', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(meta) {
+            if (!meta) throw new Error('meta');
+            ownRecentUrlId = meta.url_id || meta.display_id;
+            return fetch('/api/user/submissions/' + encodeURIComponent(ownRecentUrlId) + '/?limit=6', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
         })
-        .then(data => {
-            timelineItems = data.items || [];
+        .then(function(r) { if (!r.ok) throw new Error('sub'); return r.json(); })
+        .then(function(data) {
+            var raw = data.items || [];
+            timelineItems = raw.map(_mapSubToRecent);
             timelineNextCursor = data.nextCursor || null;
             renderTimeline();
         })
-        .catch(err => {
-            console.error('Failed to load timeline:', err);
-            const list = document.getElementById('timeline-list');
-            if (list) {
-                list.innerHTML = '<li style="color: var(--steam-iron-300);">データなし</li>';
-            }
-            const loadMoreBtn = document.getElementById('timeline-load-more');
+        .catch(function() {
+            if (list) list.innerHTML = '<li style="color: var(--steam-iron-300);">データなし</li>';
+            var loadMoreBtn = document.getElementById('timeline-load-more');
             if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         })
-        .finally(() => {
-            timelineLoading = false;
-        });
+        .finally(function() { timelineLoading = false; });
     }
-    
-    function loadMoreTimeline() {
-        if (timelineLoading || !timelineNextCursor) return;
+
+    function loadMoreOwnRecent() {
+        if (timelineLoading || !timelineNextCursor || !ownRecentUrlId) return;
         timelineLoading = true;
-        
-        const loadMoreBtn = document.getElementById('timeline-load-more');
+        var loadMoreBtn = document.getElementById('timeline-load-more');
         if (loadMoreBtn) loadMoreBtn.textContent = '読み込み中...';
-        
-        // Timeline API doesn't require authentication
-        fetch(`/api/timeline/?limit=10&cursor=${encodeURIComponent(timelineNextCursor)}`)
-        .then(res => res.json())
-        .then(data => {
-            const newItems = data.items || [];
-            timelineItems = [...timelineItems, ...newItems];
+        fetch('/api/user/submissions/' + encodeURIComponent(ownRecentUrlId) + '/?limit=6&cursor=' + encodeURIComponent(timelineNextCursor), {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var raw = data.items || [];
+            timelineItems = timelineItems.concat(raw.map(_mapSubToRecent));
             timelineNextCursor = data.nextCursor || null;
             renderTimeline();
         })
-        .catch(err => {
-            console.error('Failed to load more timeline:', err);
-        })
-        .finally(() => {
+        .catch(function() {})
+        .finally(function() {
             timelineLoading = false;
             if (loadMoreBtn) loadMoreBtn.textContent = '続きを見る';
         });
+    }
+
+    let followFeedItems = [];
+    let followFeedCursor = null;
+    let followFeedLoading = false;
+
+    function renderFollowFeedCard(it) {
+        var thumb = it.imageThumbnailUrl || it.displayImageUrl || it.imageUrl || '';
+        var title = it.title || it.caption || '投稿';
+        var name = it.displayName || it.anonId || '';
+        var uid = it.anonUrlId || it.anonId || '';
+        var when = it.createdAt ? new Date(it.createdAt).toLocaleString('ja-JP') : '';
+        var open = '';
+        if (it.gameUrl) open = "openLightbox('" + String(it.gameUrl).replace(/'/g, "\\'") + "', 'game', '" + it.id + "')";
+        else if (it.videoUrl) open = "openLightbox('" + String(it.videoUrl).replace(/'/g, "\\'") + "', 'video', '" + it.id + "')";
+        else if (it.displayImageUrl || it.imageUrl) {
+            var u = it.displayImageUrl || it.imageUrl;
+            open = "openLightbox('" + String(u).replace(/'/g, "\\'") + "', 'image', '" + it.id + "')";
+        }
+        return `<div style="display:flex; gap:0.75rem; align-items:flex-start; padding:0.6rem; border-radius:8px; border:1px solid var(--steam-iron-700); background:var(--steam-iron-900);">
+            <div onclick="${open}" style="width:72px;height:72px;flex-shrink:0;border-radius:6px;overflow:hidden;cursor:pointer;background:var(--steam-iron-800);">
+                ${thumb ? '<img src="'+thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--steam-iron-500);">—</div>'}
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:0.78rem;"><a href="/profile/view/?user=${encodeURIComponent(uid)}" style="color:var(--steam-gold-400);font-weight:600;">${name}</a> <span style="color:var(--steam-iron-500);font-size:0.68rem;">${when}</span></div>
+                <div style="font-size:0.85rem;color:var(--steam-iron-100);margin-top:0.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+            </div>
+        </div>`;
+    }
+
+    function loadFollowingFeed() {
+        if (followFeedLoading) return;
+        followFeedLoading = true;
+        var stream = document.getElementById('follow-feed-stream');
+        var moreBtn = document.getElementById('follow-feed-more-btn');
+        if (stream) stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">読み込み中...</div>';
+        fetch('/api/feed/following/?limit=12', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(r) { return r.ok ? r.json() : { items: [] }; })
+        .then(function(data) {
+            followFeedItems = data.items || [];
+            followFeedCursor = data.nextCursor || null;
+            if (stream) {
+                if (!followFeedItems.length) stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">フォロー中のユーザーがいないか、まだ投稿がありません。</div>';
+                else stream.innerHTML = followFeedItems.map(renderFollowFeedCard).join('');
+            }
+            if (moreBtn) moreBtn.style.display = followFeedCursor ? 'block' : 'none';
+        })
+        .catch(function() {
+            if (stream) stream.innerHTML = '<div style="color:var(--steam-iron-400);">読み込みに失敗しました</div>';
+        })
+        .finally(function() { followFeedLoading = false; });
+    }
+
+    function loadMoreFollowingFeed() {
+        if (followFeedLoading || !followFeedCursor) return;
+        followFeedLoading = true;
+        var stream = document.getElementById('follow-feed-stream');
+        fetch('/api/feed/following/?limit=12&cursor=' + encodeURIComponent(followFeedCursor), { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var inc = data.items || [];
+            followFeedItems = followFeedItems.concat(inc);
+            followFeedCursor = data.nextCursor || null;
+            if (stream) stream.innerHTML = followFeedItems.map(renderFollowFeedCard).join('');
+            var moreBtn = document.getElementById('follow-feed-more-btn');
+            if (moreBtn) moreBtn.style.display = followFeedCursor ? 'block' : 'none';
+        })
+        .finally(function() { followFeedLoading = false; });
+    }
+
+    function loadRecommendedUsers() {
+        var sec = document.getElementById('recommended-users-section');
+        var list = document.getElementById('recommended-users-list');
+        if (!sec || !list) return;
+        fetch('/api/users/recommended-users/', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(r) { return r.ok ? r.json() : { users: [] }; })
+        .then(function(data) {
+            var users = data.users || [];
+            if (!users.length) { sec.style.display = 'none'; return; }
+            sec.style.display = 'block';
+            list.innerHTML = users.map(function(u) {
+                var av = u.avatarUrl ? '<img src="'+u.avatarUrl+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<span style="font-size:0.75rem;color:var(--steam-iron-400);">?</span>';
+                return '<div style="display:flex;gap:0.5rem;align-items:flex-start;">' +
+                    '<div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--steam-iron-800);">' + av + '</div>' +
+                    '<div style="min-width:0;"><a href="/profile/view/?user=' + encodeURIComponent(u.anonUrlId || u.anonId) + '" style="color:var(--steam-gold-400);font-weight:600;font-size:0.85rem;">' + (u.displayName || u.anonId) + '</a>' +
+                    '<div style="font-size:0.7rem;color:var(--steam-iron-500);margin-top:0.15rem;">' + (u.recommendationReason || '') + '</div>' +
+                    '<div style="font-size:0.72rem;color:var(--steam-iron-300);margin-top:0.2rem;">' + (u.caption || '') + '</div></div></div>';
+            }).join('');
+        })
+        .catch(function() { sec.style.display = 'none'; });
     }
     
     function loadSubmitters() {
@@ -1468,31 +1599,39 @@
         });
     }
     
+    function _renderRankingList(el, ranking) {
+        if (!el) return;
+        if (ranking && ranking.length > 0) {
+            el.innerHTML = ranking.map((r) => {
+                const displayName = r.displayName || r.anonId;
+                const urlId = r.anonUrlId || r.anonId;
+                const score = r.score != null ? r.score : (r.count != null ? r.count : 0);
+                return `<li style="display: flex; align-items: center; gap: 0.5rem;">
+                    <a href="/profile/view/?user=${encodeURIComponent(urlId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
+                    <span style="color: var(--steam-iron-300); font-size: 0.75rem;">(${score} TP相当)</span>
+                </li>`;
+            }).join('');
+        } else {
+            el.innerHTML = '<li>データなし</li>';
+        }
+    }
+
     function loadRanking() {
-        fetch('/api/ranking/daily/', {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            const list = document.getElementById('ranking-list');
-            if (data.ranking && data.ranking.length > 0) {
-                list.innerHTML = data.ranking.map((r, index) => {
-                    const displayName = r.displayName || r.anonId;
-                    const urlId = r.anonUrlId || r.anonId;
-                    return `<li style="display: flex; align-items: center; gap: 0.5rem;">
-                        <a href="/profile/view/?user=${encodeURIComponent(urlId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
-                        <span style="color: var(--steam-iron-300); font-size: 0.75rem;">(${r.count}件)</span>
-                    </li>`;
-                }).join('');
-            } else {
-                list.innerHTML = '<li>データなし</li>';
-            }
+        const hdr = { 'Authorization': `Bearer ${token}` };
+        Promise.all([
+            fetch('/api/ranking/daily/', { headers: hdr }).then(res => res.json()),
+            fetch('/api/ranking/weekly/', { headers: hdr }).then(res => res.json()),
+        ])
+        .then(([dailyData, weeklyData]) => {
+            _renderRankingList(document.getElementById('ranking-list'), dailyData.ranking);
+            _renderRankingList(document.getElementById('ranking-weekly-list'), weeklyData.ranking);
         })
         .catch(err => {
             console.error('Failed to load ranking:', err);
-            document.getElementById('ranking-list').innerHTML = '<li>データなし</li>';
+            const dl = document.getElementById('ranking-list');
+            const wl = document.getElementById('ranking-weekly-list');
+            if (dl) dl.innerHTML = '<li>データなし</li>';
+            if (wl) wl.innerHTML = '<li>データなし</li>';
         });
     }
     
@@ -2011,6 +2150,10 @@
         // フォームをリセット
         document.getElementById('submit-title').value = '';
         document.getElementById('submit-caption').value = '';
+        const spellReset = document.getElementById('submit-spell');
+        if (spellReset) spellReset.value = '';
+        const aiReset = document.getElementById('submit-ai-tool');
+        if (aiReset) aiReset.value = '';
         document.getElementById('submit-title-count').textContent = '0';
         document.getElementById('submit-caption-count').textContent = '0';
         removeThumbnail(); // サムネイルもリセット
@@ -2164,26 +2307,38 @@
             
             updateHashtagsCount();
         });
-        
-        // フォーカスアウト時にサジェストを非表示
-        input.addEventListener('blur', function() {
-            setTimeout(() => {
-                suggestDropdown.style.display = 'none';
-            }, 200);
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const maxTags = 3;
+                if (container.children.length < maxTags) {
+                    addHashtagInput();
+                }
+                const inputs = container.querySelectorAll('input[type="text"]');
+                const idx = Array.prototype.indexOf.call(inputs, e.target);
+                if (idx >= 0 && idx < inputs.length - 1) {
+                    inputs[idx + 1].focus();
+                }
+            }
         });
         
-        // サジェストアイテムをクリックしたときの処理
-        suggestDropdown.addEventListener('click', function(e) {
-            // クリックされた要素がサジェストアイテムまたはその子要素かチェック
+        // フォーカスアウト時にサジェストを非表示（mousedown で選択が先に処理されるよう短め）
+        input.addEventListener('blur', function() {
+            setTimeout(function() {
+                suggestDropdown.style.display = 'none';
+            }, 150);
+        });
+        
+        suggestDropdown.addEventListener('mousedown', function(e) {
             const suggestItem = e.target.closest('.hashtag-suggest-item');
             if (suggestItem) {
+                e.preventDefault();
                 const tag = suggestItem.dataset.tag;
-                // ハッシュタグを小文字に統一してから設定
                 const tagLower = (tag || '').trim().toLowerCase();
                 input.value = tagLower;
                 suggestDropdown.style.display = 'none';
                 input.focus();
-                // inputイベントを発火して更新処理を実行
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 updateHashtagsCount();
             }
@@ -2290,6 +2445,8 @@
         
         const title = document.getElementById('submit-title').value.trim();
         const caption = document.getElementById('submit-caption').value.trim();
+        const spellVal = (document.getElementById('submit-spell') && document.getElementById('submit-spell').value) ? document.getElementById('submit-spell').value.trim() : '';
+        const aiToolVal = (document.getElementById('submit-ai-tool') && document.getElementById('submit-ai-tool').value) ? document.getElementById('submit-ai-tool').value.trim() : '';
         const hashtagInputs = document.getElementById('submit-hashtags').querySelectorAll('input[type="text"]');
         const hashtags = Array.from(hashtagInputs)
             .map(input => input.value.trim())  // 大文字小文字を保持
@@ -2323,6 +2480,8 @@
                 if (title) formData.append('title', title);
                 if (caption) formData.append('caption', caption);
                 if (hashtags.length > 0) formData.append('hashtags', JSON.stringify(hashtags));
+                if (spellVal) formData.append('spell', spellVal);
+                if (aiToolVal) formData.append('aiTool', aiToolVal);
                 formData.append('thumbnail', thumbnailFile);
                 
                 submitRes = await fetch('/api/submit/', {
@@ -2344,7 +2503,9 @@
                     ...(pendingUploadData.gameUrl ? { gameUrl: pendingUploadData.gameUrl } : {}),
                     ...(title ? { title: title } : {}),
                     ...(caption ? { caption: caption } : {}),
-                    ...(hashtags.length > 0 ? { hashtags: hashtags } : {})
+                    ...(hashtags.length > 0 ? { hashtags: hashtags } : {}),
+                    ...(spellVal ? { spell: spellVal } : {}),
+                    ...(aiToolVal ? { aiTool: aiToolVal } : {})
                 };
                 
                 submitRes = await fetch('/api/submit/', {
@@ -2396,6 +2557,8 @@
                     loadProfile();
                     loadSubmitters();
                     loadRanking();
+                    loadOwnRecent();
+                    loadFollowingFeed();
                 }, 500);
             }
         } catch (err) {
@@ -2423,6 +2586,8 @@
             loadSubmissions();
             loadSubmitters();
             loadRanking();
+            loadOwnRecent();
+            loadFollowingFeed();
         }, 500);
     }
     
@@ -2440,6 +2605,8 @@
         const lightboxTitle = document.getElementById('lightbox-title');
         const lightboxCaption = document.getElementById('lightbox-caption');
         const lightboxHashtags = document.getElementById('lightbox-hashtags');
+        const spellWrapInit = document.getElementById('lightbox-spell-wrap');
+        if (spellWrapInit) spellWrapInit.style.display = 'none';
         
         currentLightboxAssetId = assetId;
         
@@ -2536,6 +2703,20 @@
                             }
                         });
                     }
+                    const spellWrap = document.getElementById('lightbox-spell-wrap');
+                    const spellPre = document.getElementById('lightbox-spell-text');
+                    const aiToolLine = document.getElementById('lightbox-ai-tool');
+                    if (spellWrap && spellPre && aiToolLine) {
+                        const spellText = String(data.spell || '').trim();
+                        const aiDisp = data.ai_tool_label || data.aiToolLabel || data.ai_tool || data.aiTool || '';
+                        if (spellText || aiDisp) {
+                            spellWrap.style.display = 'block';
+                            spellPre.textContent = spellText || '（なし）';
+                            aiToolLine.textContent = aiDisp || '—';
+                        } else {
+                            spellWrap.style.display = 'none';
+                        }
+                    }
                     lightboxInfo.style.display = 'block';
                 } else {
                     lightboxInfo.style.display = 'none';
@@ -2552,6 +2733,18 @@
         document.body.style.overflow = 'hidden';
     }
     
+    function copyLightboxSpell() {
+        const pre = document.getElementById('lightbox-spell-text');
+        if (!pre) return;
+        const t = pre.textContent || '';
+        if (!t || t === '（なし）') return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(t).then(function() {
+                if (typeof showToast === 'function') showToast('success', '呪文をコピーしました');
+            }).catch(function() {});
+        }
+    }
+
     // ハッシュタグで絞り込む関数
     function filterByHashtag(tag) {
         // 大文字小文字を保持
@@ -2600,6 +2793,8 @@
 
         // ゲームプレイタイマーをリセット
         if (_gamePlayTimer) { clearTimeout(_gamePlayTimer); _gamePlayTimer = null; }
+        const swClose = document.getElementById('lightbox-spell-wrap');
+        if (swClose) swClose.style.display = 'none';
         
         currentLightboxAssetId = null;
     }
@@ -2870,6 +3065,13 @@
             <div id="lightbox-title" style="font-size: 1.125rem; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem; display: none;"></div>
             <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
             <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+            <div id="lightbox-spell-wrap" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--steam-iron-700);">
+                <div style="font-size: 0.72rem; color: var(--steam-iron-400); margin-bottom: 0.2rem;">使用ツール</div>
+                <div id="lightbox-ai-tool" style="font-size: 0.85rem; color: var(--steam-gold-300); margin-bottom: 0.45rem;"></div>
+                <div style="font-size: 0.72rem; color: var(--steam-iron-400); margin-bottom: 0.2rem;">呪文（プロンプト）</div>
+                <pre id="lightbox-spell-text" style="white-space: pre-wrap; word-break: break-word; font-size: 0.78rem; color: var(--steam-iron-100); max-height: 12rem; overflow: auto; margin: 0; background: var(--steam-iron-900); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--steam-iron-700); font-family: inherit;"></pre>
+                <button type="button" id="lightbox-copy-spell" onclick="copyLightboxSpell()" style="margin-top: 0.45rem; font-size: 0.72rem; padding: 0.3rem 0.65rem; border-radius: 4px; border: 1px solid var(--steam-gold-500); background: transparent; color: var(--steam-gold-400); cursor: pointer;">呪文をコピー</button>
+            </div>
         </div>
         <div id="lightbox-actions" style="display: none; margin-top: 1rem;">
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()">

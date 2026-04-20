@@ -30,7 +30,7 @@ def has_submitted_today(user: User) -> bool:
 def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type: str,
                                    image_url: str = None, video_url: str = None, game_url: str = None,
                                    title: str = None, caption: str = None, hashtags: list = None,
-                                   thumbnail=None) -> dict:
+                                   thumbnail=None, spell: str = None, ai_tool: str = None) -> dict:
     """Handle submission and lottery processing."""
     # Check for duplicate submissions (within 10 seconds)
     ten_seconds_ago = timezone.now() - timezone.timedelta(seconds=10)
@@ -84,6 +84,19 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
                 processed_hashtags.append(tag.strip())  # 大文字小文字を保持
         if len(processed_hashtags) > 3:
             raise ValueError('ハッシュタグは3つまでです。')
+
+    spell_clean = ''
+    if spell is not None and isinstance(spell, str):
+        spell_clean = spell.strip()
+        if len(spell_clean) > 8000:
+            raise ValueError('呪文（プロンプト）は8000文字までです。')
+
+    ai_tool_key = ''
+    if ai_tool is not None and ai_tool != '':
+        from submissions.constants import normalize_ai_tool
+        ai_tool_key = normalize_ai_tool(str(ai_tool))
+        if str(ai_tool).strip() and not ai_tool_key:
+            raise ValueError('使用した生成AIの値が不正です。')
     
     # Create submission
     submission_data = {
@@ -123,6 +136,8 @@ def handle_submission_and_lottery(user: User, aim: str, steps: list, frame_type:
         logger.info('submission.thumbnail_set', extra={'user_id': user.id})
     
     submission_data['hashtags'] = processed_hashtags
+    submission_data['spell'] = spell_clean
+    submission_data['ai_tool'] = ai_tool_key
     
     try:
         submission = Submission.objects.create(**submission_data)

@@ -222,3 +222,35 @@ class UserCard(models.Model):
     
     def __str__(self):
         return f'{self.user.display_id} - {self.card.code}'
+
+
+class UserFollow(models.Model):
+    """ユーザー間フォロー（Ver 2.10）。"""
+    follower = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following_links',
+        verbose_name='フォローする人',
+    )
+    following = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower_links',
+        verbose_name='フォローされる人',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'user_follows'
+        verbose_name = 'ユーザーフォロー'
+        verbose_name_plural = 'ユーザーフォロー'
+        constraints = [
+            models.UniqueConstraint(fields=['follower', 'following'], name='uniq_user_follow_pair'),
+        ]
+        indexes = [
+            models.Index(fields=['follower']),
+            models.Index(fields=['following']),
+        ]
+
+    def __str__(self):
+        return f'{self.follower.display_id} → {self.following.display_id}'

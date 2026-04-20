@@ -26,6 +26,7 @@ urlpatterns = [
     path('feed/popular/', views.PopularFeedView.as_view(), name='feed-popular'),
     # Hashtags endpoint (ordered by usage count) - must be before feed/
     path('feed/hashtags/', views.HashtagsView.as_view(), name='feed-hashtags'),
+    path('feed/following/', views.FollowingFeedView.as_view(), name='feed-following'),
     # Feed endpoint (compatible with Next.js)
     path('feed/', views.FeedView.as_view(), name='feed'),
     # User submissions endpoint
@@ -33,6 +34,7 @@ urlpatterns = [
     # Submitters and ranking endpoints
     path('submitters/today/', views.SubmittersTodayView.as_view(), name='submitters-today'),
     path('ranking/daily/', views.RankingDailyView.as_view(), name='ranking-daily'),
+    path('ranking/weekly/', views.RankingWeeklyView.as_view(), name='ranking-weekly'),
     # Timeline endpoint
     path('timeline/', views.TimelineView.as_view(), name='timeline'),
 ]

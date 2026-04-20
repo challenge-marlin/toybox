@@ -42,6 +42,24 @@
     <script src="{% static 'frontend/js/common/utils.js' %}?v=20260114-1"></script>
     {% block extra_css %}{% endblock %}
     <style>
+        #desktop-only-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 18, 24, 0.92);
+            color: var(--steam-gold-200);
+            padding: 1.5rem;
+            text-align: center;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        @media (max-width: 1023px) {
+            #desktop-only-overlay { display: flex !important; }
+            #main-content, .header-nav, footer { pointer-events: none; user-select: none; filter: brightness(0.7); }
+        }
         @keyframes rainbow-shift {
             0%   { stop-color: #f472b6; }
             20%  { stop-color: #fb923c; }
@@ -74,6 +92,13 @@
     </style>
 </head>
 <body>
+    <div id="desktop-only-overlay" role="dialog" aria-live="polite">
+        <div style="max-width: 22rem; border: 1px solid var(--steam-iron-600); border-radius: 8px; padding: 1.25rem; background: var(--steam-iron-900);">
+            <div style="font-weight: 700; color: var(--steam-gold-300); margin-bottom: 0.5rem;">TOYBOX! は PC 表示専用です</div>
+            <div>画面幅が狭いため、ブラウザの表示を<strong>PC版（デスクトップサイト）</strong>に切り替えるか、幅の広いディスプレイでご利用ください。</div>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--steam-iron-400);">Ver 2.10</div>
+        </div>
+    </div>
     <header class="header-nav" style="border-bottom: 1px solid var(--steam-iron-800); background: rgba(31, 35, 42, 0.7);">
         <div class="container" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; font-size: 0.875rem; max-width: 1200px; margin: 0 auto;">
             <nav style="display: flex; align-items: center; gap: 1rem;">
@@ -192,6 +217,7 @@
                 <div style="flex: 1; min-width: 200px;">
                     <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="TOYBOX" style="height: 2rem; width: auto; margin-bottom: 1rem;">
                     <p style="color: var(--steam-iron-400); font-size: 0.875rem; margin: 0;">© 2025 AYATORI Inc. All rights reserved.</p>
+                    <p style="color: var(--steam-iron-500); font-size: 0.75rem; margin: 0.35rem 0 0 0;">TOYBOX! Ver 2.10</p>
                 </div>
                 
                 <!-- フッターメニュー -->
@@ -317,13 +343,33 @@
         let notificationNextOffset = null;
         let notificationUnread = 0;
         let notificationDropdownOpen = false;
+
+        function escapeNotificationHtml(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatNotificationMessage(n) {
+            const full = n.message || '';
+            const dn = n.fromDisplayName || n.fromAnonId || '';
+            const uid = n.fromAnonId || '';
+            if (dn && uid && full.indexOf(dn) === 0) {
+                const tail = full.slice(dn.length);
+                return '<a href="/profile/view/?user=' + encodeURIComponent(uid) + '" style="color:var(--steam-gold-400);text-decoration:underline;font-weight:600;">'
+                    + escapeNotificationHtml(dn) + '</a>' + escapeNotificationHtml(tail);
+            }
+            return escapeNotificationHtml(full);
+        }
         
         // 通知機能の関数（グローバルスコープ）
         function loadNotifications() {
             const token = getAccessToken();
             if (!token) return;
             
-            fetch('/api/users/notifications/?limit=10', {
+            fetch('/api/users/notifications/?limit=10&offset=0', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 }
@@ -373,11 +419,13 @@
                 list.innerHTML = '<div style="padding: 0.75rem; text-align: center; color: var(--steam-iron-300); font-size: 0.75rem;">通知はありません</div>';
             } else {
                 list.innerHTML = notificationItems.map((n, i) => {
-                    const date = new Date(n.createdAt);
-                    const messageHtml = n.message || '';
+                    const rawTs = n.createdAt || n.created_at || '';
+                    const date = rawTs ? new Date(rawTs) : null;
+                    const dateStr = date && !isNaN(date.getTime()) ? date.toLocaleString('ja-JP') : '';
+                    const messageHtml = formatNotificationMessage(n);
                     return `<div style="padding: 0.75rem; border-bottom: 1px solid var(--steam-iron-800); ${i === notificationItems.length - 1 ? 'border-bottom: none;' : ''}">
                         <div style="font-weight: 600; color: var(--steam-gold-300); font-size: 0.75rem; margin-bottom: 0.25rem;">${messageHtml}</div>
-                        <div style="color: var(--steam-iron-300); font-size: 10px;">${date.toLocaleString('ja-JP')}</div>
+                        <div style="color: var(--steam-iron-300); font-size: 10px;">${dateStr}</div>
                     </div>`;
                 }).join('');
             }

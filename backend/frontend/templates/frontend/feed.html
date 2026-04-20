@@ -386,6 +386,29 @@
             <button onclick="clearHashtagFilter()" style="padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--steam-iron-700); color: var(--steam-iron-200); border: none; font-size: 0.75rem; cursor: pointer;">×</button>
         </div>
     </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; align-items: center;">
+        <button type="button" id="feed-tab-recent" class="feed-tab-btn" onclick="setFeedMode('recent')" style="padding: 0.4rem 0.9rem; border-radius: 9999px; border: 1px solid var(--steam-gold-500); background: var(--steam-gold-500); color: #000; font-size: 0.8rem; font-weight: 600; cursor: pointer;">みんなの投稿</button>
+        <button type="button" id="feed-tab-reco" class="feed-tab-btn" onclick="setFeedMode('recommended')" style="padding: 0.4rem 0.9rem; border-radius: 9999px; border: 1px solid var(--steam-iron-600); background: transparent; color: var(--steam-gold-300); font-size: 0.8rem; font-weight: 600; cursor: pointer;">おすすめ（24h）</button>
+    </div>
+    <div style="margin-bottom: 1.25rem;">
+        <label for="hashtag-search-input" style="font-size: 0.8rem; color: var(--steam-gold-300); display: block; margin-bottom: 0.35rem;">ハッシュタグ検索</label>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input type="text" id="hashtag-search-input" placeholder="例: toybox（部分一致）" maxlength="80" style="flex: 1; min-width: 200px; padding: 0.45rem 0.6rem; border-radius: 6px; border: 1px solid var(--steam-iron-600); background: var(--steam-iron-900); color: var(--steam-iron-100); font-size: 0.875rem;">
+            <button type="button" onclick="applyHashtagSearch()" style="padding: 0.45rem 1rem; border-radius: 9999px; background: var(--steam-brown-500); color: white; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer;">検索</button>
+        </div>
+        <p style="font-size: 0.65rem; color: var(--steam-iron-500); margin: 0.35rem 0 0 0;">Enter でも検索できます。#は付けずに入力してください。</p>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <section class="me-section" style="margin:0; padding:0.75rem;">
+            <h3 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:var(--steam-gold-300);">デイリーランキング</h3>
+            <ol id="feed-rank-daily" style="margin:0; padding-left:1.1rem; font-size:0.8rem; color:var(--steam-iron-100);"></ol>
+        </section>
+        <section class="me-section" style="margin:0; padding:0.75rem;">
+            <h3 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:var(--steam-gold-300);">週間ランキング</h3>
+            <ol id="feed-rank-weekly" style="margin:0; padding-left:1.1rem; font-size:0.8rem; color:var(--steam-iron-100);"></ol>
+        </section>
+    </div>
     
     <!-- 人気ハッシュタグセクション -->
     <section id="popular-hashtags-section" style="margin-bottom: 1.5rem;">
@@ -405,7 +428,7 @@
     
     <!-- 通常の投稿一覧 -->
     <section>
-        <h2 style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600; color: var(--steam-gold-300);">最新の投稿</h2>
+        <h2 id="feed-main-title" style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600; color: var(--steam-gold-300);">最新の投稿</h2>
         <div id="feed-main-entry" class="feed-grid">
             <div class="loading">読み込み中...</div>
         </div>
@@ -431,7 +454,7 @@
                     </svg>
                     <div id="lightbox-game-label" style="font-size: 1.25rem; letter-spacing: 0.1em; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem;">GAME</div>
                 </div>
-                <a id="lightbox-game-link" href="" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: var(--steam-gold-500); color: black; font-size: 0.875rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-gold-400)'" onmouseout="this.style.background='var(--steam-gold-500)'">
+                <a id="lightbox-game-link" href="" target="_blank" rel="noreferrer" onclick="onGameLinkClick()" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: var(--steam-gold-500); color: black; font-size: 0.875rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--steam-gold-400)'" onmouseout="this.style.background='var(--steam-gold-500)'">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                         <polyline points="15 3 21 3 21 9"></polyline>
@@ -446,6 +469,14 @@
             <div id="lightbox-title" style="font-size: 1.125rem; font-weight: 600; color: var(--steam-gold-300); margin-bottom: 0.5rem; display: none;"></div>
             <div id="lightbox-caption" style="font-size: 0.875rem; color: var(--steam-iron-200); margin-bottom: 0.75rem; white-space: pre-wrap; word-break: break-word; display: none; line-height: 1.5;"></div>
             <div id="lightbox-hashtags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+            <div id="lightbox-meta-extra" style="display: none; width: 100%; margin-top: 0.75rem;">
+                <div id="lightbox-ai-line" style="font-size: 0.8rem; color: var(--steam-gold-200); display: none;"></div>
+                <div id="lightbox-spell-block" style="display: none; margin-top: 0.5rem;">
+                    <div style="font-size: 0.72rem; color: var(--steam-iron-400); margin-bottom: 0.25rem;">呪文（プロンプト）— コピーして再利用できます</div>
+                    <pre id="lightbox-spell-text" style="max-height: 12rem; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 0.8rem; padding: 0.5rem; border-radius: 6px; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700); color: var(--steam-iron-100); margin: 0 0 0.5rem 0;"></pre>
+                    <button type="button" id="lightbox-spell-copy" onclick="copyLightboxSpell()" style="padding: 0.35rem 0.75rem; border-radius: 9999px; border: 1px solid var(--steam-gold-500); background: var(--steam-gold-500); color: #000; font-size: 0.75rem; font-weight: 600; cursor: pointer;">コピー</button>
+                </div>
+            </div>
         </div>
         <div id="lightbox-actions" style="display: none; gap: 0.6rem; align-items: center; flex-wrap: wrap; flex-direction: column;">
             <div class="lightbox-reaction-bar" id="lightbox-reaction-bar">
@@ -475,30 +506,88 @@
     let popularLoading = false;
     let hashtagsLoading = false;
     let initialized = false;
-    
+    let feedMode = 'recent';
+    let _gamePlayTimer = null;
+
+    function onGameLinkClick() {
+        if (_gamePlayTimer) { clearTimeout(_gamePlayTimer); _gamePlayTimer = null; }
+        const sid = currentLightboxAssetId;
+        if (!sid) return;
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+        _gamePlayTimer = setTimeout(function() {
+            _gamePlayTimer = null;
+            fetch('/api/submissions/' + sid + '/game-played/', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            }).catch(function() {});
+        }, 30000);
+    }
+
+    function copyLightboxSpell() {
+        const t = document.getElementById('lightbox-spell-text');
+        if (!t || !t.textContent) return;
+        navigator.clipboard.writeText(t.textContent).then(function() {
+            alert('コピーしました');
+        }).catch(function() {});
+    }
+
+    function setFeedMode(mode) {
+        feedMode = (mode === 'recommended') ? 'recommended' : 'recent';
+        var a = document.getElementById('feed-tab-recent');
+        var b = document.getElementById('feed-tab-reco');
+        if (a && b) {
+            if (feedMode === 'recent') {
+                a.style.background = 'var(--steam-gold-500)'; a.style.color = '#000'; a.style.borderColor = 'var(--steam-gold-500)';
+                b.style.background = 'transparent'; b.style.color = 'var(--steam-gold-300)'; b.style.borderColor = 'var(--steam-iron-600)';
+            } else {
+                b.style.background = 'var(--steam-gold-500)'; b.style.color = '#000'; b.style.borderColor = 'var(--steam-gold-500)';
+                a.style.background = 'transparent'; a.style.color = 'var(--steam-gold-300)'; a.style.borderColor = 'var(--steam-iron-600)';
+            }
+        }
+        items = []; nextCursor = null; loading = false;
+        loadFeed();
+    }
+
+    function applyHashtagSearch() {
+        items = []; nextCursor = null; loading = false;
+        loadFeed();
+    }
+
     function loadFeed(cursor = null) {
         if (loading) return;
         loading = true;
         document.getElementById('loading-indicator').style.display = 'block';
         
-        // URLパラメータからハッシュタグを取得（大文字小文字を保持）
         const urlParams = new URLSearchParams(window.location.search);
         let hashtag = urlParams.get('hashtag');
-        if (hashtag) {
-            hashtag = hashtag.trim();
-        }
+        if (hashtag) hashtag = hashtag.trim();
+
+        const searchInp = document.getElementById('hashtag-search-input');
+        const hashtagContains = (searchInp && searchInp.value.trim()) ? searchInp.value.trim() : '';
+
+        const params = new URLSearchParams();
+        if (cursor) params.set('cursor', cursor);
+        if (feedMode === 'recommended') params.set('mode', 'recommended');
+        if (hashtag) params.set('hashtag', hashtag);
+        if (hashtagContains) params.set('hashtag_contains', hashtagContains);
+        const url = '/api/feed/?' + params.toString();
         
-        let url = cursor 
-            ? `/api/feed/?cursor=${encodeURIComponent(cursor)}`
-            : '/api/feed/';
-        
-        if (hashtag) {
-            url += (url.includes('?') ? '&' : '?') + `hashtag=${encodeURIComponent(hashtag)}`;
-            // ハッシュタグフィルターを表示
+        const activeFilter = hashtag || hashtagContains;
+        if (activeFilter) {
             document.getElementById('hashtag-filter').style.display = 'flex';
-            document.getElementById('hashtag-filter-tag').textContent = `#${hashtag}`;
+            document.getElementById('hashtag-filter-tag').textContent = '#' + activeFilter;
+            const titleEl = document.getElementById('feed-main-title');
+            if (titleEl) titleEl.textContent = '「#' + activeFilter + '」の検索結果';
+            // 検索中は人気作品を非表示
+            const popularSec = document.getElementById('popular-section');
+            if (popularSec) popularSec.style.display = 'none';
         } else {
             document.getElementById('hashtag-filter').style.display = 'none';
+            const titleEl = document.getElementById('feed-main-title');
+            if (titleEl) titleEl.textContent = '最新の投稿';
+            const popularSec = document.getElementById('popular-section');
+            if (popularSec) popularSec.style.display = 'block';
         }
         
         fetch(url, {
@@ -1124,6 +1213,30 @@
                             }
                         });
                     }
+                    const metaExtra = document.getElementById('lightbox-meta-extra');
+                    const aiLine = document.getElementById('lightbox-ai-line');
+                    const spellBlock = document.getElementById('lightbox-spell-block');
+                    const spellText = document.getElementById('lightbox-spell-text');
+                    const spellRaw = (data.spell || '').trim();
+                    const aiLab = data.ai_tool_label || data.aiToolLabel;
+                    const aiTool = data.ai_tool || data.aiTool;
+                    if (metaExtra) metaExtra.style.display = 'block';
+                    if (aiLine) {
+                        if (aiLab || aiTool) {
+                            aiLine.style.display = 'block';
+                            aiLine.textContent = '使用したAI: ' + (aiLab || aiTool);
+                        } else {
+                            aiLine.style.display = 'none';
+                        }
+                    }
+                    if (spellBlock && spellText) {
+                        if (spellRaw) {
+                            spellBlock.style.display = 'block';
+                            spellText.textContent = spellRaw;
+                        } else {
+                            spellBlock.style.display = 'none';
+                        }
+                    }
                     lightboxInfo.style.display = 'block';
                 } else {
                     lightboxInfo.style.display = 'none';
@@ -1150,14 +1263,21 @@
     
     // ハッシュタグフィルターをクリア
     function clearHashtagFilter() {
-        // 状態をリセット
-        items = [];
-        nextCursor = null;
-        loading = false;
-        initialized = false;
-        
-        // URLを変更してページをリロード
-        window.location.href = '/feed/';
+        // 検索入力をクリア
+        const inp = document.getElementById('hashtag-search-input');
+        if (inp) inp.value = '';
+        // URLのhashtagパラメータがある場合はページリロード
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('hashtag')) {
+            window.location.href = '/feed/';
+            return;
+        }
+        // 検索ボックスからの絞り込み解除
+        items = []; nextCursor = null; loading = false; initialized = false;
+        document.getElementById('hashtag-filter').style.display = 'none';
+        const popularSec = document.getElementById('popular-section');
+        if (popularSec) popularSec.style.display = 'block';
+        loadFeed();
     }
     
     function closeLightbox() {
@@ -1174,6 +1294,7 @@
         }
         
         currentLightboxAssetId = null;
+        if (_gamePlayTimer) { clearTimeout(_gamePlayTimer); _gamePlayTimer = null; }
     }
     
     // ESCキーで閉じる
@@ -1319,6 +1440,26 @@
         }
     }, { root: null, rootMargin: '200px', threshold: 0 });
     
+    function loadReactionRankingsForFeed() {
+        function fillList(elId, data) {
+            var el = document.getElementById(elId);
+            if (!el) return;
+            var r = data && data.ranking ? data.ranking : [];
+            if (!r.length) {
+                el.innerHTML = '<li style="list-style:none;color:var(--steam-iron-400);">データなし</li>';
+                return;
+            }
+            el.innerHTML = r.map(function(row) {
+                var name = row.displayName || row.anonId;
+                var uid = row.anonUrlId || row.anonId;
+                var sc = row.score != null ? row.score : (row.count != null ? row.count : 0);
+                return '<li style="margin-bottom:0.2rem;"><a href="/profile/view/?user=' + encodeURIComponent(uid) + '" style="color:var(--steam-gold-400);">' + name + '</a> <span style="color:var(--steam-iron-400);">(' + sc + 'pt)</span></li>';
+            }).join('');
+        }
+        fetch('/api/ranking/daily/').then(function(r) { return r.ok ? r.json() : {}; }).then(function(d) { fillList('feed-rank-daily', d); }).catch(function() {});
+        fetch('/api/ranking/weekly/').then(function(r) { return r.ok ? r.json() : {}; }).then(function(d) { fillList('feed-rank-weekly', d); }).catch(function() {});
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const token = localStorage.getItem('access_token');
         // トークンがなくてもフィードページは表示する（APIは未認証でも取得可能）。認証はAPI呼び出し時の401でリダイレクト
@@ -1371,6 +1512,13 @@
             loadFeed();
             loadPopularFeed(); // 人気作品を読み込む
             loadPopularHashtags(); // 人気ハッシュタグを読み込む
+            loadReactionRankingsForFeed();
+            var hsi = document.getElementById('hashtag-search-input');
+            if (hsi) {
+                hsi.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); applyHashtagSearch(); }
+                });
+            }
             observer.observe(document.getElementById('sentinel'));
             
             // すべて表示済みのチェック

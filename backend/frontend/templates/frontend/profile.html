@@ -221,7 +221,7 @@
     
     <section class="profile-section">
         <h2>StudySphere連携</h2>
-        <div id="studysphere-status" style="margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--steam-iron-300);"></div>
+        <div id="studysphere-status" style="margin-bottom: 0.5rem; font-size: 0.875rem; color: {% if studysphere_login_code %}var(--steam-gold-300){% else %}var(--steam-iron-300){% endif %};">{% if studysphere_login_code %}連携済み（{{ studysphere_login_code }}）{% else %}未連携{% endif %}</div>
         <div id="studysphere-token-container" style="display: none;">
             <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
                 <input type="text" id="studysphere-token-input" class="form-input" placeholder="StudySphereトークンを入力" style="flex: 1;">
@@ -242,9 +242,9 @@
 {% block extra_js %}
 {% load static %}
 <!-- api.jsとutils.jsを明示的に読み込む（順序を保証） -->
-<script src="{% static 'frontend/js/common/api.js' %}?v=20260115-1"></script>
-<script src="{% static 'frontend/js/common/utils.js' %}?v=20260115-1"></script>
-<script src="{% static 'frontend/js/pages/profile.js' %}?v=20260115-1"></script>
+<script src="{% static 'frontend/js/common/api.js' %}?v=20260423-1"></script>
+<script src="{% static 'frontend/js/common/utils.js' %}?v=20260423-1"></script>
+<script src="{% static 'frontend/js/pages/profile.js' %}?v=20260423-1"></script>
 <script>
     // Fallback handlers in case profile.js failed to load
     (function() {

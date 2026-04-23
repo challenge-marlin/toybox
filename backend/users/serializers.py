@@ -82,8 +82,8 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'display_id', 'role', 'avatar_url', 'avatar_thumbnail_url', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id', 'is_official']
-        read_only_fields = ['id', 'role', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id', 'is_official']
+        fields = ['id', 'email', 'display_id', 'role', 'avatar_url', 'avatar_thumbnail_url', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id', 'studysphere_login_code', 'is_official', 'is_staff', 'is_superuser']
+        read_only_fields = ['id', 'role', 'is_suspended', 'banned_at', 'warning_count', 'studysphere_user_id', 'studysphere_login_code', 'is_official', 'is_staff', 'is_superuser']
     
     def get_is_official(self, obj):
         """Check if user is official (superuser)."""

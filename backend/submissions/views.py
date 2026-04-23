@@ -1458,8 +1458,69 @@ def _reaction_score_case():
     )
 
 
+def _ranking_submissions_by_reaction_score(start, end, limit=10):
+    """期間内に付いたリアクションの重み付き合計で作品をランキング。"""
+    rows = (
+        Reaction.objects.filter(
+            created_at__gte=start,
+            created_at__lte=end,
+            submission__deleted_at__isnull=True,
+        )
+        .values('submission')
+        .annotate(score=Sum(_reaction_score_case()))
+        .order_by('-score')[:limit]
+    )
+    ranking = []
+    for row in rows:
+        sub_id = row['submission']
+        score = row['score'] or 0
+        if score <= 0:
+            continue
+        try:
+            sub = Submission.objects.select_related('author', 'author__meta').get(id=sub_id)
+            author = sub.author
+            meta = getattr(author, 'meta', None)
+            anon_id = 'StudySphereUser' if (author.studysphere_user_id or author.studysphere_login_code) else author.display_id
+            display_name = (meta.display_name if meta and meta.display_name else None) or anon_id
+            url_id = author.studysphere_login_code if (author.studysphere_user_id or author.studysphere_login_code) else anon_id
+
+            image_url = None
+            try:
+                image_url = getattr(sub, 'image_url', None) or None
+                if not image_url and getattr(sub, 'image', None):
+                    raw = sub.image.url if hasattr(sub.image, 'url') else str(sub.image)
+                    image_url = raw if raw.startswith('http') else None
+            except Exception:
+                pass
+
+            thumbnail_url = None
+            try:
+                thumbnail_url = getattr(sub, 'image_thumbnail_url', None) or None
+            except Exception:
+                pass
+
+            ranking.append({
+                'id': str(sub.id),
+                'anonId': anon_id,
+                'anonUrlId': url_id,
+                'displayName': display_name,
+                'score': int(score),
+                'imageUrl': image_url,
+                'imageThumbnailUrl': thumbnail_url or image_url,
+                'displayImageUrl': thumbnail_url or image_url,
+                'videoUrl': getattr(sub, 'video_url', None),
+                'gameUrl': getattr(sub, 'game_url', None),
+                'title': getattr(sub, 'title', None) or None,
+                'createdAt': sub.created_at.isoformat() if sub.created_at else None,
+                'allReactions': [],
+            })
+        except Submission.DoesNotExist:
+            continue
+    return ranking
+
+
 def _ranking_users_by_reaction_score(start, end, limit=20):
-    """期間内に付いたリアクションの重み付き合計でユーザーをランキング。"""
+    """期間内に付いたリアクションの重み付き合計でユーザーをランキング。（後方互換用）"""
     rows = (
         Reaction.objects.filter(
             created_at__gte=start,
@@ -1503,7 +1564,7 @@ class RankingDailyView(APIView):
         today = timezone.localdate()
         start = timezone.make_aware(datetime.combine(today, datetime.min.time()))
         end = timezone.make_aware(datetime.combine(today, datetime.max.time()))
-        ranking = _ranking_users_by_reaction_score(start, end, limit=20)
+        ranking = _ranking_submissions_by_reaction_score(start, end, limit=10)
         return Response({'ranking': ranking, 'period': 'daily'})
 
 
@@ -1519,7 +1580,7 @@ class RankingWeeklyView(APIView):
         sunday = monday + timedelta(days=6)
         start = timezone.make_aware(datetime.combine(monday, datetime.min.time()))
         end = timezone.make_aware(datetime.combine(sunday, datetime.max.time()))
-        ranking = _ranking_users_by_reaction_score(start, end, limit=20)
+        ranking = _ranking_submissions_by_reaction_score(start, end, limit=10)
         return Response({'ranking': ranking, 'period': 'weekly'})
 
 

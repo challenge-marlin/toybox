@@ -113,6 +113,25 @@ def generate_ticket_by_logincode(login_code: str, target_system: str, context: s
     return str(ticket)
 
 
+def verify_login_code_exists(login_code: str) -> bool:
+    """
+    StudySphere側にlogin_codeが存在するか確認する。
+    generate_ticket_by_logincodeを呼び出し、成功すればTrue、失敗（コード不存在）ならFalseを返す。
+    """
+    try:
+        source_system = _get_setting("SSO_SYSTEM_KEY")
+        payload: Dict[str, Any] = {
+            "login_code": login_code,
+            "target_system": "studysphere",
+            "source_system": source_system,
+            "context": "validate_only",
+        }
+        response = _post_json("/api/sso/ticket/generate-by-logincode", payload)
+        return bool(response.get("success"))
+    except SSOServiceError:
+        return False
+
+
 def build_sso_login_url(ticket: str) -> str:
     base_url = _get_web_base_url()
     if not base_url:

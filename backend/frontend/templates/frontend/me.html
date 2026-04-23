@@ -461,6 +461,10 @@
                     <span>未設定</span>
                 </div>
                 <div style="color: var(--steam-iron-100); font-weight: 600; font-size: 0.875rem;" id="profile-name">—</div>
+                <div id="studysphere-link-badge" style="display: none; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--steam-gold-400); font-weight: 600; background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); border-radius: 9999px; padding: 0.15rem 0.6rem;">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    StudySphere連携済み
+                </div>
                 <div id="profile-follow-stats" style="font-size: 0.72rem; color: var(--steam-iron-400); margin-top: 0.25rem;"></div>
                 <div id="profile-mutual-badge" style="display: none; font-size: 0.7rem; color: #34d399; margin-top: 0.15rem; font-weight: 600;">相互フォロー</div>
                 <div id="profile-title" style="display: none; justify-content: center; margin: 0.25rem 0;"></div>
@@ -1194,6 +1198,12 @@
                 const officialBadge = isOfficial ? '<span class="official-badge" title="公式アカウント"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : '';
                 profileNameElement.innerHTML = displayName + officialBadge;
                 console.log('Set profile name to:', displayName, 'Official:', isOfficial);
+            }
+
+            // StudySphere連携バッジ
+            const studysphereBadge = document.getElementById('studysphere-link-badge');
+            if (studysphereBadge && data.isStudySphereLinked) {
+                studysphereBadge.style.display = 'inline-flex';
             }
 
             const followStatsEl = document.getElementById('profile-follow-stats');

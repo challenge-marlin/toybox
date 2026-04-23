@@ -165,6 +165,10 @@ async function initPenaltyCheck(options = {}) {
             if (!res.ok) return;
 
             const data = await res.json();
+
+            // スタッフ・管理者はペナルティ表示対象外
+            if (data && (data.is_staff || data.is_superuser)) return;
+
             const penalty = data && data.penalty ? data.penalty : null;
             const key = `toybox_penalty_seen_${data.id || 'me'}`;
             const last = localStorage.getItem(key) || '';

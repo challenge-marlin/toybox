@@ -142,7 +142,10 @@ def profile(request):
             # UserMetaが存在しない場合も利用規約未同意とみなす
             return redirect('/terms/agree/')
     
-    return render(request, 'frontend/profile.html')
+    studysphere_login_code = getattr(request.user, 'studysphere_login_code', '') or ''
+    return render(request, 'frontend/profile.html', {
+        'studysphere_login_code': studysphere_login_code,
+    })
 
 
 def profile_view(request):

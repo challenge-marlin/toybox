@@ -902,6 +902,7 @@ class ProfileGetView(APIView):
                 'activeTitleUntil': active_title_until.isoformat() if active_title_until else None,
                 'earnedTitles': list(meta.earned_titles or []),
                 'isOfficial': is_official,
+                'isStudySphereLinked': bool(user.studysphere_login_code or user.studysphere_user_id),
                 'updatedAt': meta.updated_at.isoformat() if meta.updated_at else None,
                 'totalReactions': total_reactions,
                 'totalReactionScore': total_reaction_score,
@@ -1407,16 +1408,48 @@ class ProfileSetStudySphereTokenView(APIView):
     
     def post(self, request):
         """Set StudySphere login code token directly."""
+        import re
         token = request.data.get('token', '').strip()
         
         if not token:
             return Response({
-                'error': 'トークンが指定されていません'
+                'error': 'コードが入力されていません'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # フォーマット検証: XXXX-XXXX-XXXX（英数字4桁-4桁-4桁）
+        if not re.fullmatch(r'[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}', token):
+            return Response({
+                'ok': False,
+                'error': 'コードの形式が正しくありません。XXXX-XXXX-XXXX（英数字4桁-4桁-4桁）の形式で入力してください。'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # 現在のユーザーのstudysphere_login_codeを更新
             user = request.user
+
+            # 同じlogin_codeが別のユーザーに登録済みか確認
+            existing = User.objects.filter(studysphere_login_code=token).exclude(id=user.id).first()
+            if existing:
+                logger.warning(f'StudySphere login code already registered to another user (user_id={existing.id}), requested by user {user.id}')
+                return Response({
+                    'ok': False,
+                    'error': 'その番号はすでに登録されています。'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # StudySphere側にコードが存在するか確認
+            from sso_integration.services import verify_login_code_exists, SSOServiceError
+            try:
+                exists_on_studysphere = verify_login_code_exists(token)
+                if not exists_on_studysphere:
+                    logger.warning(f'StudySphere login code not found on StudySphere side for user {user.id}')
+                    return Response({
+                        'ok': False,
+                        'error': 'そのコードはStudySphereに存在しません。コードをご確認ください。'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except SSOServiceError as e:
+                logger.warning(f'Could not verify login code on StudySphere (service error): {e}')
+                # StudySphere側の確認が失敗した場合はスキップして続行
+                pass
+
             user.studysphere_login_code = token
             user.save(update_fields=['studysphere_login_code'])
             

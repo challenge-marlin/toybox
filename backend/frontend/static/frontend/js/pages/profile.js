@@ -691,8 +691,8 @@
             
             const statusDiv = document.getElementById('studysphere-status');
             if (statusDiv) {
-                if (userData.studysphere_user_id) {
-                    statusDiv.textContent = `連携済み（StudySphere ID: ${userData.studysphere_user_id}）`;
+                if (userData.studysphere_login_code) {
+                    statusDiv.textContent = `連携済み（${userData.studysphere_login_code}）`;
                     statusDiv.style.color = 'var(--steam-gold-300)';
                 } else {
                     statusDiv.textContent = '未連携';
@@ -735,7 +735,20 @@
         const token = tokenInput.value.trim();
         if (!token) {
             if (errorDiv) {
-                errorDiv.textContent = 'トークンを入力してください';
+                errorDiv.textContent = 'コードを入力してください';
+                errorDiv.style.display = 'block';
+            }
+            if (successDiv) {
+                successDiv.style.display = 'none';
+            }
+            return;
+        }
+
+        // フォーマット検証: XXXX-XXXX-XXXX（英数字4桁-4桁-4桁）
+        const codePattern = /^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$/;
+        if (!codePattern.test(token)) {
+            if (errorDiv) {
+                errorDiv.textContent = 'コードの形式が正しくありません。XXXX-XXXX-XXXX（英数字4桁-4桁-4桁）の形式で入力してください。例: DBGE-ky64-YDLK';
                 errorDiv.style.display = 'block';
             }
             if (successDiv) {
@@ -774,8 +787,15 @@
                 if (errorDiv) {
                     errorDiv.style.display = 'none';
                 }
+
+                // 保存したトークンをそのままステータスに反映（API再取得不要）
+                const statusDiv = document.getElementById('studysphere-status');
+                if (statusDiv) {
+                    statusDiv.textContent = `連携済み（${token}）`;
+                    statusDiv.style.color = 'var(--steam-gold-300)';
+                }
+
                 tokenInput.value = '';
-                await loadStudySphereStatus();
             } else {
                 const errorMsg = result?.error || result?.message || '保存に失敗しました';
                 throw new Error(errorMsg);

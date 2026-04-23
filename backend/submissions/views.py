@@ -1484,20 +1484,9 @@ def _ranking_submissions_by_reaction_score(start, end, limit=10):
             display_name = (meta.display_name if meta and meta.display_name else None) or anon_id
             url_id = author.studysphere_login_code if (author.studysphere_user_id or author.studysphere_login_code) else anon_id
 
-            image_url = None
-            try:
-                image_url = getattr(sub, 'image_url', None) or None
-                if not image_url and getattr(sub, 'image', None):
-                    raw = sub.image.url if hasattr(sub.image, 'url') else str(sub.image)
-                    image_url = raw if raw.startswith('http') else None
-            except Exception:
-                pass
-
-            thumbnail_url = None
-            try:
-                thumbnail_url = getattr(sub, 'image_thumbnail_url', None) or None
-            except Exception:
-                pass
+            from submissions.serializers import SubmissionSerializer
+            sub_data = SubmissionSerializer(sub, context={}).data
+            display_image_url = sub_data.get('display_image_url') or sub_data.get('image_url') or None
 
             ranking.append({
                 'id': str(sub.id),
@@ -1505,9 +1494,9 @@ def _ranking_submissions_by_reaction_score(start, end, limit=10):
                 'anonUrlId': url_id,
                 'displayName': display_name,
                 'score': int(score),
-                'imageUrl': image_url,
-                'imageThumbnailUrl': thumbnail_url or image_url,
-                'displayImageUrl': thumbnail_url or image_url,
+                'imageUrl': display_image_url,
+                'imageThumbnailUrl': display_image_url,
+                'displayImageUrl': display_image_url,
                 'videoUrl': getattr(sub, 'video_url', None),
                 'gameUrl': getattr(sub, 'game_url', None),
                 'title': getattr(sub, 'title', None) or None,

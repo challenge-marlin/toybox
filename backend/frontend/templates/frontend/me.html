@@ -465,6 +465,7 @@
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                     StudySphere連携済み
                 </div>
+                <div id="ranking-badges" style="display: flex; flex-direction: column; align-items: center; gap: 0.3rem; margin-top: 0.25rem;"></div>
                 <div id="profile-follow-stats" style="font-size: 0.72rem; color: var(--steam-iron-400); margin-top: 0.25rem;"></div>
                 <div id="profile-mutual-badge" style="display: none; font-size: 0.7rem; color: #34d399; margin-top: 0.15rem; font-weight: 600;">相互フォロー</div>
                 <div id="profile-title" style="display: none; justify-content: center; margin: 0.25rem 0;"></div>
@@ -838,6 +839,7 @@
 <script>
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     const token = getAccessToken();
+    let _myAnonId = null;
     
     // Toast通知機能
     function showToast(type, message) {
@@ -1172,6 +1174,7 @@
                 console.error('No display_id found in metaData:', metaData);
                 return;
             }
+            _myAnonId = anonId;
             
             // プロフィール情報を取得
             return fetch(`/api/user/profile/${encodeURIComponent(anonId)}/`, {
@@ -1299,10 +1302,47 @@
                     titleUntilElement.style.display = 'none';
                 }
             }
+            // ランキング入賞バッジを読み込む
+            loadRankingBadges(_myAnonId);
         })
         .catch(err => console.error('Failed to load profile:', err));
     }
-    
+
+    function loadRankingBadges(anonId) {
+        if (!anonId) return;
+        const badgesEl = document.getElementById('ranking-badges');
+        if (!badgesEl) return;
+        const medals = ['🥇', '🥈', '🥉'];
+        function checkRanking(url, label) {
+            return fetch(url)
+                .then(function(r) { return r.ok ? r.json() : null; })
+                .then(function(d) {
+                    if (!d || !d.ranking) return null;
+                    var idx = d.ranking.findIndex(function(item) {
+                        return item.anonId === anonId || item.anonUrlId === anonId;
+                    });
+                    if (idx === -1) return null;
+                    var rank = idx + 1;
+                    var medal = rank <= 3 ? medals[rank - 1] : '🏅';
+                    return { rank: rank, medal: medal, label: label };
+                })
+                .catch(function() { return null; });
+        }
+        Promise.all([
+            checkRanking('/api/ranking/daily/', 'デイリーランキング'),
+            checkRanking('/api/ranking/weekly/', '週間ランキング')
+        ]).then(function(results) {
+            var html = '';
+            results.forEach(function(r) {
+                if (!r) return;
+                html += '<div style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.72rem;color:#fde68a;font-weight:700;background:rgba(234,179,8,0.13);border:1px solid rgba(234,179,8,0.4);border-radius:9999px;padding:0.18rem 0.65rem;">'
+                    + r.medal + ' ' + r.label + ' <span style="color:#fbbf24;">' + r.rank + '位</span>になりました！'
+                    + '</div>';
+            });
+            badgesEl.innerHTML = html;
+        });
+    }
+
     function loadAnnouncements() {
         fetch('/api/announcements/', {
             headers: {

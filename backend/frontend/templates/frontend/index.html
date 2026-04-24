@@ -10,27 +10,16 @@
 
 {% block extra_css %}
 <style>
-    /* ページ全体のスクロール無効化 */
-    body {
+    body, html {
         overflow: hidden;
     }
-    
-    html {
-        overflow: hidden;
-    }
-    
+
     .hero-container {
         position: relative;
         min-height: calc(100dvh - 64px);
         overflow: hidden;
     }
-    
-    @media (min-width: 768px) {
-        .hero-container {
-            min-height: calc(100dvh - 64px);
-        }
-    }
-    
+
     /* スプラッシュスクリーン */
     .splash-screen {
         position: fixed;
@@ -42,39 +31,13 @@
         background-color: #FFC626;
         transition: opacity 0.3s ease-out;
     }
-    
-    .splash-screen.fade {
-        opacity: 0;
-    }
-    
-    .splash-content {
-        text-align: center;
-    }
-    
-    .splash-loading {
-        margin: 0 auto;
-        height: 6rem;
-        width: auto;
-    }
-    
-    @media (min-width: 768px) {
-        .splash-loading {
-            height: 8rem;
-        }
-    }
-    
-    .splash-text {
-        margin-top: 0.5rem;
-        font-size: 0.75rem;
-        color: #5c3a21;
-    }
-    
-    @media (min-width: 768px) {
-        .splash-text {
-            font-size: 0.875rem;
-        }
-    }
-    
+    .splash-screen.fade { opacity: 0; }
+    .splash-content { text-align: center; }
+    .splash-loading { margin: 0 auto; height: 6rem; width: auto; }
+    @media (min-width: 768px) { .splash-loading { height: 8rem; } }
+    .splash-text { margin-top: 0.5rem; font-size: 0.75rem; color: #5c3a21; }
+    @media (min-width: 768px) { .splash-text { font-size: 0.875rem; } }
+
     /* 背景動画 */
     .hero-video {
         position: fixed;
@@ -85,7 +48,7 @@
         object-fit: cover;
         object-position: center;
     }
-    
+
     /* メインコンテンツ */
     .hero-main {
         position: relative;
@@ -95,21 +58,15 @@
         padding: 1.5rem;
         overflow: hidden;
     }
-    
-    @media (min-width: 768px) {
-        .hero-main {
-            padding: 2rem;
-        }
-    }
-    
+    @media (min-width: 768px) { .hero-main { padding: 2rem; } }
+
     .hero-section {
         position: relative;
         overflow: hidden;
         border-radius: 8px;
-        background: center/cover;
         min-height: 100%;
     }
-    
+
     .hero-content {
         position: relative;
         padding: 1.5rem 2rem;
@@ -117,38 +74,25 @@
         display: flex;
         align-items: flex-start;
     }
-    
-    @media (min-width: 768px) {
-        .hero-content {
-            padding: 2rem;
-        }
-    }
-    
+    @media (min-width: 768px) { .hero-content { padding: 2rem; } }
+
     .hero-center {
         position: relative;
         z-index: 20;
         width: 100%;
         text-align: center;
     }
-    
+
+    /* タイトルロゴ */
     .hero-title {
         margin: 0 auto;
         height: 7rem;
         width: auto;
     }
-    
-    @media (min-width: 768px) {
-        .hero-title {
-            height: 9rem;
-        }
-    }
-    
-    @media (min-width: 1024px) {
-        .hero-title {
-            height: 10rem;
-        }
-    }
-    
+    @media (min-width: 768px) { .hero-title { height: 9rem; } }
+    @media (min-width: 1024px) { .hero-title { height: 10rem; } }
+
+    /* キャッチコピー */
     .hero-description {
         margin-top: 1rem;
         margin-left: auto;
@@ -156,23 +100,20 @@
         max-width: 42rem;
         color: var(--steam-iron-100);
         font-size: 1rem;
+        line-height: 1.65;
+        text-shadow: 0 1px 6px rgba(0,0,0,0.7);
     }
-    
-    @media (min-width: 768px) {
-        .hero-description {
-            font-size: 1.125rem;
-        }
-    }
-    
+    @media (min-width: 768px) { .hero-description { font-size: 1.125rem; } }
+
+    /* ボタン */
     .hero-buttons {
         margin-top: 1.5rem;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
         gap: 0.75rem;
         justify-content: center;
     }
-    
     .hero-button {
         border-radius: 4px;
         padding: 0.75rem 1.5rem;
@@ -181,39 +122,16 @@
         display: inline-block;
         transition: all 0.2s;
     }
-    
-    @media (min-width: 768px) {
-        .hero-button {
-            font-size: 1.125rem;
-        }
-    }
-    
-    .hero-button-primary {
-        background: var(--steam-gold-500);
-        color: #000;
-    }
-    
-    .hero-button-primary:hover {
-        background: var(--steam-gold-400);
-    }
-    
-    .hero-button-secondary {
-        border: 1px solid var(--steam-gold-500);
-        padding: 0.75rem 1.5rem;
-        color: var(--steam-gold-200);
-    }
-    
-    .hero-button-secondary:hover {
-        background: var(--steam-iron-800);
-        color: var(--steam-gold-300);
-    }
-    
-    /* みおちゃんの画像 */
+    @media (min-width: 768px) { .hero-button { font-size: 1.125rem; } }
+    .hero-button-primary { background: var(--steam-gold-500); color: #000; }
+    .hero-button-primary:hover { background: var(--steam-gold-400); }
+    .hero-button-secondary { border: 1px solid var(--steam-gold-500); padding: 0.75rem 1.5rem; color: var(--steam-gold-200); }
+    .hero-button-secondary:hover { background: var(--steam-iron-800); color: var(--steam-gold-300); }
+
+    /* みおちゃん */
     .hero-mio-container {
         margin-top: 1.5rem;
-        transform: translateY(0);
     }
-    
     .hero-mio {
         pointer-events: none;
         margin: 0 auto;
@@ -223,11 +141,10 @@
         width: auto;
         user-select: none;
     }
-    
     .hero-mio.mio-float {
         animation: mioFloatFade 1800ms ease-out both;
     }
-    
+
     /* 機能カード（絶対配置） */
     .hero-features-container {
         position: absolute;
@@ -237,7 +154,6 @@
         display: flex;
         justify-content: center;
     }
-    
     .hero-features {
         display: grid;
         grid-template-columns: 1fr;
@@ -246,31 +162,43 @@
         max-width: 1200px;
         padding: 0 1.5rem;
     }
-    
-    @media (min-width: 768px) {
-        .hero-features {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
-    
+    @media (min-width: 768px) { .hero-features { grid-template-columns: repeat(3, 1fr); } }
+
     .hero-feature-card {
         border-radius: 8px;
-        border: 1px solid var(--steam-iron-800);
-        background: rgba(31, 35, 42, 0.9);
+        border: 1px solid var(--steam-iron-700);
+        background: rgba(20, 23, 28, 0.88);
         padding: 1rem;
+        backdrop-filter: blur(4px);
     }
-    
     .hero-feature-card-title {
         margin-bottom: 0.5rem;
         color: var(--steam-gold-300);
         font-weight: 600;
         font-size: 1rem;
     }
-    
     .hero-feature-card-text {
         color: var(--steam-iron-200);
         font-size: 0.875rem;
         line-height: 1.6;
+        margin: 0;
+    }
+
+    /* バージョン表示（画面下部固定）*/
+    .hero-version {
+        position: fixed;
+        bottom: 0.5rem;
+        right: 1rem;
+        font-size: 0.65rem;
+        color: rgba(255,255,255,0.28);
+        z-index: 100;
+        pointer-events: none;
+    }
+
+    @keyframes mioFloatFade {
+        0%   { opacity: 0; transform: translateY(18px); }
+        60%  { opacity: 1; transform: translateY(-4px); }
+        100% { opacity: 1; transform: translateY(0); }
     }
 </style>
 {% endblock %}
@@ -284,19 +212,19 @@
             <div class="splash-text">Nowloading...</div>
         </div>
     </div>
-    
+
     <!-- 背景動画 -->
-    <video class="hero-video" src="{% static 'frontend/hero/background.mp4' %}" autoplay muted loop playsinline preload="auto" aria-hidden="true" style="background: var(--steam-iron-900);"></video>
-    
+    <video class="hero-video" src="{% static 'frontend/hero/toybox_top.mp4' %}" autoplay muted loop playsinline preload="auto" aria-hidden="true" style="background: var(--steam-iron-900);"></video>
+
     <!-- メインコンテンツ -->
     <main class="hero-main">
         <section class="hero-section">
             <div class="hero-content">
-                <!-- 未ログインユーザー向けキービジュアル -->
                 <div class="hero-center">
                     <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="TOYBOX ロゴ" class="hero-title">
                     <p class="hero-description">
-                        毎日の"お題"に挑戦して、コレクションを増やそう。
+                        AIで創り、仲間と競い、称号を掴め。<br>
+                        <span style="font-size:0.85em;color:var(--steam-iron-300);">投稿するたびにポイントが積み、ランキングが動き、あなたのレジェンドが刻まれる。</span>
                     </p>
                     <div class="hero-buttons">
                         <a href="/login/" class="hero-button hero-button-primary">ログイン</a>
@@ -305,47 +233,85 @@
                     <div class="hero-mio-container">
                         <img src="{% static 'frontend/hero/mio.png' %}" alt="綾鳥みお" class="hero-mio mio-float">
                     </div>
-                    <!-- 機能カード -->
+                    <!-- 機能カード（ランダム3枚表示） -->
                     <div class="hero-features-container">
-                        <div class="hero-features">
-                            <div class="hero-feature-card">
-                                <div class="hero-feature-card-title">続けるほど当たりやすい</div>
-                                <p class="hero-feature-card-text">毎日の提出でボーナスが蓄積。未当選が続くほど確率が少しずつ上がります。</p>
-                            </div>
-                            <div class="hero-feature-card">
-                                <div class="hero-feature-card-title">称号とカードをコレクション</div>
-                                <p class="hero-feature-card-text">当選すると限定称号やカードを獲得。プロフィールで自慢できます。</p>
-                            </div>
-                            <div class="hero-feature-card">
-                                <div class="hero-feature-card-title">コミュニティで刺激を受ける</div>
-                                <p class="hero-feature-card-text">他の参加者の取り組みからヒントを得て、継続のモチベーションに。</p>
-                            </div>
-                        </div>
+                        <div class="hero-features" id="hero-features-grid"></div>
                     </div>
                 </div>
             </div>
         </section>
     </main>
+
+    <!-- バージョン表示 -->
+    <div class="hero-version">TOYBOX! Ver 2.11</div>
 </div>
 
 <script>
-    // スプラッシュスクリーンの処理
-    document.addEventListener('DOMContentLoaded', function() {
-        const splash = document.getElementById('splash-screen');
-        if (splash) {
-            setTimeout(() => {
-                splash.classList.add('fade');
-            }, 1200);
-            setTimeout(() => {
-                splash.style.display = 'none';
-            }, 1500);
+    // 機能カード全30種（TOYBOXの仕様に基づく）
+    var ALL_FEATURE_CARDS = [
+        { title: '作るたびに、報酬が降る', text: '投稿するごとにTPポイント獲得。続けるほどランクと実績が積み上がる。' },
+        { title: '外れても、チャンスは積み上がる', text: '抽選に外れ続けるほど確率が上昇。諦めない人に女神が微笑む。' },
+        { title: '称号は、努力が形になったもの', text: 'アチーブメント称号は51種類以上。活動実績で解放し、プロフィールに飾ろう。' },
+        { title: 'AIを武器にした新世代のクリエイターへ', text: '画像・動画・ゲームをAIで作成し、コミュニティで輝こう。' },
+        { title: '6種類のリアクションで、心を届ける', text: 'いいね・すごい・かわいい・感動…言葉より豊かな反応で仲間を応援できる。' },
+        { title: 'ゲームを作れば、プレイされるほど稼げる', text: 'ゲーム投稿は高TP設定。プレイヤーが増えるほど作者にも報酬が入る。' },
+        { title: 'カードコレクションで個性を表現', text: 'レアリティ違いのカードを集めてコレクションを育てよう。' },
+        { title: 'ランキングで、自分の存在を証明する', text: 'デイリー・週間ランキング上位に入ると、マイページに入賞バッジが表示される。' },
+        { title: '毎日チェックインで、コツコツ積み上げ', text: 'ログインするだけでTPゲット。継続は力なり。' },
+        { title: '作品をDiscordに一発シェア', text: '投稿をDiscordに共有してコミュニティを盛り上げよう。' },
+        { title: 'ハッシュタグで、仲間と繋がる', text: 'テーマ別に整理・検索。共通の趣味を持つ仲間が見つかる。' },
+        { title: '動画投稿で、より大きな注目を', text: '動画は高TP設定。動く作品でフィードに差をつけよう。' },
+        { title: '人気フィードに載れば、みんなが見てくれる', text: 'リアクションが集まると人気フィードに昇格。注目の的になれる。' },
+        { title: 'フォローして、好きな人の最新作を見逃さない', text: '気になるクリエイターをフォローしてタイムラインに追加しよう。' },
+        { title: '連続投稿でボーナスが大きくなる', text: '毎日投稿を続けることでTPが増加。継続者を優遇する設計。' },
+        { title: 'たった一枚が、今日の主役になる', text: '気軽な1投稿がフィードのトップを飾ることも。ハードルはゼロ。' },
+        { title: 'ゲームをプレイするだけでもポイントが入る', text: '他人のゲームを30秒プレイするだけでTPゲット。見るだけでも得をする。' },
+        { title: '作品が積み上がるほど、プロフィールが輝く', text: '投稿実績・称号・カードがプロフィールを彩る。積み重ねが個性になる。' },
+        { title: 'コメントなし、比較なし。純粋な創作SNS', text: 'メンタルに優しい設計。リアクションだけで十分、気持ちは届く。' },
+        { title: '隠し称号が、ひそかに待っている', text: '特定の行動で解放される秘密称号も存在する。探すのも楽しみのひとつ。' },
+        { title: 'フィードを見るだけでも、場が盛り上がる', text: 'リアクションを付けるだけで全員が嬉しい。参加のハードルはゼロ。' },
+        { title: 'ZIPをアップするだけで、ゲームが公開', text: 'ゲームZIPをアップロードすれば自動展開して即公開。エンジニア不要。' },
+        { title: 'キャプションで、作品に物語を添えよう', text: 'テキストやハッシュタグで文脈を加えて、より深い共感を生む。' },
+        { title: 'リアクションを送ると、自分にもTPが届く', text: '与えるほど自分も得をする相互恩恵の仕組みで、コミュニティが育つ。' },
+        { title: '画像・動画・ゲーム。表現の形は自由', text: '3種類の投稿形式で、自分の得意な方法で輝こう。何でも作れる。' },
+        { title: '投稿するたびに、ドキドキが生まれる', text: '抽選と報酬がセットだから、毎回ちょっとした興奮がある。' },
+        { title: '続けた人だけが見える景色がある', text: 'レアカード・上位称号は高い継続率の人だけの特権。続けることが武器。' },
+        { title: 'StudySphereと連携で、よりシームレスに', text: 'SSO連携でTOYBOX↔StudySphereをスムーズに行き来できる。' },
+        { title: '小さなコミュニティほど、濃い繋がりが生まれる', text: '限定公開だから安心。仲間感が生まれやすい理想の環境。' },
+        { title: '「お題」が、毎日の創作スイッチになる', text: '毎日の課題に挑戦するうちに、いつの間にかAIスキルが身についていく。' },
+    ];
+
+    function shuffle(arr) {
+        var a = arr.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
         }
-        
-        // JWTトークンが存在する場合はマイページにリダイレクト
-        // スプラッシュスクリーンが消えた後にリダイレクト
-        setTimeout(() => {
-            redirectIfAuthenticated();
-        }, 1600);
+        return a;
+    }
+
+    function renderFeatureCards() {
+        var grid = document.getElementById('hero-features-grid');
+        if (!grid) return;
+        var picks = shuffle(ALL_FEATURE_CARDS).slice(0, 3);
+        grid.innerHTML = picks.map(function(c) {
+            return '<div class="hero-feature-card">'
+                + '<div class="hero-feature-card-title">' + c.title + '</div>'
+                + '<p class="hero-feature-card-text">' + c.text + '</p>'
+                + '</div>';
+        }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderFeatureCards();
+
+        var splash = document.getElementById('splash-screen');
+        if (splash) {
+            setTimeout(function() { splash.classList.add('fade'); }, 1200);
+            setTimeout(function() { splash.style.display = 'none'; }, 1500);
+        }
+
+        setTimeout(function() { redirectIfAuthenticated(); }, 1600);
     });
 </script>
 {% endblock %}

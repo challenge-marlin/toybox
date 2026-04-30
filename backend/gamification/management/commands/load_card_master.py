@@ -43,13 +43,44 @@ class Command(BaseCommand):
             '-': 'common',  # Default for Effect cards
         }
         
+        # 日本語列名 → 英語列名のマッピング
+        col_aliases = {
+            'ID': 'card_id',
+            'カード名': 'card_name',
+            '種類': 'card_type',
+            '属性': 'attribute',
+            'ATC': 'atk_points',
+            'DEF': 'def_points',
+            'レアリティ': 'rarity',
+            'デバフ効果（エフェクトのみ）': 'buff_effect',
+            'カード説明文（１００文字）': 'description',
+        }
+        # 種類（日本語）→ card_type（英語）
+        card_type_jp = {
+            'キャラクター': 'character',
+            'エフェクト': 'effect',
+        }
+
+        def normalize_row(row):
+            """列名を英語に統一し、マスターデータにない列はスキップする"""
+            normalized = {}
+            for key, value in row.items():
+                normalized_key = col_aliases.get(key, key)
+                # マスターデータに存在する列名のみ保持
+                master_cols = {'card_id', 'card_name', 'rarity', 'image_url', 'attribute',
+                               'atk_points', 'def_points', 'card_type', 'buff_effect', 'description'}
+                if normalized_key in master_cols:
+                    normalized[normalized_key] = value
+            return normalized
+
         loaded_count = 0
         updated_count = 0
         
         with open(tsv_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter='\t')
             
-            for row in reader:
+            for raw_row in reader:
+                row = normalize_row(raw_row)
                 card_id = (row.get('card_id') or '').strip()
                 card_name = (row.get('card_name') or '').strip()
                 rarity_str = (row.get('rarity') or '-').strip()
@@ -60,7 +91,9 @@ class Command(BaseCommand):
                 atk_points = int(atk_raw) if atk_raw and atk_raw.isdigit() else None
                 def_raw = (row.get('def_points') or '').strip()
                 def_points = int(def_raw) if def_raw and def_raw.isdigit() else None
-                card_type_raw = (row.get('card_type') or '').strip().lower()
+                card_type_raw = (row.get('card_type') or '').strip()
+                # 日本語の種類名を英語に変換
+                card_type_raw = card_type_jp.get(card_type_raw, card_type_raw).lower()
                 if card_type_raw in ('character', 'effect'):
                     card_type = card_type_raw
                 else:

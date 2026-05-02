@@ -16,11 +16,58 @@
 .article-content { font-size: 0.95rem; color: var(--steam-iron-200); line-height: 1.75; }
 .article-content h2 { font-size: 1.25rem; font-weight: 700; color: var(--steam-iron-100); margin: 2rem 0 0.75rem 0; border-bottom: 1px solid var(--steam-iron-700); padding-bottom: 0.4rem; }
 .article-content h3 { font-size: 1.05rem; font-weight: 600; color: var(--steam-iron-100); margin: 1.5rem 0 0.5rem 0; }
+.article-content h4 { font-size: 0.9rem; font-weight: 600; color: var(--steam-iron-100); margin: 1.25rem 0 0.4rem 0; }
 .article-content p { margin: 0 0 1rem 0; }
 .article-content img { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
 .article-content video { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
 .article-content blockquote { border-left: 3px solid var(--steam-gold-500); padding-left: 1rem; color: var(--steam-iron-300); font-style: italic; margin: 1rem 0; }
 .article-content hr { border: none; border-top: 1px solid var(--steam-iron-700); margin: 2rem 0; }
+
+/* コードブロック */
+.code-block-wrap {
+    position: relative;
+    margin: 1rem 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0d1117;
+    border: 1px solid var(--steam-iron-700);
+}
+.code-block-lang {
+    display: inline-block;
+    background: var(--steam-iron-800);
+    color: var(--steam-iron-400);
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-bottom-right-radius: 6px;
+    font-family: monospace;
+    letter-spacing: 0.05em;
+}
+.code-block-copy {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.4rem;
+    background: var(--steam-iron-700);
+    border: none;
+    color: var(--steam-iron-300);
+    border-radius: 5px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    z-index: 1;
+}
+.code-block-copy:hover { background: var(--steam-iron-600); color: #fff; }
+.code-block-copy.copied { background: #16a34a; color: #fff; }
+.code-block-pre {
+    margin: 0;
+    padding: 0.85rem 1rem;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: #e6edf3;
+    white-space: pre;
+}
 .article-reactions-bar { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--steam-iron-700); }
 .reaction-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .reaction-btn {
@@ -112,23 +159,49 @@ function renderBlocks(blocks) {
     if (!Array.isArray(blocks)) return '';
     return blocks.map(block => {
         switch (block.type) {
-            case 'heading':
+            case 'heading': {
                 const level = Math.min(Math.max(parseInt(block.level || 2), 1), 6);
-                return `<h${level}>${block.content || ''}</h${level}>`;
+                return `<h${level}>${escHtml(block.content || '')}</h${level}>`;
+            }
             case 'paragraph':
-                return `<p>${block.content || ''}</p>`;
+                return `<p>${escHtml(block.content || '').replace(/\n/g, '<br>')}</p>`;
             case 'image':
+                if (!block.url) return '';
                 return `<img src="${escHtml(block.url)}" alt="${escHtml(block.alt || '')}" style="${escHtml(block.style || '')}">`;
             case 'video':
+                if (!block.url) return '';
                 return `<video controls src="${escHtml(block.url)}" style="max-width:100%;"></video>`;
             case 'blockquote':
-                return `<blockquote>${block.content || ''}</blockquote>`;
+                return `<blockquote>${escHtml(block.content || '').replace(/\n/g, '<br>')}</blockquote>`;
             case 'divider':
                 return '<hr>';
+            case 'code': {
+                const lang = escHtml(block.lang || '');
+                const code = escHtml(block.content || '');
+                const blockId = 'codeblock-' + Math.random().toString(36).slice(2);
+                return `<div class="code-block-wrap" id="${blockId}">
+                    <span class="code-block-lang">${lang || 'code'}</span>
+                    <button class="code-block-copy" onclick="copyCode('${blockId}')">コピー</button>
+                    <pre class="code-block-pre"><code>${code}</code></pre>
+                </div>`;
+            }
             default:
                 return '';
         }
     }).join('\n');
+}
+
+function copyCode(blockId) {
+    const pre = document.querySelector('#' + blockId + ' pre code');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+        const btn = document.querySelector('#' + blockId + ' .code-block-copy');
+        if (btn) {
+            btn.textContent = 'コピー済！';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
+        }
+    }).catch(() => alert('コピーに失敗しました'));
 }
 
 function renderReactions(reactions, slug) {

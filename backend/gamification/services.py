@@ -344,6 +344,11 @@ ACHIEVEMENT_DEFINITIONS = [
     {'name': '全知全能',                'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
     {'name': 'TOYBOXの使者',           'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
     {'name': 'AYATORI',                'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
+    # === 記事 (ARTICLE) ===
+    {'name': '記事デビュー',    'color': 'green',  'condition_text': '初めて記事を公開する',         'secret': False, 'ultra_secret': False},
+    {'name': 'ブロガー',        'color': 'blue',   'condition_text': '記事を3本公開する',            'secret': False, 'ultra_secret': False},
+    {'name': 'コラムニスト',    'color': 'gold',   'condition_text': '記事を10本公開する',           'secret': False, 'ultra_secret': False},
+    {'name': '記事の伝道師',    'color': 'red',    'condition_text': '？？？',                       'secret': True,  'ultra_secret': False},
     # === 特別称号（公式スタッフ専用・他のユーザーには非公開） ===
     {'name': 'TOYBOX!公式',            'color': 'official','condition_text': 'TOYBOX公式スタッフに付与',               'secret': False, 'ultra_secret': False},
 ]
@@ -387,7 +392,12 @@ def _compute_user_stats(user: User) -> dict:
 
     card_count = UserCard.objects.filter(user=user).count()
 
-    # 時間帯・曜日・連続日数
+    # 記事公開数
+    try:
+        from articles.models import Article as ArticleModel
+        article_count = ArticleModel.objects.filter(author=user, status=ArticleModel.Status.PUBLISHED).count()
+    except Exception:
+        article_count = 0
     datetimes = list(qs.values_list('created_at', flat=True))
     jst_hours    = [dt.astimezone(JST).hour    for dt in datetimes]
     jst_weekdays = [dt.astimezone(JST).weekday() for dt in datetimes]  # 5=土, 6=日
@@ -420,6 +430,7 @@ def _compute_user_stats(user: User) -> dict:
         'awesome_count':     awesome_count,
         'total_reactions':   total_reactions,
         'card_count':        card_count,
+        'article_count':     article_count,
         'has_morning_post':  has_morning_post,
         'has_night_post':    has_night_post,
         'has_weekend_post':  has_weekend_post,
@@ -500,6 +511,11 @@ def _check_achievement(name: str, s: dict) -> bool:
         '全知全能':               tp >= 500,
         'TOYBOXの使者':          tr >= 2000,
         'AYATORI':               False,  # 管理者のみ手動付与
+        # 記事
+        '記事デビュー':          s.get('article_count', 0) >= 1,
+        'ブロガー':              s.get('article_count', 0) >= 3,
+        'コラムニスト':          s.get('article_count', 0) >= 10,
+        '記事の伝道師':          s.get('article_count', 0) >= 30,
     }
     return checks.get(name, False)
 

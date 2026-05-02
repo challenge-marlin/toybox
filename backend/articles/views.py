@@ -49,7 +49,12 @@ class ArticleListCreateView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         article = serializer.save()
         out = ArticleSerializer(article, context={'request': request})
-        return Response(out.data, status=status.HTTP_201_CREATED)
+        data = dict(out.data)
+        if getattr(article, '_reward_card', None):
+            data['rewardCard'] = article._reward_card
+        if getattr(article, '_reward_title', None):
+            data['rewardTitle'] = article._reward_title
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class ArticleDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -86,7 +91,12 @@ class ArticleDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer.is_valid(raise_exception=True)
         article = serializer.save()
         out = ArticleSerializer(article, context={'request': request})
-        return Response(out.data)
+        data = dict(out.data)
+        if getattr(article, '_reward_card', None):
+            data['rewardCard'] = article._reward_card
+        if getattr(article, '_reward_title', None):
+            data['rewardTitle'] = article._reward_title
+        return Response(data)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

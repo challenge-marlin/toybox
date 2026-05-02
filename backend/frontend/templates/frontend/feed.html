@@ -394,6 +394,7 @@
     <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; align-items: center;">
         <button type="button" id="feed-tab-recent" class="feed-tab-btn" onclick="setFeedMode('recent')" style="padding: 0.4rem 0.9rem; border-radius: 9999px; border: 1px solid var(--steam-gold-500); background: var(--steam-gold-500); color: #000; font-size: 0.8rem; font-weight: 600; cursor: pointer;">みんなの投稿</button>
         <button type="button" id="feed-tab-reco" class="feed-tab-btn" onclick="setFeedMode('recommended')" style="padding: 0.4rem 0.9rem; border-radius: 9999px; border: 1px solid var(--steam-iron-600); background: transparent; color: var(--steam-gold-300); font-size: 0.8rem; font-weight: 600; cursor: pointer;">おすすめ（24h）</button>
+        <button type="button" id="feed-tab-articles" class="feed-tab-btn" onclick="setFeedMode('articles')" style="padding: 0.4rem 0.9rem; border-radius: 9999px; border: 1px solid var(--steam-iron-600); background: transparent; color: var(--steam-gold-300); font-size: 0.8rem; font-weight: 600; cursor: pointer;">📝 記事</button>
     </div>
     <div style="margin-bottom: 1.25rem;">
         <label for="hashtag-search-input" style="font-size: 0.8rem; color: var(--steam-gold-300); display: block; margin-bottom: 0.35rem;">ハッシュタグ検索</label>
@@ -433,6 +434,17 @@
         </div>
     </section>
     
+    <!-- 記事フィードセクション（記事タブ選択時のみ表示） -->
+    <section id="article-feed-section" style="display:none; margin-bottom:2rem;">
+        <h2 style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600; color: var(--steam-gold-300);">📝 みんなの記事</h2>
+        <div id="article-feed-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem;">
+            <div class="loading">読み込み中...</div>
+        </div>
+        <div id="article-feed-more" style="text-align:center; margin-top:1rem; display:none;">
+            <button onclick="loadMoreArticles()" style="background:var(--steam-iron-800); border:1px solid var(--steam-iron-600); color:var(--steam-gold-300); border-radius:9999px; padding:0.4rem 1rem; font-size:0.8rem; cursor:pointer;">もっと見る</button>
+        </div>
+    </section>
+
     <!-- 通常の投稿一覧 -->
     <section>
         <h2 id="feed-main-title" style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600; color: var(--steam-gold-300);">最新の投稿</h2>
@@ -540,21 +552,104 @@
     }
 
     function setFeedMode(mode) {
-        feedMode = (mode === 'recommended') ? 'recommended' : 'recent';
+        feedMode = (mode === 'recommended') ? 'recommended' : (mode === 'articles') ? 'articles' : 'recent';
         var a = document.getElementById('feed-tab-recent');
         var b = document.getElementById('feed-tab-reco');
-        if (a && b) {
-            if (feedMode === 'recent') {
-                a.style.background = 'var(--steam-gold-500)'; a.style.color = '#000'; a.style.borderColor = 'var(--steam-gold-500)';
-                b.style.background = 'transparent'; b.style.color = 'var(--steam-gold-300)'; b.style.borderColor = 'var(--steam-iron-600)';
-            } else {
-                b.style.background = 'var(--steam-gold-500)'; b.style.color = '#000'; b.style.borderColor = 'var(--steam-gold-500)';
-                a.style.background = 'transparent'; a.style.color = 'var(--steam-gold-300)'; a.style.borderColor = 'var(--steam-iron-600)';
-            }
+        var c = document.getElementById('feed-tab-articles');
+        var artSec = document.getElementById('article-feed-section');
+        var mainSec = document.getElementById('feed-main-entry');
+        var popSec = document.getElementById('popular-section');
+        var rankD = document.getElementById('feed-rank-daily');
+        var rankW = document.getElementById('feed-rank-weekly');
+        var popH = document.getElementById('popular-hashtags-section');
+
+        // タブスタイルリセット
+        [a, b, c].forEach(function(el) {
+            if (el) { el.style.background = 'transparent'; el.style.color = 'var(--steam-gold-300)'; el.style.borderColor = 'var(--steam-iron-600)'; }
+        });
+
+        if (feedMode === 'articles') {
+            if (c) { c.style.background = 'var(--steam-gold-500)'; c.style.color = '#000'; c.style.borderColor = 'var(--steam-gold-500)'; }
+            if (artSec) artSec.style.display = 'block';
+            if (mainSec) mainSec.closest('section').style.display = 'none';
+            if (popSec) popSec.style.display = 'none';
+            if (rankD) rankD.closest('section').style.display = 'none';
+            if (rankW) rankW.closest('section').style.display = 'none';
+            if (popH) popH.style.display = 'none';
+            loadArticleFeed();
+            return;
+        }
+
+        // 記事タブ以外に切り替え時
+        if (artSec) artSec.style.display = 'none';
+        if (mainSec) mainSec.closest('section').style.display = '';
+        if (popSec) popSec.style.display = '';
+        if (rankD) rankD.closest('section').style.display = '';
+        if (rankW) rankW.closest('section').style.display = '';
+        if (popH) popH.style.display = '';
+
+        if (feedMode === 'recent') {
+            if (a) { a.style.background = 'var(--steam-gold-500)'; a.style.color = '#000'; a.style.borderColor = 'var(--steam-gold-500)'; }
+        } else {
+            if (b) { b.style.background = 'var(--steam-gold-500)'; b.style.color = '#000'; b.style.borderColor = 'var(--steam-gold-500)'; }
         }
         items = []; nextCursor = null; loading = false;
         loadFeed();
     }
+
+    // ===== 記事フィード =====
+    var _articleOffset = 0;
+    var _articlePageSize = 12;
+
+    function renderArticleCard(a) {
+        var thumb = a.thumbnail_url_resolved
+            ? `<img src="${a.thumbnail_url_resolved}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:6px 6px 0 0;">`
+            : `<div style="width:100%;height:100px;display:flex;align-items:center;justify-content:center;background:var(--steam-iron-800);border-radius:6px 6px 0 0;font-size:2rem;color:var(--steam-iron-600);">📝</div>`;
+        var reactions = a.reactions_count || 0;
+        var date = a.published_at ? new Date(a.published_at).toLocaleDateString('ja-JP') : '';
+        return `<a href="/articles/${a.slug}/" style="display:block; text-decoration:none; color:inherit;">
+            <div style="background:var(--steam-iron-900); border:1px solid var(--steam-iron-700); border-radius:8px; overflow:hidden; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--steam-gold-500)'" onmouseout="this.style.borderColor='var(--steam-iron-700)'">
+                ${thumb}
+                <div style="padding:0.75rem;">
+                    <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem;">
+                        <span style="background:var(--steam-gold-500); color:#000; font-size:0.6rem; font-weight:700; padding:0.1rem 0.4rem; border-radius:3px; letter-spacing:0.05em;">ARTICLE</span>
+                    </div>
+                    <div style="font-size:0.875rem; font-weight:600; color:var(--steam-iron-100); line-height:1.35; margin-bottom:0.5rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escFeedHtml(a.title)}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--steam-iron-400);">
+                        <span>${escFeedHtml(a.author_display_id || '')}</span>
+                        <span>⭐${reactions} · ${date}</span>
+                    </div>
+                </div>
+            </div>
+        </a>`;
+    }
+
+    function escFeedHtml(s) {
+        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function loadArticleFeed(append) {
+        if (!append) _articleOffset = 0;
+        fetch('/api/articles/?limit=' + _articlePageSize + '&offset=' + _articleOffset)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var list = Array.isArray(data) ? data : (data.results || []);
+                var grid = document.getElementById('article-feed-grid');
+                var moreBtn = document.getElementById('article-feed-more');
+                if (!append || _articleOffset === 0) grid.innerHTML = '';
+                if (list.length === 0 && _articleOffset === 0) {
+                    grid.innerHTML = '<div style="color:var(--steam-iron-400); font-size:0.875rem; grid-column:1/-1; text-align:center; padding:2rem;">まだ記事がありません</div>';
+                    return;
+                }
+                list.forEach(function(a) {
+                    grid.insertAdjacentHTML('beforeend', renderArticleCard(a));
+                });
+                _articleOffset += list.length;
+                if (moreBtn) moreBtn.style.display = list.length >= _articlePageSize ? 'block' : 'none';
+            }).catch(function() {});
+    }
+
+    function loadMoreArticles() { loadArticleFeed(true); }
 
     function applyHashtagSearch() {
         items = []; nextCursor = null; loading = false;

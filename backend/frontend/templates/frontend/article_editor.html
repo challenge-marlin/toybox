@@ -86,7 +86,18 @@
 }
 .dnd-drop-zone.dragover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); background: rgba(212,160,23,0.05); }
 
-/* ===== CSS エディタ ===== */
+/* ===== コードブロック ===== */
+.block-lang-select {
+    background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300);
+    border-radius: 4px; padding: 0.2rem 0.4rem; font-size: 0.75rem; cursor: pointer; margin-bottom: 0.3rem;
+    font-family: monospace;
+}
+.block-code-textarea {
+    width: 100%; background: #0d1117; border: 1px solid var(--steam-iron-700);
+    border-radius: 6px; padding: 0.6rem 0.75rem; color: #e6edf3; font-family: 'Consolas','Fira Code',monospace;
+    font-size: 0.82rem; resize: vertical; line-height: 1.65; box-sizing: border-box; min-height: 100px;
+}
+.block-code-textarea:focus { outline: none; border-color: var(--steam-gold-500); }
 .css-section { margin-top: 1.5rem; border-top: 1px solid var(--steam-iron-700); padding-top: 1rem; }
 .css-toggle { background: none; border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300); border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; }
 .css-toggle:hover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
@@ -123,6 +134,13 @@
 .preview-body-area video { max-width: 100%; border-radius: 8px; margin: 1rem 0; display: block; }
 .preview-body-area blockquote { border-left: 3px solid var(--steam-gold-500); padding: 0.4rem 1rem; color: var(--steam-iron-300); font-style: italic; margin: 1rem 0; }
 .preview-body-area hr { border: none; border-top: 1px solid var(--steam-iron-700); margin: 1.75rem 0; }
+/* コードブロック（プレビュー・詳細共通） */
+.code-block-wrap { position:relative; margin:1rem 0; border-radius:8px; overflow:hidden; background:#0d1117; border:1px solid #30363d; }
+.code-block-lang { display:inline-block; background:#161b22; color:#8b949e; font-size:0.7rem; padding:0.2rem 0.6rem; border-bottom-right-radius:6px; font-family:monospace; }
+.code-block-copy { position:absolute; top:0.3rem; right:0.4rem; background:#21262d; border:none; color:#8b949e; border-radius:5px; padding:0.2rem 0.55rem; font-size:0.7rem; cursor:pointer; transition:background 0.15s; z-index:1; }
+.code-block-copy:hover { background:#30363d; color:#fff; }
+.code-block-copy.copied { background:#16a34a; color:#fff; }
+.code-block-pre { margin:0; padding:0.85rem 1rem; overflow-x:auto; font-family:'Consolas','Fira Code',monospace; font-size:0.82rem; line-height:1.65; color:#e6edf3; white-space:pre; }
 
 /* ===== オンボーディング ===== */
 #onboarding-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9998; align-items: center; justify-content: center; padding: 1rem; }
@@ -166,6 +184,7 @@
             <button class="add-block-btn" onclick="addBlock('heading', {level:2})">＋ 見出し</button>
             <button class="add-block-btn" onclick="addBlock('blockquote')">＋ 引用</button>
             <button class="add-block-btn" onclick="addBlock('divider')">＋ 区切り線</button>
+            <button class="add-block-btn" onclick="addBlock('code')">＋ コード</button>
             <button class="add-block-btn" onclick="addBlock('image')">＋ 画像</button>
             <button class="add-block-btn" onclick="addBlock('video')">＋ 動画</button>
         </div>
@@ -201,6 +220,31 @@
         </div>
     </div>
 </div>
+
+<!-- カード入手オーバーレイ -->
+<div id="article-reward-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9900; align-items:center; justify-content:center; padding:1rem;">
+    <div style="border-radius:10px; border:1px solid var(--steam-iron-700); background:var(--steam-iron-800); color:var(--steam-gold-200); box-shadow:0 20px 30px rgba(0,0,0,0.5); padding:1.5rem; max-width:400px; width:100%; text-align:center;">
+        <div id="ar-card-section" style="display:none;">
+            <div style="color:var(--steam-gold-300); font-weight:600; font-size:1.2rem; margin-bottom:0.5rem;" id="ar-rarity-text">N 獲得！</div>
+            <div style="position:relative; width:240px; height:340px; background:var(--steam-iron-900); overflow:hidden; border-radius:8px; margin:0 auto; perspective:1000px;">
+                <img id="ar-card-img" src="" alt="card" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain; animation:cardSpinIn 0.6s ease-out;">
+            </div>
+            <div style="margin-top:0.5rem; color:var(--steam-iron-100);" id="ar-card-name"></div>
+            <button onclick="arNextStep()" style="margin-top:1rem; border-radius:9999px; background:var(--steam-brown-500,#7c3f0e); padding:0.5rem 1.2rem; color:#fff; border:none; cursor:pointer; font-size:1rem;" id="ar-card-btn">閉じる</button>
+        </div>
+        <div id="ar-title-section" style="display:none;">
+            <div style="color:var(--steam-gold-300); font-weight:600; font-size:1.2rem; margin-bottom:0.5rem;">称号を取得しました！</div>
+            <div style="margin-top:0.5rem; font-size:1.4rem; font-weight:bold; color:var(--steam-gold-300);" id="ar-title-name">—</div>
+            <button onclick="arClose()" style="margin-top:1rem; border-radius:9999px; background:var(--steam-brown-500,#7c3f0e); padding:0.5rem 1.2rem; color:#fff; border:none; cursor:pointer; font-size:1rem;">OK！記事を見る</button>
+        </div>
+    </div>
+</div>
+<style>
+@keyframes cardSpinIn {
+    from { transform: rotateY(90deg); opacity: 0; }
+    to   { transform: rotateY(0deg);  opacity: 1; }
+}
+</style>
 
 <!-- オンボーディング -->
 <div id="onboarding-overlay">
@@ -275,6 +319,58 @@ document.addEventListener('click', (e) => {
     }
 }, true);
 
+// ===== カード入手演出 =====
+let _arRewardData = null;
+function showArticleReward(data) {
+    _arRewardData = data;
+    const overlay = document.getElementById('article-reward-overlay');
+    overlay.style.display = 'flex';
+    markClean();
+    if (data.rewardCard) {
+        const card = data.rewardCard;
+        document.getElementById('ar-rarity-text').textContent = `${card.rarity || 'N'} 獲得！`;
+        document.getElementById('ar-card-name').textContent = card.card_name || 'Card';
+        const imgUrl = (card.image_url && card.image_url !== '-') ? card.image_url : `/uploads/cards/${card.card_id || 'C001'}.png`;
+        const img = document.getElementById('ar-card-img');
+        img.src = imgUrl;
+        img.onerror = function() { this.style.display = 'none'; };
+        document.getElementById('ar-card-btn').textContent = data.rewardTitle ? '次へ' : '閉じる';
+        document.getElementById('ar-card-section').style.display = 'block';
+        document.getElementById('ar-title-section').style.display = 'none';
+    } else if (data.rewardTitle) {
+        document.getElementById('ar-title-name').textContent = data.rewardTitle;
+        document.getElementById('ar-title-section').style.display = 'block';
+        document.getElementById('ar-card-section').style.display = 'none';
+    } else {
+        arClose();
+    }
+}
+function arNextStep() {
+    if (_arRewardData && _arRewardData.rewardTitle) {
+        document.getElementById('ar-card-section').style.display = 'none';
+        document.getElementById('ar-title-name').textContent = _arRewardData.rewardTitle;
+        document.getElementById('ar-title-section').style.display = 'block';
+    } else {
+        arClose();
+    }
+}
+function arClose() {
+    document.getElementById('article-reward-overlay').style.display = 'none';
+    if (currentSlug) window.location.href = `/articles/${currentSlug}/`;
+}
+
+function copyPreviewCode(blockId) {
+    const pre = document.querySelector('#' + blockId + ' pre code');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+        const btn = document.querySelector('#' + blockId + ' .code-block-copy');
+        if (btn) {
+            btn.textContent = 'コピー済！'; btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
+        }
+    }).catch(() => {});
+}
+
 function markDirty() { isDirty = true; }
 function markClean() { isDirty = false; }
 
@@ -283,7 +379,7 @@ let _blockIdCounter = 1;
 function newBlockId() { return ++_blockIdCounter; }
 
 function addBlock(type, extra = {}) {
-    blocks.push({ id: newBlockId(), type, content: '', url: '', level: 2, alt: '', ...extra });
+    blocks.push({ id: newBlockId(), type, content: '', url: '', level: 2, alt: '', lang: 'javascript', ...extra });
     renderBlocks();
     markDirty();
     // 最後のブロックの入力欄にフォーカス
@@ -344,6 +440,18 @@ function renderBlockItem(b, i) {
             placeholder="引用テキストを入力..."
             oninput="getBlock(${b.id}).content=this.value; markDirty();"
             >${escHtml(b.content)}</textarea>`;
+
+    } else if (b.type === 'code') {
+        const langs = ['javascript','python','html','css','bash','json','typescript','rust','go','java','cpp','php','ruby','swift','kotlin','sql','yaml','markdown','text'];
+        const options = langs.map(l => `<option value="${l}" ${b.lang===l?'selected':''}>${l}</option>`).join('');
+        inner = `<select class="block-lang-select"
+            onchange="getBlock(${b.id}).lang=this.value; markDirty();">
+            ${options}
+        </select>
+        <textarea class="block-code-textarea" rows="6"
+            placeholder="コードを入力..."
+            oninput="getBlock(${b.id}).content=this.value; markDirty();"
+            spellcheck="false">${escHtml(b.content)}</textarea>`;
 
     } else if (b.type === 'divider') {
         inner = `<div style="width:100%; border-top:1px dashed var(--steam-iron-600); margin:0.75rem 0; pointer-events:none;"></div>`;
@@ -535,7 +643,12 @@ async function saveArticle(statusVal) {
 
         if (statusVal === 'published') {
             setStatus('✅ 公開しました！');
-            setTimeout(() => { window.location.href = `/articles/${currentSlug}/`; }, 1000);
+            // カード・称号報酬
+            if (data.rewardCard || data.rewardTitle) {
+                showArticleReward(data);
+            } else {
+                setTimeout(() => { window.location.href = `/articles/${currentSlug}/`; }, 1000);
+            }
         } else {
             setStatus('✅ 下書き保存しました');
             setTimeout(() => setStatus(''), 3000);
@@ -616,6 +729,16 @@ function blocksToHtml(blist) {
                 return `<blockquote>${escHtmlDisplay(b.content)}</blockquote>`;
             case 'divider':
                 return '<hr>';
+            case 'code': {
+                const lang = escHtml(b.lang || '');
+                const code = escHtml(b.content || '');
+                const bid = 'prev-code-' + Math.random().toString(36).slice(2);
+                return `<div class="code-block-wrap" id="${bid}">
+                    <span class="code-block-lang">${lang||'code'}</span>
+                    <button class="code-block-copy" onclick="copyPreviewCode('${bid}')">コピー</button>
+                    <pre class="code-block-pre"><code>${code}</code></pre>
+                </div>`;
+            }
             case 'image':
                 if (!b.url) return '';
                 return `<img src="${escHtml(b.url)}" alt="${escHtml(b.alt || '')}" style="max-width:100%;">`;

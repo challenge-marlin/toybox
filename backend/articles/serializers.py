@@ -124,23 +124,44 @@ class ArticleWriteSerializer(serializers.ModelSerializer):
         return value
 
     def _award_article_pt(self, article):
-        """初回公開時にPTを付与する（3.0 PT）。"""
+        """初回公開時に PT・カード・称号を付与する。"""
         if article.pt_awarded:
             return
         if article.status != Article.Status.PUBLISHED:
             return
         from gamification.services import award_points
-        from gamification.models import PointHistory
         try:
-            award_points(
-                article.author,
-                'article_published',  # PointHistory.ActionType に追加するか文字列で記録
-                3,
-                '記事初回公開',
-            )
+            award_points(article.author, 'article_published', 3, '記事初回公開')
         except Exception:
             import logging
             logging.getLogger(__name__).exception('article pt award failed')
+
+        # カード付与
+        try:
+            from gamification.services import grant_immediate_rewards
+            from users.models import UserMeta
+            meta, _ = UserMeta.objects.get_or_create(user=article.author)
+            reward = grant_immediate_rewards(meta)
+            article._reward_card = reward.get('card_meta')
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('article card award failed')
+            article._reward_card = None
+
+        # 称号チェック
+        try:
+            from gamification.services import check_and_grant_achievement_titles, ACHIEVEMENT_COLOR_MAP
+            new_titles = check_and_grant_achievement_titles(article.author)
+            if new_titles:
+                article._reward_title = new_titles[0]
+                article._reward_title_color = ACHIEVEMENT_COLOR_MAP.get(new_titles[0], 'green')
+            else:
+                article._reward_title = None
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('article title check failed')
+            article._reward_title = None
+
         article.pt_awarded = True
 
     def create(self, validated_data):

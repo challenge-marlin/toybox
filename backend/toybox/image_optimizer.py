@@ -103,7 +103,7 @@ def optimize_gif(
         return None
 
 
-
+def optimize_image_to_jpg(
     image_file,
     max_width: Optional[int] = None,
     max_height: Optional[int] = None,

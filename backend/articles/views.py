@@ -25,8 +25,12 @@ class ArticleListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         qs = Article.objects.select_related('author').prefetch_related('reactions')
-        # 自分の下書きも表示する場合
         user = self.request.user
+        # author フィルター（display_id で検索）
+        author_id = self.request.query_params.get('author')
+        if author_id:
+            qs = qs.filter(author__display_id=author_id, status=Article.Status.PUBLISHED)
+            return qs
         if user.is_authenticated:
             from django.db.models import Q
             return qs.filter(

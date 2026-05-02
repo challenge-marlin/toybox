@@ -445,6 +445,17 @@
         </div>
     </section>
 
+    <!-- 最新記事（みんなの投稿・おすすめタブで表示） -->
+    <section id="feed-articles-row" style="margin-bottom:1.5rem; display:none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem;">
+            <h2 style="font-size:1rem; font-weight:600; color:var(--steam-gold-300); margin:0;">📝 最新の記事</h2>
+            <a href="/articles/" style="font-size:0.75rem; color:var(--steam-gold-400); text-decoration:none;">すべて見る →</a>
+        </div>
+        <div id="feed-articles-cards" style="display:flex; gap:0.75rem; overflow-x:auto; padding-bottom:0.25rem; scrollbar-width:thin;">
+            <div style="color:var(--steam-iron-500); font-size:0.8rem; padding:0.5rem;">読み込み中...</div>
+        </div>
+    </section>
+
     <!-- 通常の投稿一覧 -->
     <section>
         <h2 id="feed-main-title" style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600; color: var(--steam-gold-300);">最新の投稿</h2>
@@ -576,6 +587,9 @@
             if (rankD) rankD.closest('section').style.display = 'none';
             if (rankW) rankW.closest('section').style.display = 'none';
             if (popH) popH.style.display = 'none';
+            // 記事行は非表示（記事タブ自体が全記事を表示する）
+            var artRow2 = document.getElementById('feed-articles-row');
+            if (artRow2) artRow2.style.display = 'none';
             loadArticleFeed();
             return;
         }
@@ -587,6 +601,9 @@
         if (rankD) rankD.closest('section').style.display = '';
         if (rankW) rankW.closest('section').style.display = '';
         if (popH) popH.style.display = '';
+        // 記事行を表示
+        var artRow = document.getElementById('feed-articles-row');
+        if (artRow) artRow.style.display = 'block';
 
         if (feedMode === 'recent') {
             if (a) { a.style.background = 'var(--steam-gold-500)'; a.style.color = '#000'; a.style.borderColor = 'var(--steam-gold-500)'; }
@@ -650,6 +667,44 @@
     }
 
     function loadMoreArticles() { loadArticleFeed(true); }
+
+    // ===== 記事行（みんなの投稿・おすすめタブ共通） =====
+    var _feedArticleRowLoaded = false;
+    function loadFeedArticleRow() {
+        if (_feedArticleRowLoaded) {
+            var artRow = document.getElementById('feed-articles-row');
+            if (artRow) artRow.style.display = 'block';
+            return;
+        }
+        fetch('/api/articles/?limit=8')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var list = Array.isArray(data) ? data : (data.results || []);
+                var container = document.getElementById('feed-articles-cards');
+                var section = document.getElementById('feed-articles-row');
+                if (!container) return;
+                if (!list.length) {
+                    if (section) section.style.display = 'none';
+                    return;
+                }
+                container.innerHTML = list.map(function(a) {
+                    var thumb = a.thumbnail_url_resolved
+                        ? '<img src="' + a.thumbnail_url_resolved + '" alt="" style="width:100%;height:90px;object-fit:cover;border-radius:6px 6px 0 0;display:block;">'
+                        : '<div style="width:100%;height:70px;display:flex;align-items:center;justify-content:center;background:var(--steam-iron-800);border-radius:6px 6px 0 0;font-size:1.75rem;color:var(--steam-iron-600);">📝</div>';
+                    var title = String(a.title||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    var reactions = a.reactions_count || 0;
+                    return '<a href="/articles/' + a.slug + '/" style="display:block;text-decoration:none;color:inherit;flex-shrink:0;width:160px;border-radius:8px;background:var(--steam-iron-900);border:1px solid var(--steam-iron-700);overflow:hidden;transition:border-color 0.2s;" onmouseover="this.style.borderColor=\'var(--steam-gold-500)\'" onmouseout="this.style.borderColor=\'var(--steam-iron-700)\'">'
+                        + thumb
+                        + '<div style="padding:0.5rem;">'
+                        + '<span style="background:var(--steam-gold-500);color:#000;font-size:0.55rem;font-weight:700;padding:0.1rem 0.35rem;border-radius:3px;letter-spacing:0.04em;">ARTICLE</span>'
+                        + '<div style="font-size:0.78rem;font-weight:600;color:var(--steam-iron-100);line-height:1.3;margin-top:0.3rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + title + '</div>'
+                        + '<div style="font-size:0.65rem;color:var(--steam-iron-400);margin-top:0.25rem;">⭐' + reactions + '</div>'
+                        + '</div></a>';
+                }).join('');
+                _feedArticleRowLoaded = true;
+                if (section) section.style.display = 'block';
+            }).catch(function() {});
+    }
 
     function applyHashtagSearch() {
         items = []; nextCursor = null; loading = false;
@@ -1635,6 +1690,7 @@
             loadFeed();
             loadPopularFeed(); // 人気作品を読み込む
             loadPopularHashtags(); // 人気ハッシュタグを読み込む
+            loadFeedArticleRow(); // 最新記事行を読み込む
             loadReactionRankingsForFeed();
             var hsi = document.getElementById('hashtag-search-input');
             if (hsi) {

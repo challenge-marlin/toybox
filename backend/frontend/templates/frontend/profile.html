@@ -184,7 +184,7 @@
         <div style="display: flex; gap: 0.5rem; align-items: center;">
         <label class="file-input-label">
             変更
-            <input type="file" id="header-input" class="file-input" accept="image/png,image/jpeg">
+            <input type="file" id="header-input" class="file-input" accept="image/png,image/jpeg,image/gif">
         </label>
             <button id="delete-header-btn" type="button" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-iron-800); border: 1px solid var(--steam-iron-700); color: var(--steam-iron-300); font-size: 0.75rem; cursor: pointer;" onclick="if (window.deleteHeader) { window.deleteHeader(); } else { alert('deleteHeader is not loaded'); }">削除</button>
         </div>
@@ -199,8 +199,12 @@
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
             <label class="file-input-label">
                 画像を選択
-                <input type="file" id="avatar-input" class="file-input" accept="image/png,image/jpeg">
+                <input type="file" id="avatar-input" class="file-input" accept="image/png,image/jpeg,image/gif">
             </label>
+            <div style="font-size: 0.7rem; color: var(--steam-iron-400); line-height: 1.4;">
+                GIFアニメも設定できます<br>
+                <span style="color: var(--steam-gold-500);">※アニメ再生: プロフィール・マイページ・ヘッダー</span>
+            </div>
                 <button id="delete-avatar-btn" type="button" style="padding: 0.5rem 1rem; border-radius: 4px; background: var(--steam-iron-800); border: 1px solid var(--steam-iron-700); color: var(--steam-iron-300); font-size: 0.75rem; cursor: pointer;" onclick="if (window.deleteAvatar) { window.deleteAvatar(); } else { alert('deleteAvatar is not loaded'); }">削除</button>
             </div>
         </div>

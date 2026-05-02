@@ -14,14 +14,96 @@ from io import BytesIO
 logger = logging.getLogger(__name__)
 
 try:
-    from PIL import Image, ImageOps
+    from PIL import Image, ImageOps, ImageSequence
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
     logger.warning('PIL/Pillow is not available. Image optimization will be disabled.')
 
 
-def optimize_image_to_jpg(
+def optimize_gif(
+    image_file,
+    max_size: int = 256,
+    max_frames: int = 60,
+) -> Optional[BytesIO]:
+    """
+    アニメーション GIF を最適化する（リサイズ + フレーム間引き）
+
+    Args:
+        image_file : GIF ファイルオブジェクト
+        max_size   : 幅・高さの最大値（デフォルト 256px）
+        max_frames : 保持するフレームの上限（デフォルト 60）
+
+    Returns:
+        BytesIO: 最適化済みGIFデータ、失敗時は None
+    """
+    if not PIL_AVAILABLE:
+        logger.warning('PIL/Pillow is not available. Cannot optimize GIF.')
+        return None
+
+    try:
+        if hasattr(image_file, 'read'):
+            image_file.seek(0)
+
+        img = Image.open(image_file)
+        n_frames = getattr(img, 'n_frames', 1)
+        loop = img.info.get('loop', 0)
+
+        # フレームを収集
+        raw_frames = []
+        for frame in ImageSequence.Iterator(img):
+            duration = max(frame.info.get('duration', 100), 20)  # 最小 20ms
+            raw_frames.append((frame.copy(), duration))
+
+        if not raw_frames:
+            return None
+
+        # フレーム数が多い場合は間引く
+        if len(raw_frames) > max_frames:
+            step = len(raw_frames) / max_frames
+            raw_frames = [raw_frames[int(i * step)] for i in range(max_frames)]
+
+        frames = []
+        durations = []
+        needs_resize = False
+
+        # サイズチェック（先頭フレームで判定）
+        first_w, first_h = raw_frames[0][0].size
+        if first_w > max_size or first_h > max_size:
+            needs_resize = True
+
+        for frame, duration in raw_frames:
+            # RGBA に変換（透過対応）
+            rgba = frame.convert('RGBA')
+
+            if needs_resize:
+                rgba.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+            # P モード（256色）に戻す ― GIF は必ずパレットモード
+            p = rgba.convert('P', palette=Image.ADAPTIVE, colors=256)
+            frames.append(p)
+            durations.append(duration)
+
+        output = BytesIO()
+        frames[0].save(
+            output,
+            format='GIF',
+            save_all=True,
+            append_images=frames[1:],
+            loop=loop,
+            duration=durations,
+            optimize=True,
+            disposal=2,
+        )
+        output.seek(0)
+        return output
+
+    except Exception as e:
+        logger.error(f'Failed to optimize GIF: {e}', exc_info=True)
+        return None
+
+
+
     image_file,
     max_width: Optional[int] = None,
     max_height: Optional[int] = None,

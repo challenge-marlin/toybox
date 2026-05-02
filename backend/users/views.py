@@ -595,13 +595,27 @@ class ProfileUploadView(APIView):
 
         is_gif = file.content_type == 'image/gif'
 
-        # GIFはサイズ制限のみチェックし変換しない（アニメーションを保持）
+        # GIF: 最適化（リサイズ + フレーム間引き）してから保存
         if is_gif:
             if file.size > 10 * 1024 * 1024:  # 10MB
                 return Response({'error': 'GIFファイルは10MB以下にしてください。'}, status=status.HTTP_400_BAD_REQUEST)
+
+            from toybox.image_optimizer import optimize_gif
             import uuid as _uuid
+
+            # アバターは 256px、ヘッダーは 640px に最適化
+            max_size = 256 if upload_type == 'avatar' else 640
+            optimized_gif = optimize_gif(file, max_size=max_size, max_frames=60)
+
             filename = f'{upload_type}_{request.user.id}_{_uuid.uuid4().hex[:8]}.gif'
-            filepath = default_storage.save(f'profiles/{filename}', file)
+            if optimized_gif:
+                from django.core.files.base import ContentFile as _CF
+                filepath = default_storage.save(f'profiles/{filename}', _CF(optimized_gif.read()))
+            else:
+                # 最適化失敗時は元ファイルをそのまま保存
+                file.seek(0)
+                filepath = default_storage.save(f'profiles/{filename}', file)
+
             full_path = default_storage.path(filepath)
             if not os.path.exists(full_path):
                 return Response({'error': 'ファイルの保存に失敗しました'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

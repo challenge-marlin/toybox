@@ -28,8 +28,8 @@ urlpatterns = [
     # Articles - Ver 2.20
     path('articles/', views.articles, name='articles'),
     path('articles/new/', views.article_editor, name='article-new'),
-    path('articles/<slug:slug>/edit/', views.article_editor, name='article-edit'),
-    path('articles/<slug:slug>/', views.article_detail, name='article-detail-page'),
+    path('articles/<str:slug>/edit/', views.article_editor, name='article-edit'),
+    path('articles/<str:slug>/', views.article_detail, name='article-detail-page'),
     path('tutorials/image/', views.tutorial_image, name='tutorial-image'),
     path('tutorials/video/', views.tutorial_video, name='tutorial-video'),
     path('tutorials/game/', views.tutorial_game, name='tutorial-game'),

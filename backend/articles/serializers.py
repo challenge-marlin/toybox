@@ -10,7 +10,9 @@ from .models import Article, ArticleReaction, ArticleMedia
 
 
 def _make_unique_slug(title: str, exclude_pk=None) -> str:
-    base = slugify(title, allow_unicode=True) or uuid.uuid4().hex[:12]
+    # ASCII slugify → 空なら uuid ベース（日本語タイトルでも URL-safe なスラッグを保証）
+    ascii_base = slugify(title, allow_unicode=False)
+    base = ascii_base if ascii_base else uuid.uuid4().hex[:12]
     slug = base
     n = 1
     qs = Article.objects.filter(slug=slug)

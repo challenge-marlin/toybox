@@ -24,7 +24,7 @@ class ArticleListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        qs = Article.objects.select_related('author').prefetch_related('reactions')
+        qs = Article.objects.select_related('author').prefetch_related('reactions').order_by('-created_at')
         user = self.request.user
         # author フィルター（display_id で検索）
         author_id = self.request.query_params.get('author')
@@ -196,7 +196,7 @@ class MyArticlesView(generics.ListAPIView):
     serializer_class = ArticleSerializer
 
     def get_queryset(self):
-        return Article.objects.filter(author=self.request.user).select_related('author').prefetch_related('reactions')
+        return Article.objects.filter(author=self.request.user).select_related('author').prefetch_related('reactions').order_by('-created_at')
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()

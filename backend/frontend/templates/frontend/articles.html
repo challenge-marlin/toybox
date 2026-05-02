@@ -23,7 +23,7 @@
     text-decoration: none; color: inherit; transition: border-color 0.2s;
     position: relative;
 }
-.article-card:hover { border-color: var(--steam-gold-500); }
+.article-card:hover { border-color: var(--steam-gold-500); cursor: pointer; }
 .article-thumb-wrap { position: relative; flex-shrink: 0; }
 .article-thumb {
     width: 120px; height: 80px; object-fit: cover; border-radius: 6px;
@@ -139,9 +139,7 @@ function renderCard(a, isMine) {
         ? new Date(a.published_at).toLocaleDateString('ja-JP')
         : new Date(a.created_at).toLocaleDateString('ja-JP');
     const totalReactions = (a.all_reactions || []).reduce((s, r) => s + r.count, 0);
-    const editLink = isMine
-        ? `<a href="/articles/${escHtml(a.slug)}/edit/" style="font-size:0.75rem; color:var(--steam-gold-400); text-decoration:none; margin-left:auto; padding-left:0.5rem;">編集</a>`
-        : '';
+    const displayTitle = a.title ? escHtml(a.title) : '<span style="color:var(--steam-iron-500);">（タイトルなし）</span>';
 
     // 本文抜粋
     let excerpt = '';
@@ -154,15 +152,24 @@ function renderCard(a, isMine) {
         }
     }
 
-    return `<a href="/articles/${escHtml(a.slug)}/" class="article-card">
+    const editBtn = isMine
+        ? `<button onclick="event.stopPropagation(); event.preventDefault(); window.location.href='/articles/${escHtml(a.slug)}/edit/'"
+              style="font-size:0.75rem; color:var(--steam-gold-400); background:none; border:none; cursor:pointer; padding:0; margin-left:auto; flex-shrink:0;">編集</button>`
+        : '';
+    const deleteBtn = (isMine && a.status === 'draft')
+        ? `<button onclick="event.stopPropagation(); event.preventDefault(); deleteArticle('${escHtml(a.slug)}')"
+              style="font-size:0.72rem; color:#ef4444; background:none; border:none; cursor:pointer; padding:0; margin-left:0.5rem; flex-shrink:0;">削除</button>`
+        : '';
+
+    return `<div class="article-card" onclick="window.location.href='/articles/${escHtml(a.slug)}/'" style="cursor:pointer;">
         <div class="article-thumb-wrap">
             ${thumb}
             <span class="article-badge">ARTICLE</span>
         </div>
         <div class="article-info">
-            <div style="display:flex; align-items:baseline; flex-wrap:wrap;">
-                <div class="article-title">${escHtml(a.title)}${draftBadge}</div>
-                ${editLink}
+            <div style="display:flex; align-items:baseline; flex-wrap:wrap; gap:0.25rem;">
+                <div class="article-title">${displayTitle}${draftBadge}</div>
+                ${editBtn}${deleteBtn}
             </div>
             <div class="article-meta">${escHtml(a.author_display_id)} · ${date}</div>
             ${excerpt ? `<div class="article-excerpt">${escHtml(excerpt)}</div>` : ''}
@@ -170,7 +177,21 @@ function renderCard(a, isMine) {
                 <span class="reaction-pill">👍 ${totalReactions}</span>
             </div>
         </div>
-    </a>`;
+    </div>`;
+}
+
+async function deleteArticle(slug) {
+    if (!confirm('この記事を削除しますか？')) return;
+    const token = localStorage.getItem('access_token');
+    const res = await fetch(`${API_BASE}/${slug}/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token },
+    });
+    if (res.status === 204) {
+        loadArticles(currentTab);
+    } else {
+        alert('削除に失敗しました。');
+    }
 }
 
 function switchTab(tab) {

@@ -1,0 +1,209 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}記事一覧 - TOYBOX！{% endblock %}
+
+{% block extra_css %}
+<style>
+.articles-page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+.articles-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+.articles-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--steam-gold-300); margin: 0; }
+.btn-new-article {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: var(--steam-gold-500); color: #000;
+    border: none; border-radius: 6px; padding: 0.5rem 1rem;
+    font-weight: 600; font-size: 0.875rem; cursor: pointer; text-decoration: none;
+    transition: background 0.2s;
+}
+.btn-new-article:hover { background: var(--steam-gold-400); }
+.article-card {
+    display: flex; gap: 1rem; align-items: flex-start;
+    background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700);
+    border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
+    text-decoration: none; color: inherit; transition: border-color 0.2s;
+    position: relative;
+}
+.article-card:hover { border-color: var(--steam-gold-500); }
+.article-thumb-wrap { position: relative; flex-shrink: 0; }
+.article-thumb {
+    width: 120px; height: 80px; object-fit: cover; border-radius: 6px;
+    background: var(--steam-iron-800);
+}
+.article-thumb-placeholder {
+    width: 120px; height: 80px; border-radius: 6px;
+    background: var(--steam-iron-800); display: flex; align-items: center; justify-content: center;
+    color: var(--steam-iron-500); font-size: 2rem;
+}
+.article-badge {
+    position: absolute; top: 4px; left: 4px;
+    background: var(--steam-gold-500); color: #000;
+    font-size: 0.6rem; font-weight: 700; padding: 1px 5px; border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+.article-info { flex: 1; min-width: 0; }
+.article-title { font-size: 1rem; font-weight: 600; color: var(--steam-iron-100); margin: 0 0 0.35rem 0; line-height: 1.4; }
+.article-meta { font-size: 0.75rem; color: var(--steam-iron-400); margin-bottom: 0.4rem; }
+.article-excerpt { font-size: 0.8rem; color: var(--steam-iron-300); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.article-reactions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.reaction-pill { font-size: 0.75rem; color: var(--steam-iron-400); }
+.draft-badge { background: var(--steam-iron-700); color: var(--steam-iron-300); font-size: 0.65rem; padding: 1px 5px; border-radius: 4px; margin-left: 0.4rem; }
+.articles-empty { text-align: center; padding: 4rem 0; color: var(--steam-iron-400); }
+.articles-empty .icon { font-size: 3rem; margin-bottom: 1rem; }
+.tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--steam-iron-700); }
+.tab-btn { background: none; border: none; padding: 0.5rem 1rem; color: var(--steam-iron-400); cursor: pointer; font-size: 0.875rem; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s; }
+.tab-btn.active { color: var(--steam-gold-300); border-bottom-color: var(--steam-gold-400); }
+#articles-loading { text-align: center; padding: 2rem; color: var(--steam-iron-400); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="articles-page">
+    <div class="articles-header">
+        <h1>📝 記事</h1>
+        <a href="/articles/new/" class="btn-new-article" id="btn-new-article" style="display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            記事を書く
+        </a>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('all')" id="tab-all">みんなの記事</button>
+        <button class="tab-btn" onclick="switchTab('mine')" id="tab-mine" style="display:none;">自分の記事</button>
+    </div>
+
+    <div id="articles-loading">読み込み中...</div>
+    <div id="articles-list" style="display:none;"></div>
+    <div id="articles-empty" class="articles-empty" style="display:none;">
+        <div class="icon">📝</div>
+        <div>まだ記事がありません</div>
+    </div>
+</div>
+
+<!-- 初回新機能ポップアップ（localStorage で一度きり） -->
+<div id="article-new-feature-popup" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
+    <div style="max-width:400px; width:100%; background:var(--steam-iron-900); border:2px solid var(--steam-gold-500); border-radius:12px; padding:2rem; text-align:center; color:var(--steam-iron-100);">
+        <div style="font-size:2.5rem; margin-bottom:0.75rem;">📝</div>
+        <h2 style="color:var(--steam-gold-300); font-size:1.2rem; margin:0 0 0.75rem 0;">記事の新メニューができたよ！</h2>
+        <p style="font-size:0.875rem; color:var(--steam-iron-300); line-height:1.6; margin-bottom:1.25rem;">
+            ゲームや画像をAIで作るまでのプロセスを<br>
+            <strong>記事として投稿</strong>できるようになりました！<br>
+            <br>
+            初回公開で <strong style="color:var(--steam-gold-400);">3.0 TP</strong> もらえます 🎉
+        </p>
+        <button onclick="closeNewFeaturePopup()" style="background:var(--steam-gold-500); color:#000; border:none; border-radius:6px; padding:0.6rem 1.5rem; font-weight:700; cursor:pointer; font-size:0.9rem;">
+            さっそく見てみる
+        </button>
+    </div>
+</div>
+
+<script>
+const API_BASE = '/api/articles';
+let currentTab = 'all';
+
+async function loadArticles(tab) {
+    document.getElementById('articles-loading').style.display = 'block';
+    document.getElementById('articles-list').style.display = 'none';
+    document.getElementById('articles-empty').style.display = 'none';
+
+    const token = localStorage.getItem('access_token');
+    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+    try {
+        const url = tab === 'mine' ? `${API_BASE}/mine/` : `${API_BASE}/`;
+        const res = await fetch(url, { headers });
+        if (!res.ok) throw new Error('fetch error');
+        const data = await res.json();
+        const articles = Array.isArray(data) ? data : (data.results || []);
+
+        document.getElementById('articles-loading').style.display = 'none';
+
+        if (!articles.length) {
+            document.getElementById('articles-empty').style.display = 'block';
+            return;
+        }
+
+        const list = document.getElementById('articles-list');
+        list.innerHTML = articles.map(a => renderCard(a, tab === 'mine')).join('');
+        list.style.display = 'block';
+    } catch (e) {
+        document.getElementById('articles-loading').innerHTML = '<span style="color:var(--steam-iron-400);">読み込みに失敗しました</span>';
+    }
+}
+
+function renderCard(a, isMine) {
+    const thumb = a.thumbnail_url_resolved
+        ? `<img class="article-thumb" src="${escHtml(a.thumbnail_url_resolved)}" alt="" loading="lazy">`
+        : `<div class="article-thumb-placeholder">📝</div>`;
+    const draftBadge = a.status === 'draft' ? `<span class="draft-badge">下書き</span>` : '';
+    const date = a.published_at
+        ? new Date(a.published_at).toLocaleDateString('ja-JP')
+        : new Date(a.created_at).toLocaleDateString('ja-JP');
+    const totalReactions = (a.all_reactions || []).reduce((s, r) => s + r.count, 0);
+    const editLink = isMine
+        ? `<a href="/articles/${escHtml(a.slug)}/edit/" style="font-size:0.75rem; color:var(--steam-gold-400); text-decoration:none; margin-left:auto; padding-left:0.5rem;">編集</a>`
+        : '';
+
+    // 本文抜粋
+    let excerpt = '';
+    if (Array.isArray(a.body)) {
+        for (const block of a.body) {
+            if (block.type === 'paragraph' && block.content) {
+                excerpt = block.content.replace(/<[^>]*>/g, '').slice(0, 100);
+                break;
+            }
+        }
+    }
+
+    return `<a href="/articles/${escHtml(a.slug)}/" class="article-card">
+        <div class="article-thumb-wrap">
+            ${thumb}
+            <span class="article-badge">ARTICLE</span>
+        </div>
+        <div class="article-info">
+            <div style="display:flex; align-items:baseline; flex-wrap:wrap;">
+                <div class="article-title">${escHtml(a.title)}${draftBadge}</div>
+                ${editLink}
+            </div>
+            <div class="article-meta">${escHtml(a.author_display_id)} · ${date}</div>
+            ${excerpt ? `<div class="article-excerpt">${escHtml(excerpt)}</div>` : ''}
+            <div class="article-reactions">
+                <span class="reaction-pill">👍 ${totalReactions}</span>
+            </div>
+        </div>
+    </a>`;
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-all').classList.toggle('active', tab === 'all');
+    document.getElementById('tab-mine').classList.toggle('active', tab === 'mine');
+    loadArticles(tab);
+}
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 初回ポップアップ（localStorage）
+function showNewFeaturePopupIfNeeded() {
+    if (!localStorage.getItem('article_feature_announced_v220')) {
+        document.getElementById('article-new-feature-popup').style.display = 'flex';
+    }
+}
+
+function closeNewFeaturePopup() {
+    localStorage.setItem('article_feature_announced_v220', '1');
+    document.getElementById('article-new-feature-popup').style.display = 'none';
+}
+
+// ログイン状態によって UI を調整
+const token = localStorage.getItem('access_token');
+if (token) {
+    document.getElementById('btn-new-article').style.display = 'inline-flex';
+    document.getElementById('tab-mine').style.display = 'block';
+}
+
+loadArticles('all');
+showNewFeaturePopupIfNeeded();
+</script>
+{% endblock %}

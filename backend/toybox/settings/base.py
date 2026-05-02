@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'adminpanel',
     'frontend',
     'sso_integration',
+    'articles',
 ]
 
 MIDDLEWARE = [

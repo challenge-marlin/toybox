@@ -41,6 +41,75 @@
     <script src="{% static 'frontend/js/common/errors.js' %}?v=20260114-1"></script>
     <script src="{% static 'frontend/js/common/utils.js' %}?v=20260114-1"></script>
     {% block extra_css %}{% endblock %}
+    <script>
+    /**
+     * Ver 2.20: GIFアバター制御ユーティリティ
+     * プロフィール・マイページ・ヘッダー以外ではGIFを静止画として表示する。
+     * 使用方法: <img> に data-avatar-url="<url>" を設定し、initAvatarImg(imgEl) を呼ぶ。
+     * または setAvatarSrc(imgEl, url) を直接使用する。
+     */
+    (function() {
+        const GIF_ANIMATE_PAGES = ['/profile/', '/me/', '/profile/view/'];
+        function isGifAnimatePage() {
+            const p = location.pathname;
+            return GIF_ANIMATE_PAGES.some(pp => p === pp || p.startsWith(pp));
+        }
+
+        window.isGifUrl = function(url) {
+            return typeof url === 'string' && url.toLowerCase().includes('.gif');
+        };
+
+        /**
+         * GIF URLを静止画（1フレーム目）として表示するために Canvas 経由で変換する。
+         * ブラウザの GIF デコードに依存するため、1フレーム目のみ取得できる。
+         */
+        window.gifToStaticDataUrl = function(gifUrl, callback) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    callback(canvas.toDataURL('image/png'));
+                } catch(e) {
+                    callback(gifUrl); // CORS等で失敗したら元URLをそのまま返す
+                }
+            };
+            img.onerror = function() { callback(gifUrl); };
+            img.src = gifUrl;
+        };
+
+        /**
+         * アバター img 要素にURLをセットする。
+         * GIFかつアニメ許可ページでなければ静止画化する。
+         */
+        window.setAvatarSrc = function(imgEl, url) {
+            if (!url) return;
+            if (window.isGifUrl(url) && !isGifAnimatePage()) {
+                window.gifToStaticDataUrl(url, function(staticUrl) {
+                    imgEl.src = staticUrl;
+                });
+            } else {
+                imgEl.src = url;
+            }
+        };
+
+        /**
+         * data-avatar-url 属性を持つ全 img を初期化する。
+         * DOMContentLoaded 後に自動実行。
+         */
+        window.initAllAvatarImgs = function() {
+            document.querySelectorAll('img[data-avatar-url]').forEach(function(img) {
+                window.setAvatarSrc(img, img.getAttribute('data-avatar-url'));
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', window.initAllAvatarImgs);
+    })();
+    </script>
     <style>
         #desktop-only-overlay {
             display: none;
@@ -96,7 +165,7 @@
         <div style="max-width: 22rem; border: 1px solid var(--steam-iron-600); border-radius: 8px; padding: 1.25rem; background: var(--steam-iron-900);">
             <div style="font-weight: 700; color: var(--steam-gold-300); margin-bottom: 0.5rem;">TOYBOX! は PC 表示専用です</div>
             <div>画面幅が狭いため、ブラウザの表示を<strong>PC版（デスクトップサイト）</strong>に切り替えるか、幅の広いディスプレイでご利用ください。</div>
-            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--steam-iron-400);">Ver 2.11</div>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--steam-iron-400);">Ver 2.20</div>
         </div>
     </div>
     <header class="header-nav" style="border-bottom: 1px solid var(--steam-iron-800); background: rgba(31, 35, 42, 0.7);">
@@ -109,6 +178,7 @@
                 <a href="/collection/" id="nav-collection" style="color: var(--steam-gold-400); text-decoration: none; display: none;">コレクション</a>
                 <a href="/profile/view/" id="nav-profile" style="color: var(--steam-gold-400); text-decoration: none; display: none;">プロフィール</a>
                 <a href="/feed/" style="color: var(--steam-gold-400); text-decoration: none;">みんなの投稿</a>
+                <a href="/articles/" style="color: var(--steam-gold-400); text-decoration: none;">📝 記事</a>
                 <a href="/titles/" id="nav-titles-main" style="color: var(--steam-gold-400); text-decoration: none; display: none;">⭐ 獲得称号</a>
                 <button type="button" id="nav-id-info" onclick="openIdPopup(); return false;" aria-label="ID・契約案内" style="display: none; background: var(--steam-gold-500); color: #000; border: none; border-radius: 50%; width: 1.5rem; height: 1.5rem; font-weight: bold; font-size: 0.875rem; cursor: pointer; padding: 0; line-height: 1;">!</button>
                 <a href="/login/" id="nav-login" style="color: var(--steam-gold-400); text-decoration: none;">ログイン</a>
@@ -217,7 +287,7 @@
                 <div style="flex: 1; min-width: 200px;">
                     <img src="{% static 'frontend/hero/toybox-title.png' %}" alt="TOYBOX" style="height: 2rem; width: auto; margin-bottom: 1rem;">
                     <p style="color: var(--steam-iron-400); font-size: 0.875rem; margin: 0;">© 2025 AYATORI Inc. All rights reserved.</p>
-                    <p style="color: var(--steam-iron-500); font-size: 0.75rem; margin: 0.35rem 0 0 0;">TOYBOX! Ver 2.11</p>
+                    <p style="color: var(--steam-iron-500); font-size: 0.75rem; margin: 0.35rem 0 0 0;">TOYBOX! Ver 2.20</p>
                 </div>
                 
                 <!-- フッターメニュー -->
@@ -548,7 +618,12 @@
                     }
                     if (avatarUrl && avatarImg && avatarIcon) {
                         console.log('[Profile Image Debug] base.html - Setting header avatar image:', avatarUrl);
-                        avatarImg.src = avatarUrl;
+                        // Ver 2.20: ヘッダーはGIFアニメ許可ページ（GIF制御ユーティリティがアニメ可否を判定）
+                        if (typeof window.setAvatarSrc === 'function') {
+                            window.setAvatarSrc(avatarImg, avatarUrl);
+                        } else {
+                            avatarImg.src = avatarUrl;
+                        }
                         avatarImg.style.display = 'block';
                         avatarIcon.style.display = 'none';
                         avatarImg.onerror = function() {

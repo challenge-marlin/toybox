@@ -589,9 +589,36 @@ class ProfileUploadView(APIView):
             return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Validate file type
-        allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
         if file.content_type not in allowed_types:
-            return Response({'error': 'Invalid file type'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid file type. JPEG / PNG / GIF のみ対応しています。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        is_gif = file.content_type == 'image/gif'
+
+        # GIFはサイズ制限のみチェックし変換しない（アニメーションを保持）
+        if is_gif:
+            if file.size > 10 * 1024 * 1024:  # 10MB
+                return Response({'error': 'GIFファイルは10MB以下にしてください。'}, status=status.HTTP_400_BAD_REQUEST)
+            import uuid as _uuid
+            filename = f'{upload_type}_{request.user.id}_{_uuid.uuid4().hex[:8]}.gif'
+            filepath = default_storage.save(f'profiles/{filename}', file)
+            full_path = default_storage.path(filepath)
+            if not os.path.exists(full_path):
+                return Response({'error': 'ファイルの保存に失敗しました'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            relative_url = f'/uploads/profiles/{filename}'
+            if hasattr(request, 'build_absolute_uri'):
+                file_url = request.build_absolute_uri(relative_url)
+            else:
+                file_url = f"{request.scheme}://{request.get_host()}{relative_url}"
+            if upload_type == 'avatar':
+                request.user.avatar_url = file_url
+                request.user.save()
+                return Response({'ok': True, 'avatarUrl': file_url, 'avatarThumbnailUrl': None, 'isGif': True})
+            else:
+                meta, _ = UserMeta.objects.get_or_create(user=request.user)
+                meta.header_url = file_url
+                meta.save()
+                return Response({'ok': True, 'headerUrl': file_url, 'isGif': True})
         
         # 画像をJPGに変換して最適化
         from toybox.image_optimizer import optimize_image_to_jpg

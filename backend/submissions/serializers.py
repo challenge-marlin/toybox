@@ -72,8 +72,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
                 request=request,
                 verify_exists=False
             )
-        return None
-    
+        return None    
     def get_image(self, obj):
         """Get absolute URL for image field (統一ユーティリティを使用)."""
         from toybox.image_utils import get_image_url, verify_image_file_exists, clean_invalid_image_url

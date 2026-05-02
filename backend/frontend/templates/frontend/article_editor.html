@@ -1,0 +1,504 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}記事を書く - TOYBOX！{% endblock %}
+
+{% block extra_css %}
+<style>
+.editor-page { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
+.editor-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; gap: 1rem; }
+.editor-topbar h1 { font-size: 1.2rem; font-weight: 700; color: var(--steam-gold-300); margin: 0; }
+.editor-actions { display: flex; gap: 0.5rem; }
+.btn { border: none; border-radius: 6px; padding: 0.45rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.btn-draft { background: var(--steam-iron-700); color: var(--steam-iron-100); }
+.btn-draft:hover { background: var(--steam-iron-600); }
+.btn-publish { background: var(--steam-gold-500); color: #000; }
+.btn-publish:hover { background: var(--steam-gold-400); }
+.btn-delete { background: #dc2626; color: #fff; }
+.btn-delete:hover { background: #b91c1c; }
+
+/* タイトル */
+#editor-title {
+    width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700);
+    border-radius: 8px; padding: 0.75rem 1rem; font-size: 1.2rem; font-weight: 600;
+    color: var(--steam-iron-100); margin-bottom: 1rem;
+}
+#editor-title:focus { outline: none; border-color: var(--steam-gold-500); }
+#editor-title::placeholder { color: var(--steam-iron-500); }
+
+/* サムネ */
+.thumb-section { margin-bottom: 1rem; }
+.thumb-label { font-size: 0.8rem; color: var(--steam-iron-400); margin-bottom: 0.35rem; }
+.thumb-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 0.35rem; display: none; }
+.thumb-upload-area {
+    border: 2px dashed var(--steam-iron-600); border-radius: 8px; padding: 1rem;
+    text-align: center; color: var(--steam-iron-400); font-size: 0.8rem; cursor: pointer;
+    transition: border-color 0.2s;
+}
+.thumb-upload-area:hover, .thumb-upload-area.dragover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
+
+/* ブロックエディタ */
+.block-editor { min-height: 300px; }
+.block-list { list-style: none; padding: 0; margin: 0; }
+.block-item {
+    display: flex; align-items: flex-start; gap: 0.5rem;
+    margin-bottom: 0.5rem; position: relative;
+}
+.block-item.drag-over { border-top: 2px solid var(--steam-gold-500); }
+.block-handle {
+    color: var(--steam-iron-600); cursor: grab; padding: 0.4rem 0.1rem; flex-shrink: 0;
+    font-size: 1rem; user-select: none;
+}
+.block-handle:active { cursor: grabbing; }
+.block-content { flex: 1; min-width: 0; }
+.block-input {
+    width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700);
+    border-radius: 6px; padding: 0.6rem 0.75rem; color: var(--steam-iron-100); font-size: 0.9rem;
+    resize: vertical; line-height: 1.6;
+}
+.block-input:focus { outline: none; border-color: var(--steam-gold-500); }
+.block-type-select {
+    background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300);
+    border-radius: 4px; padding: 0.2rem 0.4rem; font-size: 0.75rem; cursor: pointer;
+    margin-bottom: 0.3rem; display: block;
+}
+.block-remove { background: transparent; border: none; color: var(--steam-iron-500); cursor: pointer; padding: 0.3rem; flex-shrink: 0; font-size: 1rem; }
+.block-remove:hover { color: #ef4444; }
+.block-image-preview { max-width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; margin-top: 0.4rem; display: block; }
+.block-video-preview { max-width: 100%; border-radius: 6px; margin-top: 0.4rem; display: block; }
+
+/* ブロック追加ボタン */
+.add-block-bar {
+    display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 1rem 0;
+}
+.add-block-btn {
+    background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300);
+    border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+}
+.add-block-btn:hover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
+
+/* DnD ドロップゾーン */
+.dnd-drop-zone {
+    border: 2px dashed var(--steam-iron-600); border-radius: 8px;
+    padding: 1.5rem; text-align: center; color: var(--steam-iron-500);
+    font-size: 0.8rem; margin: 1rem 0; transition: all 0.2s;
+}
+.dnd-drop-zone.dragover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); background: rgba(212,160,23,0.05); }
+
+/* CSS エディタ */
+.css-section { margin-top: 1.5rem; }
+.css-toggle { background: none; border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300); border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; }
+#css-editor-wrap { display: none; margin-top: 0.5rem; }
+#custom-css-input {
+    width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700);
+    border-radius: 6px; padding: 0.75rem; color: var(--steam-iron-200); font-family: monospace;
+    font-size: 0.8rem; resize: vertical; min-height: 120px; line-height: 1.5;
+}
+#custom-css-input:focus { outline: none; border-color: var(--steam-gold-500); }
+
+/* ステータスメッセージ */
+#save-status { font-size: 0.8rem; color: var(--steam-gold-400); min-width: 80px; text-align: right; }
+
+/* オンボーディング */
+#onboarding-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9998;
+    align-items: center; justify-content: center; padding: 1rem;
+}
+.onboarding-box {
+    max-width: 460px; width: 100%; background: var(--steam-iron-900);
+    border: 1px solid var(--steam-iron-600); border-radius: 12px; padding: 1.5rem; color: var(--steam-iron-100);
+}
+.onboarding-steps { margin: 1rem 0; }
+.onboarding-step { display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 0.75rem; font-size: 0.875rem; }
+.step-num { background: var(--steam-gold-500); color: #000; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="editor-page">
+    <div class="editor-topbar">
+        <h1>✏️ <span id="editor-headline">記事を書く</span></h1>
+        <div class="editor-actions">
+            <span id="save-status"></span>
+            <button class="btn btn-draft" onclick="saveArticle('draft')">下書き保存</button>
+            <button class="btn btn-publish" onclick="saveArticle('published')">公開する</button>
+            <button class="btn btn-delete" id="btn-delete" style="display:none;" onclick="deleteArticle()">削除</button>
+        </div>
+    </div>
+
+    <!-- タイトル -->
+    <input type="text" id="editor-title" placeholder="タイトルを入力..." maxlength="200">
+
+    <!-- サムネ -->
+    <div class="thumb-section">
+        <div class="thumb-label">サムネイル（任意）</div>
+        <img id="thumb-preview" class="thumb-preview" alt="サムネイルプレビュー">
+        <div class="thumb-upload-area" id="thumb-drop"
+             ondragover="thumbDragOver(event)" ondragleave="thumbDragLeave(event)" ondrop="thumbDrop(event)"
+             onclick="document.getElementById('thumb-file-input').click()">
+            クリックまたはドラッグ＆ドロップで画像をアップロード
+        </div>
+        <input type="file" id="thumb-file-input" accept="image/*" style="display:none;" onchange="uploadThumb(this.files[0])">
+    </div>
+
+    <!-- ブロックエディタ -->
+    <div class="block-editor">
+        <ul class="block-list" id="block-list"></ul>
+
+        <div class="add-block-bar">
+            <button class="add-block-btn" onclick="addBlock('paragraph')">＋ 段落</button>
+            <button class="add-block-btn" onclick="addBlock('heading')">＋ 見出し</button>
+            <button class="add-block-btn" onclick="addBlock('blockquote')">＋ 引用</button>
+            <button class="add-block-btn" onclick="addBlock('divider')">＋ 区切り</button>
+            <button class="add-block-btn" onclick="addBlock('image')">＋ 画像</button>
+            <button class="add-block-btn" onclick="addBlock('video')">＋ 動画</button>
+        </div>
+
+        <!-- DnD ドロップゾーン -->
+        <div class="dnd-drop-zone" id="dnd-zone"
+             ondragover="dndDragOver(event)" ondragleave="dndDragLeave(event)" ondrop="dndDrop(event)">
+            📎 画像・動画をここにドラッグ＆ドロップ
+        </div>
+    </div>
+
+    <!-- カスタム CSS -->
+    <div class="css-section">
+        <button class="css-toggle" onclick="toggleCssEditor()">🎨 カスタム CSS</button>
+        <div id="css-editor-wrap">
+            <textarea id="custom-css-input" placeholder="/* 例: .article-content-scoped h2 { color: gold; } */"></textarea>
+            <div style="font-size:0.7rem; color:var(--steam-iron-500); margin-top:0.3rem;">※ セキュリティのため、危険な記述は自動で除去されます。スタイルは記事本文にのみ適用されます。</div>
+        </div>
+    </div>
+</div>
+
+<!-- オンボーディング（初回のみ） -->
+<div id="onboarding-overlay">
+    <div class="onboarding-box">
+        <h2 style="font-size:1.1rem; font-weight:700; color:var(--steam-gold-300); margin:0 0 0.5rem 0;">📝 記事エディタの使い方</h2>
+        <p style="font-size:0.8rem; color:var(--steam-iron-400); margin:0 0 0.75rem 0;">ゲームや画像を作るまでのプロセスを記事にしよう！</p>
+        <div class="onboarding-steps">
+            <div class="onboarding-step"><span class="step-num">1</span><span>タイトルを入力して、サムネイル画像をアップロード</span></div>
+            <div class="onboarding-step"><span class="step-num">2</span><span>「＋ 段落」「＋ 見出し」などのボタンでブロックを追加して本文を書く</span></div>
+            <div class="onboarding-step"><span class="step-num">3</span><span>画像や動画はドラッグ＆ドロップで追加可能！</span></div>
+            <div class="onboarding-step"><span class="step-num">4</span><span>「下書き保存」→「公開する」で投稿完了。初回公開で <strong style="color:var(--steam-gold-400);">3.0 TP</strong> もらえます 🎉</span></div>
+        </div>
+        <div style="text-align:right;">
+            <button onclick="closeOnboarding()" style="background:var(--steam-gold-500); color:#000; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-weight:700; cursor:pointer;">わかった！</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const EDIT_SLUG = '{{ slug }}';
+const API_BASE = '/api/articles';
+let thumbUrl = null;
+let blocks = [];
+let dragSrcIndex = null;
+
+// ---- ブロック管理 ----
+function addBlock(type, data = {}) {
+    const id = Date.now() + Math.random();
+    blocks.push({ id, type, ...data });
+    renderBlocks();
+}
+
+function removeBlock(id) {
+    blocks = blocks.filter(b => b.id !== id);
+    renderBlocks();
+}
+
+function updateBlock(id, key, value) {
+    const b = blocks.find(x => x.id === id);
+    if (b) b[key] = value;
+}
+
+function renderBlocks() {
+    const list = document.getElementById('block-list');
+    list.innerHTML = blocks.map((b, i) => renderBlockItem(b, i)).join('');
+}
+
+function renderBlockItem(b, i) {
+    const handle = `<div class="block-handle" draggable="true"
+        ondragstart="blockDragStart(event,${i})"
+        ondragover="blockDragOver(event,${i})"
+        ondrop="blockDropOnBlock(event,${i})"
+        ondragend="blockDragEnd(event)">⠿</div>`;
+    const removeBtn = `<button class="block-remove" onclick="removeBlock(${b.id})" title="削除">×</button>`;
+
+    let inner = '';
+    if (b.type === 'paragraph') {
+        inner = `<textarea class="block-input" rows="3" placeholder="段落テキストを入力..."
+            onchange="updateBlock(${b.id},'content',this.value)">${escHtml(b.content || '')}</textarea>`;
+    } else if (b.type === 'heading') {
+        inner = `<select class="block-type-select" onchange="updateBlock(${b.id},'level',this.value)">
+            <option value="2" ${b.level==2?'selected':''}>H2 大見出し</option>
+            <option value="3" ${b.level==3?'selected':''}>H3 中見出し</option>
+            <option value="4" ${b.level==4?'selected':''}>H4 小見出し</option>
+        </select>
+        <input class="block-input" placeholder="見出しテキスト..." value="${escHtml(b.content || '')}"
+            oninput="updateBlock(${b.id},'content',this.value)">`;
+    } else if (b.type === 'blockquote') {
+        inner = `<textarea class="block-input" rows="2" placeholder="引用テキスト..."
+            onchange="updateBlock(${b.id},'content',this.value)">${escHtml(b.content || '')}</textarea>`;
+    } else if (b.type === 'divider') {
+        inner = `<div style="width:100%; border-top:1px solid var(--steam-iron-600); margin:0.5rem 0; pointer-events:none;"></div>`;
+    } else if (b.type === 'image') {
+        const previewHtml = b.url
+            ? `<img class="block-image-preview" src="${escHtml(b.url)}" alt="">`
+            : '';
+        inner = `<input class="block-input" placeholder="画像URLまたはアップロード後に自動入力" value="${escHtml(b.url || '')}"
+            oninput="updateBlock(${b.id},'url',this.value)">
+            <input type="file" accept="image/*" style="display:none;" id="img-upload-${b.id}"
+                onchange="uploadMediaToBlock(${b.id},this.files[0],'image')">
+            <button class="add-block-btn" style="margin-top:0.3rem;" onclick="document.getElementById('img-upload-${b.id}').click()">📷 画像を選択</button>
+            ${previewHtml}`;
+    } else if (b.type === 'video') {
+        const previewHtml = b.url
+            ? `<video class="block-video-preview" controls src="${escHtml(b.url)}"></video>`
+            : '';
+        inner = `<input class="block-input" placeholder="動画URL" value="${escHtml(b.url || '')}"
+            oninput="updateBlock(${b.id},'url',this.value)">
+            <input type="file" accept="video/*" style="display:none;" id="vid-upload-${b.id}"
+                onchange="uploadMediaToBlock(${b.id},this.files[0],'video')">
+            <button class="add-block-btn" style="margin-top:0.3rem;" onclick="document.getElementById('vid-upload-${b.id}').click()">🎬 動画を選択</button>
+            ${previewHtml}`;
+    }
+
+    return `<li class="block-item" data-index="${i}">
+        ${handle}
+        <div class="block-content">${inner}</div>
+        ${removeBtn}
+    </li>`;
+}
+
+// ---- ブロック D&D ----
+function blockDragStart(e, i) { dragSrcIndex = i; e.dataTransfer.effectAllowed = 'move'; }
+function blockDragOver(e, i) {
+    e.preventDefault();
+    document.querySelectorAll('.block-item').forEach(el => el.classList.remove('drag-over'));
+    document.querySelectorAll('.block-item')[i]?.classList.add('drag-over');
+}
+function blockDropOnBlock(e, i) {
+    e.preventDefault();
+    if (dragSrcIndex === null || dragSrcIndex === i) return;
+    const moved = blocks.splice(dragSrcIndex, 1)[0];
+    blocks.splice(i, 0, moved);
+    dragSrcIndex = null;
+    renderBlocks();
+}
+function blockDragEnd() {
+    document.querySelectorAll('.block-item').forEach(el => el.classList.remove('drag-over'));
+    dragSrcIndex = null;
+}
+
+// ---- メディア DnD ドロップゾーン ----
+function dndDragOver(e) { e.preventDefault(); document.getElementById('dnd-zone').classList.add('dragover'); }
+function dndDragLeave() { document.getElementById('dnd-zone').classList.remove('dragover'); }
+function dndDrop(e) {
+    e.preventDefault();
+    dndDragLeave();
+    const files = Array.from(e.dataTransfer.files);
+    files.forEach(f => {
+        const isImage = f.type.startsWith('image/');
+        const isVideo = f.type.startsWith('video/');
+        if (!isImage && !isVideo) return;
+        const type = isVideo ? 'video' : 'image';
+        addBlock(type, {});
+        const lastBlock = blocks[blocks.length - 1];
+        uploadMediaToBlock(lastBlock.id, f, type);
+    });
+}
+
+// ---- サムネ ----
+function thumbDragOver(e) { e.preventDefault(); document.getElementById('thumb-drop').classList.add('dragover'); }
+function thumbDragLeave() { document.getElementById('thumb-drop').classList.remove('dragover'); }
+function thumbDrop(e) { e.preventDefault(); thumbDragLeave(); uploadThumb(e.dataTransfer.files[0]); }
+
+async function uploadThumb(file) {
+    if (!file) return;
+    const url = await uploadMedia(file);
+    if (url) {
+        thumbUrl = url;
+        const prev = document.getElementById('thumb-preview');
+        prev.src = url;
+        prev.style.display = 'block';
+    }
+}
+
+// ---- ファイルアップロード ----
+async function uploadMedia(file) {
+    const token = localStorage.getItem('access_token');
+    if (!token) { alert('ログインが必要です。'); return null; }
+    const fd = new FormData();
+    fd.append('file', file);
+    setStatus('アップロード中...');
+    try {
+        const res = await fetch(`${API_BASE}/upload-media/`, {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: fd,
+        });
+        const data = await res.json();
+        setStatus('');
+        if (!res.ok) { alert(data.detail || 'アップロードに失敗しました。'); return null; }
+        return data.media.url;
+    } catch (e) {
+        setStatus('');
+        alert('アップロードに失敗しました。');
+        return null;
+    }
+}
+
+async function uploadMediaToBlock(blockId, file, type) {
+    const url = await uploadMedia(file);
+    if (!url) return;
+    updateBlock(blockId, 'url', url);
+    renderBlocks();
+}
+
+// ---- 保存 ----
+async function saveArticle(status) {
+    const token = localStorage.getItem('access_token');
+    if (!token) { alert('ログインが必要です。'); window.location.href = '/login/'; return; }
+
+    const title = document.getElementById('editor-title').value.trim();
+    if (!title) { alert('タイトルを入力してください。'); return; }
+
+    const body = collectBlocks();
+    const customCss = document.getElementById('custom-css-input').value;
+    const payload = { title, body, custom_css: customCss, status };
+    if (thumbUrl) payload.thumbnail_url = thumbUrl;
+
+    setStatus('保存中...');
+
+    try {
+        let res, url, method;
+        if (EDIT_SLUG) {
+            url = `${API_BASE}/${EDIT_SLUG}/`;
+            method = 'PATCH';
+        } else {
+            url = `${API_BASE}/`;
+            method = 'POST';
+        }
+
+        res = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            setStatus('');
+            alert(JSON.stringify(data));
+            return;
+        }
+
+        setStatus(status === 'published' ? '✅ 公開しました！' : '✅ 下書き保存しました');
+        if (!EDIT_SLUG && data.slug) {
+            // 新規作成後はエディタURLを更新
+            history.replaceState(null, '', `/articles/${data.slug}/edit/`);
+            document.getElementById('btn-delete').style.display = 'inline-block';
+        }
+        if (status === 'published') {
+            setTimeout(() => { window.location.href = `/articles/${data.slug}/`; }, 1200);
+        }
+    } catch (e) {
+        setStatus('');
+        alert('保存に失敗しました。');
+    }
+}
+
+async function deleteArticle() {
+    if (!confirm('この記事を削除しますか？')) return;
+    const token = localStorage.getItem('access_token');
+    const res = await fetch(`${API_BASE}/${EDIT_SLUG}/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token },
+    });
+    if (res.status === 204) {
+        window.location.href = '/articles/';
+    } else {
+        alert('削除に失敗しました。');
+    }
+}
+
+function collectBlocks() {
+    // DOMから最新のtextarea/input値を拾う
+    const items = document.querySelectorAll('.block-item');
+    items.forEach((item, i) => {
+        const b = blocks[i];
+        if (!b) return;
+        const ta = item.querySelector('textarea');
+        const inp = item.querySelector('input[type="text"], input:not([type])');
+        const sel = item.querySelector('select');
+        if (ta) b.content = ta.value;
+        if (inp && b.type !== 'image' && b.type !== 'video') b.content = inp.value;
+        if (inp && (b.type === 'image' || b.type === 'video')) b.url = inp.value;
+        if (sel) b.level = parseInt(sel.value);
+    });
+    return blocks.map(({ id, ...rest }) => rest);
+}
+
+function setStatus(msg) {
+    document.getElementById('save-status').textContent = msg;
+}
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleCssEditor() {
+    const w = document.getElementById('css-editor-wrap');
+    w.style.display = w.style.display === 'none' ? 'block' : 'none';
+}
+
+// ---- 既存記事を読み込む ----
+async function loadExistingArticle() {
+    if (!EDIT_SLUG) return;
+    const token = localStorage.getItem('access_token');
+    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+    const res = await fetch(`${API_BASE}/${EDIT_SLUG}/`, { headers });
+    if (!res.ok) return;
+    const a = await res.json();
+
+    document.getElementById('editor-title').value = a.title || '';
+    document.getElementById('editor-headline').textContent = '記事を編集';
+    document.getElementById('btn-delete').style.display = 'inline-block';
+    if (a.thumbnail_url_resolved) {
+        thumbUrl = a.thumbnail_url_resolved;
+        const prev = document.getElementById('thumb-preview');
+        prev.src = thumbUrl;
+        prev.style.display = 'block';
+    }
+    if (a.custom_css) {
+        document.getElementById('custom-css-input').value = a.custom_css;
+    }
+    blocks = (a.body || []).map((b, i) => ({ id: Date.now() + i, ...b }));
+    renderBlocks();
+}
+
+// ---- オンボーディング（初回のみ） ----
+function showOnboardingIfNeeded() {
+    if (!EDIT_SLUG && !localStorage.getItem('article_editor_onboarding_v220')) {
+        document.getElementById('onboarding-overlay').style.display = 'flex';
+    }
+}
+function closeOnboarding() {
+    localStorage.setItem('article_editor_onboarding_v220', '1');
+    document.getElementById('onboarding-overlay').style.display = 'none';
+}
+
+// ---- 初期化 ----
+(async function init() {
+    const token = localStorage.getItem('access_token');
+    if (!token) { window.location.href = '/login/'; return; }
+    await loadExistingArticle();
+    if (!blocks.length) addBlock('paragraph');
+    showOnboardingIfNeeded();
+})();
+</script>
+{% endblock %}

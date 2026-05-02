@@ -1,0 +1,249 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}記事 - TOYBOX！{% endblock %}
+
+{% block extra_css %}
+<style>
+.article-detail-page { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
+.article-back { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--steam-gold-400); text-decoration: none; font-size: 0.875rem; margin-bottom: 1.5rem; }
+.article-back:hover { color: var(--steam-gold-300); }
+.article-header { margin-bottom: 2rem; }
+.article-hero-thumb { width: 100%; max-height: 360px; object-fit: cover; border-radius: 10px; margin-bottom: 1.5rem; }
+.article-title-main { font-size: 1.6rem; font-weight: 700; color: var(--steam-iron-100); line-height: 1.35; margin: 0 0 0.75rem 0; }
+.article-byline { font-size: 0.8rem; color: var(--steam-iron-400); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+.article-byline img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.article-content { font-size: 0.95rem; color: var(--steam-iron-200); line-height: 1.75; }
+.article-content h2 { font-size: 1.25rem; font-weight: 700; color: var(--steam-iron-100); margin: 2rem 0 0.75rem 0; border-bottom: 1px solid var(--steam-iron-700); padding-bottom: 0.4rem; }
+.article-content h3 { font-size: 1.05rem; font-weight: 600; color: var(--steam-iron-100); margin: 1.5rem 0 0.5rem 0; }
+.article-content p { margin: 0 0 1rem 0; }
+.article-content img { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
+.article-content video { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
+.article-content blockquote { border-left: 3px solid var(--steam-gold-500); padding-left: 1rem; color: var(--steam-iron-300); font-style: italic; margin: 1rem 0; }
+.article-content hr { border: none; border-top: 1px solid var(--steam-iron-700); margin: 2rem 0; }
+.article-reactions-bar { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--steam-iron-700); }
+.reaction-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.reaction-btn {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600);
+    color: var(--steam-iron-300); border-radius: 9999px; padding: 0.35rem 0.75rem;
+    font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+}
+.reaction-btn:hover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
+.reaction-btn.active { background: rgba(var(--steam-gold-500-rgb,212,160,23),0.15); border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
+.article-edit-link { margin-top: 1rem; }
+#article-loading { text-align: center; padding: 3rem; color: var(--steam-iron-400); }
+#article-not-found { text-align: center; padding: 3rem; color: var(--steam-iron-400); }
+
+/* カスタムCSSはスコープ隔離 */
+#article-custom-styles {}
+.article-content-scoped {}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="article-detail-page">
+    <a href="/articles/" class="article-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        記事一覧
+    </a>
+
+    <div id="article-loading">読み込み中...</div>
+    <div id="article-not-found" style="display:none;">
+        <div style="font-size:3rem; margin-bottom:0.75rem;">📄</div>
+        <div>記事が見つかりません</div>
+    </div>
+
+    <div id="article-body-wrapper" style="display:none;">
+        <!-- サムネ -->
+        <div id="article-thumb-wrap"></div>
+
+        <div class="article-header">
+            <h1 class="article-title-main" id="article-title"></h1>
+            <div class="article-byline">
+                <img id="author-avatar" src="" alt="" style="display:none;">
+                <span id="author-name"></span>
+                <span>·</span>
+                <span id="article-date"></span>
+                <span id="draft-badge" style="display:none; background:var(--steam-iron-700); color:var(--steam-iron-300); font-size:0.65rem; padding:1px 5px; border-radius:4px;">下書き</span>
+            </div>
+            <div id="article-edit-link" style="display:none;">
+                <a id="article-edit-anchor" href="#" style="font-size:0.8rem; color:var(--steam-gold-400);">✏️ 編集する</a>
+            </div>
+        </div>
+
+        <!-- カスタムCSS（スコープ隔離：article-content-scoped クラス内にのみ適用） -->
+        <style id="article-custom-styles"></style>
+
+        <div class="article-content article-content-scoped" id="article-content"></div>
+
+        <div class="article-reactions-bar">
+            <div style="font-size:0.8rem; color:var(--steam-iron-400); margin-bottom:0.75rem;">リアクション</div>
+            <div class="reaction-buttons" id="reaction-buttons">
+                <span style="color:var(--steam-iron-500); font-size:0.8rem;">読み込み中...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const SLUG = '{{ slug }}';
+const API_BASE = '/api/articles';
+let articleData = null;
+let currentUserDisplayId = null;
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// カスタムCSS を article-content-scoped クラスにスコープ付け
+function scopeCustomCss(css) {
+    if (!css) return '';
+    // 各ルールの前に .article-content-scoped を追加
+    return css.replace(/([^\{\}]+)\{/g, (m, selector) => {
+        const scoped = selector.trim().split(',')
+            .map(s => `.article-content-scoped ${s.trim()}`)
+            .join(', ');
+        return scoped + ' {';
+    });
+}
+
+function renderBlocks(blocks) {
+    if (!Array.isArray(blocks)) return '';
+    return blocks.map(block => {
+        switch (block.type) {
+            case 'heading':
+                const level = Math.min(Math.max(parseInt(block.level || 2), 1), 6);
+                return `<h${level}>${block.content || ''}</h${level}>`;
+            case 'paragraph':
+                return `<p>${block.content || ''}</p>`;
+            case 'image':
+                return `<img src="${escHtml(block.url)}" alt="${escHtml(block.alt || '')}" style="${escHtml(block.style || '')}">`;
+            case 'video':
+                return `<video controls src="${escHtml(block.url)}" style="max-width:100%;"></video>`;
+            case 'blockquote':
+                return `<blockquote>${block.content || ''}</blockquote>`;
+            case 'divider':
+                return '<hr>';
+            default:
+                return '';
+        }
+    }).join('\n');
+}
+
+function renderReactions(reactions, slug) {
+    const token = localStorage.getItem('access_token');
+    return reactions.map(r => {
+        const cls = r.user_reacted ? 'reaction-btn active' : 'reaction-btn';
+        return `<button class="${cls}" onclick="toggleReaction('${slug}','${r.type}')" data-type="${r.type}">
+            <span>${r.emoji}</span><span>${r.label}</span><span id="rc-${r.type}">${r.count}</span>
+        </button>`;
+    }).join('');
+}
+
+async function toggleReaction(slug, type) {
+    const token = localStorage.getItem('access_token');
+    if (!token) { alert('リアクションするにはログインが必要です。'); return; }
+
+    const btn = document.querySelector(`[data-type="${type}"]`);
+    const isActive = btn && btn.classList.contains('active');
+    const method = isActive ? 'DELETE' : 'POST';
+
+    const res = await fetch(`${API_BASE}/${slug}/react/${type}/`, {
+        method,
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.ok) {
+        const data = await res.json();
+        const updatedReactions = data.article.all_reactions || [];
+        document.getElementById('reaction-buttons').innerHTML = renderReactions(updatedReactions, slug);
+    }
+}
+
+async function loadArticle() {
+    const token = localStorage.getItem('access_token');
+    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+    try {
+        const res = await fetch(`${API_BASE}/${SLUG}/`, { headers });
+        if (res.status === 404) {
+            document.getElementById('article-loading').style.display = 'none';
+            document.getElementById('article-not-found').style.display = 'block';
+            return;
+        }
+        if (!res.ok) throw new Error();
+        articleData = await res.json();
+        renderArticle(articleData);
+    } catch (e) {
+        document.getElementById('article-loading').innerHTML = '<span style="color:var(--steam-iron-400);">読み込みに失敗しました</span>';
+    }
+}
+
+function renderArticle(a) {
+    document.getElementById('article-loading').style.display = 'none';
+    document.getElementById('article-body-wrapper').style.display = 'block';
+
+    // サムネ
+    if (a.thumbnail_url_resolved) {
+        document.getElementById('article-thumb-wrap').innerHTML =
+            `<img class="article-hero-thumb" src="${escHtml(a.thumbnail_url_resolved)}" alt="">`;
+    }
+
+    // タイトル
+    document.getElementById('article-title').textContent = a.title;
+    document.title = a.title + ' - TOYBOX！';
+
+    // 著者
+    document.getElementById('author-name').textContent = a.author_display_id;
+    if (a.author_avatar_url) {
+        const img = document.getElementById('author-avatar');
+        img.src = a.author_avatar_url;
+        img.style.display = 'block';
+    }
+
+    // 日付
+    const dateStr = a.published_at
+        ? new Date(a.published_at).toLocaleDateString('ja-JP')
+        : new Date(a.created_at).toLocaleDateString('ja-JP');
+    document.getElementById('article-date').textContent = dateStr;
+
+    // ドラフト
+    if (a.status === 'draft') {
+        document.getElementById('draft-badge').style.display = 'inline';
+    }
+
+    // 編集ボタン（ログインユーザーが自分の記事の場合）
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        // JWT からユーザー情報を取得（base64 decode）
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.display_id === a.author_display_id || payload.user_id) {
+                // API で自分の記事かどうか判断（mine リストに含まれるか）
+                fetch('/api/articles/mine/', { headers: { 'Authorization': 'Bearer ' + token } })
+                    .then(r => r.json())
+                    .then(list => {
+                        const arr = Array.isArray(list) ? list : (list.results || []);
+                        if (arr.some(x => x.slug === a.slug)) {
+                            document.getElementById('article-edit-link').style.display = 'block';
+                            document.getElementById('article-edit-anchor').href = `/articles/${a.slug}/edit/`;
+                        }
+                    }).catch(() => {});
+            }
+        } catch (_) {}
+    }
+
+    // カスタムCSS（スコープ付き）
+    if (a.custom_css) {
+        document.getElementById('article-custom-styles').textContent = scopeCustomCss(a.custom_css);
+    }
+
+    // 本文ブロック描画
+    document.getElementById('article-content').innerHTML = renderBlocks(a.body);
+
+    // リアクション
+    document.getElementById('reaction-buttons').innerHTML = renderReactions(a.all_reactions || [], a.slug);
+}
+
+loadArticle();
+</script>
+{% endblock %}

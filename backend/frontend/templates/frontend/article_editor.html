@@ -233,6 +233,8 @@ let isSaving = false;
 let currentSlug = EDIT_SLUG || null;
 
 // ===== 未保存変更ガード =====
+
+// ① タブを閉じる・URLバー入力・外部リンクナビ
 window.addEventListener('beforeunload', (e) => {
     if (isDirty) {
         e.preventDefault();
@@ -241,12 +243,28 @@ window.addEventListener('beforeunload', (e) => {
     }
 });
 
-// ナビリンク（ヘッダーのリンク等）をクリックしたとき
+// ② ブラウザの「戻る」ボタン専用 — sentinel state を使ってインターセプト
+function _pushEditorSentinel() {
+    history.pushState({ _editorGuard: true }, '', location.href);
+}
+window.addEventListener('popstate', function(e) {
+    if (isDirty) {
+        _pushEditorSentinel(); // 戻るをキャンセル（状態を再プッシュ）
+        if (confirm('記事の内容が保存されていません。このページを離れますか？')) {
+            isDirty = false;
+            history.go(-2); // sentinel + エディタ を飛び越えて前のページへ
+        }
+    } else {
+        // 未編集なら素直に戻す（sentinel の分だけもう1回back）
+        history.back();
+    }
+});
+
+// ③ ヘッダーリンク等の内部リンクをクリック
 document.addEventListener('click', (e) => {
     const a = e.target.closest('a[href]');
     if (!a) return;
     const href = a.getAttribute('href');
-    // 同一ページ・外部・ハッシュは除外
     if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('javascript')) return;
     if (isDirty) {
         e.preventDefault();
@@ -683,6 +701,7 @@ function escHtmlDisplay(s) {
         addBlock('paragraph');
     }
     markClean(); // 読み込み直後はクリーン状態
+    _pushEditorSentinel(); // ブラウザバック検知用センチネルを設置
     showOnboardingIfNeeded();
 })();
 </script>

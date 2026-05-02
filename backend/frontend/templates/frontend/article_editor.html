@@ -5,110 +5,128 @@
 
 {% block extra_css %}
 <style>
-.editor-page { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
-.editor-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; gap: 1rem; }
+/* ===== レイアウト ===== */
+.editor-page { max-width: 860px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+.editor-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
 .editor-topbar h1 { font-size: 1.2rem; font-weight: 700; color: var(--steam-gold-300); margin: 0; }
-.editor-actions { display: flex; gap: 0.5rem; }
+.editor-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 .btn { border: none; border-radius: 6px; padding: 0.45rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-.btn-draft { background: var(--steam-iron-700); color: var(--steam-iron-100); }
-.btn-draft:hover { background: var(--steam-iron-600); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-draft   { background: var(--steam-iron-700); color: var(--steam-iron-100); }
+.btn-draft:hover:not(:disabled)   { background: var(--steam-iron-600); }
+.btn-preview { background: var(--steam-iron-800); color: var(--steam-gold-300); border: 1px solid var(--steam-iron-600); }
+.btn-preview:hover { border-color: var(--steam-gold-500); }
 .btn-publish { background: var(--steam-gold-500); color: #000; }
-.btn-publish:hover { background: var(--steam-gold-400); }
-.btn-delete { background: #dc2626; color: #fff; }
+.btn-publish:hover:not(:disabled) { background: var(--steam-gold-400); }
+.btn-delete  { background: #dc2626; color: #fff; }
 .btn-delete:hover { background: #b91c1c; }
 
-/* タイトル */
+/* ===== タイトル ===== */
 #editor-title {
     width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700);
     border-radius: 8px; padding: 0.75rem 1rem; font-size: 1.2rem; font-weight: 600;
-    color: var(--steam-iron-100); margin-bottom: 1rem;
+    color: var(--steam-iron-100); margin-bottom: 1rem; box-sizing: border-box;
 }
 #editor-title:focus { outline: none; border-color: var(--steam-gold-500); }
 #editor-title::placeholder { color: var(--steam-iron-500); }
 
-/* サムネ */
+/* ===== サムネ ===== */
 .thumb-section { margin-bottom: 1rem; }
 .thumb-label { font-size: 0.8rem; color: var(--steam-iron-400); margin-bottom: 0.35rem; }
-.thumb-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 0.35rem; display: none; }
+#thumb-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 0.35rem; display: none; }
 .thumb-upload-area {
     border: 2px dashed var(--steam-iron-600); border-radius: 8px; padding: 1rem;
     text-align: center; color: var(--steam-iron-400); font-size: 0.8rem; cursor: pointer;
     transition: border-color 0.2s;
 }
 .thumb-upload-area:hover, .thumb-upload-area.dragover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
+.thumb-upload-area.uploading { opacity: 0.6; cursor: wait; }
 
-/* ブロックエディタ */
-.block-editor { min-height: 300px; }
-.block-list { list-style: none; padding: 0; margin: 0; }
+/* ===== ブロックエディタ ===== */
+.block-list { list-style: none; padding: 0; margin: 0 0 0.5rem 0; }
 .block-item {
-    display: flex; align-items: flex-start; gap: 0.5rem;
-    margin-bottom: 0.5rem; position: relative;
+    display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;
+    padding: 0.25rem 0; transition: background 0.1s; border-radius: 6px;
 }
 .block-item.drag-over { border-top: 2px solid var(--steam-gold-500); }
-.block-handle {
-    color: var(--steam-iron-600); cursor: grab; padding: 0.4rem 0.1rem; flex-shrink: 0;
-    font-size: 1rem; user-select: none;
-}
+.block-handle { color: var(--steam-iron-600); cursor: grab; padding: 0.5rem 0.1rem; flex-shrink: 0; font-size: 1.1rem; user-select: none; line-height: 1; }
 .block-handle:active { cursor: grabbing; }
 .block-content { flex: 1; min-width: 0; }
 .block-input {
     width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700);
     border-radius: 6px; padding: 0.6rem 0.75rem; color: var(--steam-iron-100); font-size: 0.9rem;
-    resize: vertical; line-height: 1.6;
+    resize: vertical; line-height: 1.6; box-sizing: border-box;
+    font-family: inherit;
 }
 .block-input:focus { outline: none; border-color: var(--steam-gold-500); }
 .block-type-select {
     background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300);
     border-radius: 4px; padding: 0.2rem 0.4rem; font-size: 0.75rem; cursor: pointer;
-    margin-bottom: 0.3rem; display: block;
+    margin-bottom: 0.3rem;
 }
-.block-remove { background: transparent; border: none; color: var(--steam-iron-500); cursor: pointer; padding: 0.3rem; flex-shrink: 0; font-size: 1rem; }
+.block-remove { background: transparent; border: none; color: var(--steam-iron-500); cursor: pointer; padding: 0.3rem; flex-shrink: 0; font-size: 1.1rem; line-height: 1; }
 .block-remove:hover { color: #ef4444; }
 .block-image-preview { max-width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; margin-top: 0.4rem; display: block; }
 .block-video-preview { max-width: 100%; border-radius: 6px; margin-top: 0.4rem; display: block; }
+.block-upload-btn { background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300); border-radius: 6px; padding: 0.3rem 0.65rem; font-size: 0.8rem; cursor: pointer; margin-top: 0.3rem; transition: all 0.2s; }
+.block-upload-btn:hover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
+.block-upload-btn:disabled { opacity: 0.5; cursor: wait; }
+.block-upload-progress { font-size: 0.75rem; color: var(--steam-gold-400); margin-top: 0.3rem; display: none; }
 
-/* ブロック追加ボタン */
-.add-block-bar {
-    display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 1rem 0;
-}
-.add-block-btn {
-    background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300);
-    border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
-}
+/* ===== ブロック追加バー ===== */
+.add-block-bar { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 1rem 0; }
+.add-block-btn { background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300); border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
 .add-block-btn:hover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
 
-/* DnD ドロップゾーン */
+/* ===== DnD ドロップゾーン ===== */
 .dnd-drop-zone {
     border: 2px dashed var(--steam-iron-600); border-radius: 8px;
     padding: 1.5rem; text-align: center; color: var(--steam-iron-500);
-    font-size: 0.8rem; margin: 1rem 0; transition: all 0.2s;
+    font-size: 0.8rem; margin: 0.5rem 0 1.5rem; transition: all 0.2s;
 }
 .dnd-drop-zone.dragover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); background: rgba(212,160,23,0.05); }
 
-/* CSS エディタ */
-.css-section { margin-top: 1.5rem; }
+/* ===== CSS エディタ ===== */
+.css-section { margin-top: 1.5rem; border-top: 1px solid var(--steam-iron-700); padding-top: 1rem; }
 .css-toggle { background: none; border: 1px solid var(--steam-iron-600); color: var(--steam-iron-300); border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; }
-#css-editor-wrap { display: none; margin-top: 0.5rem; }
-#custom-css-input {
-    width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700);
-    border-radius: 6px; padding: 0.75rem; color: var(--steam-iron-200); font-family: monospace;
-    font-size: 0.8rem; resize: vertical; min-height: 120px; line-height: 1.5;
-}
+.css-toggle:hover { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
+#css-editor-wrap { display: none; margin-top: 0.75rem; }
+#custom-css-input { width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-700); border-radius: 6px; padding: 0.75rem; color: var(--steam-iron-200); font-family: monospace; font-size: 0.8rem; resize: vertical; min-height: 120px; line-height: 1.5; box-sizing: border-box; }
 #custom-css-input:focus { outline: none; border-color: var(--steam-gold-500); }
 
-/* ステータスメッセージ */
-#save-status { font-size: 0.8rem; color: var(--steam-gold-400); min-width: 80px; text-align: right; }
+/* ===== ステータスバー ===== */
+#save-status { font-size: 0.8rem; color: var(--steam-gold-400); }
 
-/* オンボーディング */
-#onboarding-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9998;
-    align-items: center; justify-content: center; padding: 1rem;
+/* ===== プレビューモーダル ===== */
+#preview-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    z-index: 9000; align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 2rem 1rem;
 }
-.onboarding-box {
-    max-width: 460px; width: 100%; background: var(--steam-iron-900);
-    border: 1px solid var(--steam-iron-600); border-radius: 12px; padding: 1.5rem; color: var(--steam-iron-100);
+.preview-box {
+    max-width: 760px; width: 100%; background: var(--steam-iron-950, #0d0f13);
+    border: 1px solid var(--steam-iron-700); border-radius: 10px; overflow: hidden;
 }
-.onboarding-steps { margin: 1rem 0; }
+.preview-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem 1rem; border-bottom: 1px solid var(--steam-iron-700);
+    background: var(--steam-iron-900);
+}
+.preview-content { padding: 2rem; }
+.preview-title { font-size: 1.5rem; font-weight: 700; color: var(--steam-iron-100); margin: 0 0 0.5rem; line-height: 1.3; }
+.preview-body-area { font-size: 0.9rem; color: var(--steam-iron-200); line-height: 1.8; }
+.preview-body-area h2 { font-size: 1.2rem; font-weight: 700; color: var(--steam-iron-100); margin: 1.75rem 0 0.6rem; border-bottom: 1px solid var(--steam-iron-700); padding-bottom: 0.35rem; }
+.preview-body-area h3 { font-size: 1rem; font-weight: 600; color: var(--steam-iron-100); margin: 1.25rem 0 0.4rem; }
+.preview-body-area h4 { font-size: 0.95rem; font-weight: 600; color: var(--steam-iron-100); margin: 1rem 0 0.35rem; }
+.preview-body-area p  { margin: 0 0 0.9rem; }
+.preview-body-area img { max-width: 100%; border-radius: 8px; margin: 1rem 0; display: block; }
+.preview-body-area video { max-width: 100%; border-radius: 8px; margin: 1rem 0; display: block; }
+.preview-body-area blockquote { border-left: 3px solid var(--steam-gold-500); padding: 0.4rem 1rem; color: var(--steam-iron-300); font-style: italic; margin: 1rem 0; }
+.preview-body-area hr { border: none; border-top: 1px solid var(--steam-iron-700); margin: 1.75rem 0; }
+
+/* ===== オンボーディング ===== */
+#onboarding-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9998; align-items: center; justify-content: center; padding: 1rem; }
+.onboarding-box { max-width: 460px; width: 100%; background: var(--steam-iron-900); border: 1px solid var(--steam-iron-600); border-radius: 12px; padding: 1.5rem; color: var(--steam-iron-100); }
 .onboarding-step { display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 0.75rem; font-size: 0.875rem; }
 .step-num { background: var(--steam-gold-500); color: #000; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
 </style>
@@ -120,67 +138,80 @@
         <h1>✏️ <span id="editor-headline">記事を書く</span></h1>
         <div class="editor-actions">
             <span id="save-status"></span>
-            <button class="btn btn-draft" onclick="saveArticle('draft')">下書き保存</button>
-            <button class="btn btn-publish" onclick="saveArticle('published')">公開する</button>
+            <button class="btn btn-preview" onclick="openPreview()">👁 プレビュー</button>
+            <button class="btn btn-draft" id="btn-draft" onclick="saveArticle('draft')">下書き保存</button>
+            <button class="btn btn-publish" id="btn-publish" onclick="saveArticle('published')">公開する</button>
             <button class="btn btn-delete" id="btn-delete" style="display:none;" onclick="deleteArticle()">削除</button>
         </div>
     </div>
 
-    <!-- タイトル -->
     <input type="text" id="editor-title" placeholder="タイトルを入力..." maxlength="200">
 
-    <!-- サムネ -->
     <div class="thumb-section">
         <div class="thumb-label">サムネイル（任意）</div>
-        <img id="thumb-preview" class="thumb-preview" alt="サムネイルプレビュー">
+        <img id="thumb-preview" alt="サムネイルプレビュー">
         <div class="thumb-upload-area" id="thumb-drop"
              ondragover="thumbDragOver(event)" ondragleave="thumbDragLeave(event)" ondrop="thumbDrop(event)"
              onclick="document.getElementById('thumb-file-input').click()">
-            クリックまたはドラッグ＆ドロップで画像をアップロード
+            📷 クリックまたはドラッグ＆ドロップでサムネイルをアップロード
         </div>
         <input type="file" id="thumb-file-input" accept="image/*" style="display:none;" onchange="uploadThumb(this.files[0])">
     </div>
 
-    <!-- ブロックエディタ -->
     <div class="block-editor">
         <ul class="block-list" id="block-list"></ul>
 
         <div class="add-block-bar">
             <button class="add-block-btn" onclick="addBlock('paragraph')">＋ 段落</button>
-            <button class="add-block-btn" onclick="addBlock('heading')">＋ 見出し</button>
+            <button class="add-block-btn" onclick="addBlock('heading', {level:2})">＋ 見出し</button>
             <button class="add-block-btn" onclick="addBlock('blockquote')">＋ 引用</button>
-            <button class="add-block-btn" onclick="addBlock('divider')">＋ 区切り</button>
+            <button class="add-block-btn" onclick="addBlock('divider')">＋ 区切り線</button>
             <button class="add-block-btn" onclick="addBlock('image')">＋ 画像</button>
             <button class="add-block-btn" onclick="addBlock('video')">＋ 動画</button>
         </div>
 
-        <!-- DnD ドロップゾーン -->
         <div class="dnd-drop-zone" id="dnd-zone"
              ondragover="dndDragOver(event)" ondragleave="dndDragLeave(event)" ondrop="dndDrop(event)">
-            📎 画像・動画をここにドラッグ＆ドロップ
+            📎 画像・動画をここにドラッグ＆ドロップで追加
         </div>
     </div>
 
-    <!-- カスタム CSS -->
     <div class="css-section">
-        <button class="css-toggle" onclick="toggleCssEditor()">🎨 カスタム CSS</button>
+        <button class="css-toggle" onclick="toggleCssEditor()">🎨 カスタム CSS を編集</button>
         <div id="css-editor-wrap">
-            <textarea id="custom-css-input" placeholder="/* 例: .article-content-scoped h2 { color: gold; } */"></textarea>
-            <div style="font-size:0.7rem; color:var(--steam-iron-500); margin-top:0.3rem;">※ セキュリティのため、危険な記述は自動で除去されます。スタイルは記事本文にのみ適用されます。</div>
+            <textarea id="custom-css-input" placeholder="/* 例: .preview-body-area h2 { color: gold; } */
+/* スタイルは記事本文にのみ適用されます */"></textarea>
+            <div style="font-size:0.7rem; color:var(--steam-iron-500); margin-top:0.3rem;">※ 危険なCSSは自動除去されます。クラス名は <code>.preview-body-area</code> 配下に適用されます。</div>
         </div>
     </div>
 </div>
 
-<!-- オンボーディング（初回のみ） -->
+<!-- プレビューモーダル -->
+<div id="preview-modal" onclick="closePreviewIfOutside(event)">
+    <div class="preview-box" id="preview-box">
+        <div class="preview-toolbar">
+            <span style="font-size:0.875rem; font-weight:600; color:var(--steam-gold-300);">👁 プレビュー</span>
+            <button onclick="closePreview()" style="background:transparent; border:none; color:var(--steam-iron-400); cursor:pointer; font-size:1.25rem; line-height:1;">×</button>
+        </div>
+        <div class="preview-content">
+            <img id="preview-thumb" style="width:100%; max-height:300px; object-fit:cover; border-radius:8px; margin-bottom:1.25rem; display:none;" alt="">
+            <h1 class="preview-title" id="preview-title"></h1>
+            <style id="preview-custom-style"></style>
+            <div class="preview-body-area" id="preview-body"></div>
+        </div>
+    </div>
+</div>
+
+<!-- オンボーディング -->
 <div id="onboarding-overlay">
     <div class="onboarding-box">
         <h2 style="font-size:1.1rem; font-weight:700; color:var(--steam-gold-300); margin:0 0 0.5rem 0;">📝 記事エディタの使い方</h2>
         <p style="font-size:0.8rem; color:var(--steam-iron-400); margin:0 0 0.75rem 0;">ゲームや画像を作るまでのプロセスを記事にしよう！</p>
-        <div class="onboarding-steps">
+        <div style="margin:0 0 1rem;">
             <div class="onboarding-step"><span class="step-num">1</span><span>タイトルを入力して、サムネイル画像をアップロード</span></div>
-            <div class="onboarding-step"><span class="step-num">2</span><span>「＋ 段落」「＋ 見出し」などのボタンでブロックを追加して本文を書く</span></div>
-            <div class="onboarding-step"><span class="step-num">3</span><span>画像や動画はドラッグ＆ドロップで追加可能！</span></div>
-            <div class="onboarding-step"><span class="step-num">4</span><span>「下書き保存」→「公開する」で投稿完了。初回公開で <strong style="color:var(--steam-gold-400);">3.0 TP</strong> もらえます 🎉</span></div>
+            <div class="onboarding-step"><span class="step-num">2</span><span>「＋ 段落」「＋ 見出し」でブロックを追加して本文を書く</span></div>
+            <div class="onboarding-step"><span class="step-num">3</span><span>画像・動画はドラッグ＆ドロップで挿入できます</span></div>
+            <div class="onboarding-step"><span class="step-num">4</span><span>「👁 プレビュー」で見た目を確認してから公開しよう。初回公開で <strong style="color:var(--steam-gold-400);">3.0 TP</strong> 獲得！</span></div>
         </div>
         <div style="text-align:right;">
             <button onclick="closeOnboarding()" style="background:var(--steam-gold-500); color:#000; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-weight:700; cursor:pointer;">わかった！</button>
@@ -189,28 +220,72 @@
 </div>
 
 <script>
+// ===== 設定 =====
 const EDIT_SLUG = '{{ slug }}';
 const API_BASE = '/api/articles';
-let thumbUrl = null;
-let blocks = [];
-let dragSrcIndex = null;
 
-// ---- ブロック管理 ----
-function addBlock(type, data = {}) {
-    const id = Date.now() + Math.random();
-    blocks.push({ id, type, ...data });
+// ===== 状態 =====
+let blocks = [];          // [{ id, type, content?, url?, level?, alt? }]
+let thumbUrl = null;
+let dragSrcIndex = null;
+let isDirty = false;      // 未保存変更フラグ
+let isSaving = false;
+let currentSlug = EDIT_SLUG || null;
+
+// ===== 未保存変更ガード =====
+window.addEventListener('beforeunload', (e) => {
+    if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '記事の内容が保存されていません。ページを離れますか？';
+        return e.returnValue;
+    }
+});
+
+// ナビリンク（ヘッダーのリンク等）をクリックしたとき
+document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href]');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    // 同一ページ・外部・ハッシュは除外
+    if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('javascript')) return;
+    if (isDirty) {
+        e.preventDefault();
+        if (confirm('記事の内容が保存されていません。このページを離れますか？')) {
+            isDirty = false;
+            window.location.href = href;
+        }
+    }
+}, true);
+
+function markDirty() { isDirty = true; }
+function markClean() { isDirty = false; }
+
+// ===== ブロック管理 =====
+let _blockIdCounter = 1;
+function newBlockId() { return ++_blockIdCounter; }
+
+function addBlock(type, extra = {}) {
+    blocks.push({ id: newBlockId(), type, content: '', url: '', level: 2, alt: '', ...extra });
     renderBlocks();
+    markDirty();
+    // 最後のブロックの入力欄にフォーカス
+    setTimeout(() => {
+        const items = document.querySelectorAll('.block-item');
+        const last = items[items.length - 1];
+        if (last) {
+            const inp = last.querySelector('textarea, input[type="text"]');
+            if (inp) inp.focus();
+        }
+    }, 50);
 }
 
 function removeBlock(id) {
     blocks = blocks.filter(b => b.id !== id);
     renderBlocks();
+    markDirty();
 }
 
-function updateBlock(id, key, value) {
-    const b = blocks.find(x => x.id === id);
-    if (b) b[key] = value;
-}
+function getBlock(id) { return blocks.find(b => b.id === id); }
 
 function renderBlocks() {
     const list = document.getElementById('block-list');
@@ -218,60 +293,82 @@ function renderBlocks() {
 }
 
 function renderBlockItem(b, i) {
-    const handle = `<div class="block-handle" draggable="true"
+    const handle = `<div class="block-handle"
+        draggable="true"
         ondragstart="blockDragStart(event,${i})"
         ondragover="blockDragOver(event,${i})"
         ondrop="blockDropOnBlock(event,${i})"
-        ondragend="blockDragEnd(event)">⠿</div>`;
+        ondragend="blockDragEnd()">⠿</div>`;
     const removeBtn = `<button class="block-remove" onclick="removeBlock(${b.id})" title="削除">×</button>`;
 
     let inner = '';
+
     if (b.type === 'paragraph') {
-        inner = `<textarea class="block-input" rows="3" placeholder="段落テキストを入力..."
-            onchange="updateBlock(${b.id},'content',this.value)">${escHtml(b.content || '')}</textarea>`;
+        inner = `<textarea class="block-input" rows="3"
+            placeholder="段落テキストを入力..."
+            oninput="getBlock(${b.id}).content=this.value; markDirty();"
+            >${escHtml(b.content)}</textarea>`;
+
     } else if (b.type === 'heading') {
-        inner = `<select class="block-type-select" onchange="updateBlock(${b.id},'level',this.value)">
+        inner = `<select class="block-type-select"
+            onchange="getBlock(${b.id}).level=parseInt(this.value); markDirty();">
             <option value="2" ${b.level==2?'selected':''}>H2 大見出し</option>
             <option value="3" ${b.level==3?'selected':''}>H3 中見出し</option>
             <option value="4" ${b.level==4?'selected':''}>H4 小見出し</option>
         </select>
-        <input class="block-input" placeholder="見出しテキスト..." value="${escHtml(b.content || '')}"
-            oninput="updateBlock(${b.id},'content',this.value)">`;
+        <input type="text" class="block-input"
+            placeholder="見出しテキストを入力..."
+            value="${escHtml(b.content)}"
+            oninput="getBlock(${b.id}).content=this.value; markDirty();">`;
+
     } else if (b.type === 'blockquote') {
-        inner = `<textarea class="block-input" rows="2" placeholder="引用テキスト..."
-            onchange="updateBlock(${b.id},'content',this.value)">${escHtml(b.content || '')}</textarea>`;
+        inner = `<textarea class="block-input" rows="2"
+            placeholder="引用テキストを入力..."
+            oninput="getBlock(${b.id}).content=this.value; markDirty();"
+            >${escHtml(b.content)}</textarea>`;
+
     } else if (b.type === 'divider') {
-        inner = `<div style="width:100%; border-top:1px solid var(--steam-iron-600); margin:0.5rem 0; pointer-events:none;"></div>`;
+        inner = `<div style="width:100%; border-top:1px dashed var(--steam-iron-600); margin:0.75rem 0; pointer-events:none;"></div>`;
+
     } else if (b.type === 'image') {
-        const previewHtml = b.url
-            ? `<img class="block-image-preview" src="${escHtml(b.url)}" alt="">`
-            : '';
-        inner = `<input class="block-input" placeholder="画像URLまたはアップロード後に自動入力" value="${escHtml(b.url || '')}"
-            oninput="updateBlock(${b.id},'url',this.value)">
-            <input type="file" accept="image/*" style="display:none;" id="img-upload-${b.id}"
-                onchange="uploadMediaToBlock(${b.id},this.files[0],'image')">
-            <button class="add-block-btn" style="margin-top:0.3rem;" onclick="document.getElementById('img-upload-${b.id}').click()">📷 画像を選択</button>
-            ${previewHtml}`;
+        const preview = b.url ? `<img class="block-image-preview" src="${escHtml(b.url)}" alt="${escHtml(b.alt)}">` : '';
+        inner = `<input type="text" class="block-input"
+            placeholder="画像URLを入力、またはファイルを選択..."
+            value="${escHtml(b.url)}"
+            oninput="getBlock(${b.id}).url=this.value; markDirty();">
+        <input type="text" class="block-input" style="margin-top:0.3rem; font-size:0.8rem;"
+            placeholder="説明テキスト（alt）省略可"
+            value="${escHtml(b.alt)}"
+            oninput="getBlock(${b.id}).alt=this.value;">
+        <div style="margin-top:0.3rem; display:flex; align-items:center; gap:0.5rem;">
+            <button class="block-upload-btn" id="upload-btn-${b.id}"
+                onclick="document.getElementById('img-file-${b.id}').click()">📷 ファイルを選択</button>
+            <span class="block-upload-progress" id="upload-prog-${b.id}">アップロード中...</span>
+        </div>
+        <input type="file" id="img-file-${b.id}" accept="image/*" style="display:none;"
+            onchange="uploadMediaToBlock(${b.id},this.files[0],'image')">
+        ${preview}`;
+
     } else if (b.type === 'video') {
-        const previewHtml = b.url
-            ? `<video class="block-video-preview" controls src="${escHtml(b.url)}"></video>`
-            : '';
-        inner = `<input class="block-input" placeholder="動画URL" value="${escHtml(b.url || '')}"
-            oninput="updateBlock(${b.id},'url',this.value)">
-            <input type="file" accept="video/*" style="display:none;" id="vid-upload-${b.id}"
-                onchange="uploadMediaToBlock(${b.id},this.files[0],'video')">
-            <button class="add-block-btn" style="margin-top:0.3rem;" onclick="document.getElementById('vid-upload-${b.id}').click()">🎬 動画を選択</button>
-            ${previewHtml}`;
+        const preview = b.url ? `<video class="block-video-preview" controls src="${escHtml(b.url)}"></video>` : '';
+        inner = `<input type="text" class="block-input"
+            placeholder="動画URLを入力、またはファイルを選択..."
+            value="${escHtml(b.url)}"
+            oninput="getBlock(${b.id}).url=this.value; markDirty();">
+        <div style="margin-top:0.3rem; display:flex; align-items:center; gap:0.5rem;">
+            <button class="block-upload-btn" id="upload-btn-${b.id}"
+                onclick="document.getElementById('vid-file-${b.id}').click()">🎬 ファイルを選択</button>
+            <span class="block-upload-progress" id="upload-prog-${b.id}">アップロード中...</span>
+        </div>
+        <input type="file" id="vid-file-${b.id}" accept="video/*" style="display:none;"
+            onchange="uploadMediaToBlock(${b.id},this.files[0],'video')">
+        ${preview}`;
     }
 
-    return `<li class="block-item" data-index="${i}">
-        ${handle}
-        <div class="block-content">${inner}</div>
-        ${removeBtn}
-    </li>`;
+    return `<li class="block-item" data-block-id="${b.id}" data-index="${i}">${handle}<div class="block-content">${inner}</div>${removeBtn}</li>`;
 }
 
-// ---- ブロック D&D ----
+// ===== ブロック D&D =====
 function blockDragStart(e, i) { dragSrcIndex = i; e.dataTransfer.effectAllowed = 'move'; }
 function blockDragOver(e, i) {
     e.preventDefault();
@@ -280,58 +377,60 @@ function blockDragOver(e, i) {
 }
 function blockDropOnBlock(e, i) {
     e.preventDefault();
-    if (dragSrcIndex === null || dragSrcIndex === i) return;
+    if (dragSrcIndex === null || dragSrcIndex === i) { blockDragEnd(); return; }
     const moved = blocks.splice(dragSrcIndex, 1)[0];
     blocks.splice(i, 0, moved);
     dragSrcIndex = null;
     renderBlocks();
+    markDirty();
 }
 function blockDragEnd() {
     document.querySelectorAll('.block-item').forEach(el => el.classList.remove('drag-over'));
     dragSrcIndex = null;
 }
 
-// ---- メディア DnD ドロップゾーン ----
-function dndDragOver(e) { e.preventDefault(); document.getElementById('dnd-zone').classList.add('dragover'); }
-function dndDragLeave() { document.getElementById('dnd-zone').classList.remove('dragover'); }
+// ===== メディア DnD =====
+function dndDragOver(e)  { e.preventDefault(); document.getElementById('dnd-zone').classList.add('dragover'); }
+function dndDragLeave()  { document.getElementById('dnd-zone').classList.remove('dragover'); }
 function dndDrop(e) {
-    e.preventDefault();
-    dndDragLeave();
-    const files = Array.from(e.dataTransfer.files);
-    files.forEach(f => {
-        const isImage = f.type.startsWith('image/');
-        const isVideo = f.type.startsWith('video/');
-        if (!isImage && !isVideo) return;
-        const type = isVideo ? 'video' : 'image';
-        addBlock(type, {});
-        const lastBlock = blocks[blocks.length - 1];
-        uploadMediaToBlock(lastBlock.id, f, type);
+    e.preventDefault(); dndDragLeave();
+    Array.from(e.dataTransfer.files).forEach(f => {
+        const type = f.type.startsWith('video/') ? 'video' : f.type.startsWith('image/') ? 'image' : null;
+        if (!type) return;
+        addBlock(type);
+        const b = blocks[blocks.length - 1];
+        uploadMediaToBlock(b.id, f, type);
     });
 }
 
-// ---- サムネ ----
+// ===== サムネ D&D =====
 function thumbDragOver(e) { e.preventDefault(); document.getElementById('thumb-drop').classList.add('dragover'); }
 function thumbDragLeave() { document.getElementById('thumb-drop').classList.remove('dragover'); }
-function thumbDrop(e) { e.preventDefault(); thumbDragLeave(); uploadThumb(e.dataTransfer.files[0]); }
+function thumbDrop(e)     { e.preventDefault(); thumbDragLeave(); if (e.dataTransfer.files[0]) uploadThumb(e.dataTransfer.files[0]); }
 
 async function uploadThumb(file) {
     if (!file) return;
-    const url = await uploadMedia(file);
+    const area = document.getElementById('thumb-drop');
+    area.classList.add('uploading');
+    area.textContent = 'アップロード中...';
+    const url = await uploadMediaFile(file);
+    area.classList.remove('uploading');
+    area.textContent = '📷 クリックまたはドラッグ＆ドロップでサムネイルをアップロード';
     if (url) {
         thumbUrl = url;
         const prev = document.getElementById('thumb-preview');
         prev.src = url;
         prev.style.display = 'block';
+        markDirty();
     }
 }
 
-// ---- ファイルアップロード ----
-async function uploadMedia(file) {
+// ===== ファイルアップロード共通 =====
+async function uploadMediaFile(file) {
     const token = localStorage.getItem('access_token');
     if (!token) { alert('ログインが必要です。'); return null; }
     const fd = new FormData();
     fd.append('file', file);
-    setStatus('アップロード中...');
     try {
         const res = await fetch(`${API_BASE}/upload-media/`, {
             method: 'POST',
@@ -339,49 +438,58 @@ async function uploadMedia(file) {
             body: fd,
         });
         const data = await res.json();
-        setStatus('');
-        if (!res.ok) { alert(data.detail || 'アップロードに失敗しました。'); return null; }
-        return data.media.url;
-    } catch (e) {
-        setStatus('');
-        alert('アップロードに失敗しました。');
+        if (!res.ok) {
+            alert('アップロードエラー: ' + (data.detail || JSON.stringify(data)));
+            return null;
+        }
+        return data.media && data.media.url ? data.media.url : null;
+    } catch (err) {
+        alert('アップロードに失敗しました（ネットワークエラー）');
         return null;
     }
 }
 
-async function uploadMediaToBlock(blockId, file, type) {
-    const url = await uploadMedia(file);
+async function uploadMediaToBlock(blockId, file, mediaType) {
+    const btn = document.getElementById(`upload-btn-${blockId}`);
+    const prog = document.getElementById(`upload-prog-${blockId}`);
+    if (btn)  btn.disabled = true;
+    if (prog) prog.style.display = 'inline';
+    const url = await uploadMediaFile(file);
+    if (btn)  btn.disabled = false;
+    if (prog) prog.style.display = 'none';
     if (!url) return;
-    updateBlock(blockId, 'url', url);
-    renderBlocks();
+    const b = getBlock(blockId);
+    if (b) { b.url = url; markDirty(); }
+    renderBlocks(); // プレビューを更新するために再描画
 }
 
-// ---- 保存 ----
-async function saveArticle(status) {
+// ===== 保存 =====
+async function saveArticle(statusVal) {
+    if (isSaving) return;
     const token = localStorage.getItem('access_token');
     if (!token) { alert('ログインが必要です。'); window.location.href = '/login/'; return; }
 
     const title = document.getElementById('editor-title').value.trim();
-    if (!title) { alert('タイトルを入力してください。'); return; }
+    if (!title) { alert('タイトルを入力してください。'); document.getElementById('editor-title').focus(); return; }
 
-    const body = collectBlocks();
-    const customCss = document.getElementById('custom-css-input').value;
-    const payload = { title, body, custom_css: customCss, status };
+    isSaving = true;
+    setStatus('保存中...');
+    setSaveButtons(true);
+
+    const payload = {
+        title,
+        body: blocks.map(({ id, ...rest }) => rest),
+        custom_css: document.getElementById('custom-css-input').value,
+        status: statusVal,
+    };
     if (thumbUrl) payload.thumbnail_url = thumbUrl;
 
-    setStatus('保存中...');
-
     try {
-        let res, url, method;
-        if (EDIT_SLUG) {
-            url = `${API_BASE}/${EDIT_SLUG}/`;
-            method = 'PATCH';
-        } else {
-            url = `${API_BASE}/`;
-            method = 'POST';
-        }
+        const isNew = !currentSlug;
+        const url    = isNew ? `${API_BASE}/` : `${API_BASE}/${currentSlug}/`;
+        const method = isNew ? 'POST' : 'PATCH';
 
-        res = await fetch(url, {
+        const res = await fetch(url, {
             method,
             headers: {
                 'Content-Type': 'application/json',
@@ -393,97 +501,161 @@ async function saveArticle(status) {
         const data = await res.json();
         if (!res.ok) {
             setStatus('');
-            alert(JSON.stringify(data));
+            alert('保存エラー:\n' + formatError(data));
             return;
         }
 
-        setStatus(status === 'published' ? '✅ 公開しました！' : '✅ 下書き保存しました');
-        if (!EDIT_SLUG && data.slug) {
-            // 新規作成後はエディタURLを更新
-            history.replaceState(null, '', `/articles/${data.slug}/edit/`);
+        currentSlug = data.slug;
+        markClean();
+
+        if (isNew) {
             document.getElementById('btn-delete').style.display = 'inline-block';
+            // URLをエディタURLに置き換え（リロードしない）
+            history.replaceState(null, '', `/articles/${currentSlug}/edit/`);
+            document.getElementById('editor-headline').textContent = '記事を編集';
         }
-        if (status === 'published') {
-            setTimeout(() => { window.location.href = `/articles/${data.slug}/`; }, 1200);
+
+        if (statusVal === 'published') {
+            setStatus('✅ 公開しました！');
+            setTimeout(() => { window.location.href = `/articles/${currentSlug}/`; }, 1000);
+        } else {
+            setStatus('✅ 下書き保存しました');
+            setTimeout(() => setStatus(''), 3000);
         }
-    } catch (e) {
+    } catch (err) {
         setStatus('');
-        alert('保存に失敗しました。');
+        alert('保存に失敗しました（ネットワークエラー）');
+    } finally {
+        isSaving = false;
+        setSaveButtons(false);
     }
 }
 
 async function deleteArticle() {
-    if (!confirm('この記事を削除しますか？')) return;
+    if (!currentSlug) return;
+    if (!confirm('この記事を削除しますか？この操作は元に戻せません。')) return;
     const token = localStorage.getItem('access_token');
-    const res = await fetch(`${API_BASE}/${EDIT_SLUG}/`, {
+    const res = await fetch(`${API_BASE}/${currentSlug}/`, {
         method: 'DELETE',
         headers: { 'Authorization': 'Bearer ' + token },
     });
     if (res.status === 204) {
+        markClean();
         window.location.href = '/articles/';
     } else {
         alert('削除に失敗しました。');
     }
 }
 
-function collectBlocks() {
-    // DOMから最新のtextarea/input値を拾う
-    const items = document.querySelectorAll('.block-item');
-    items.forEach((item, i) => {
-        const b = blocks[i];
-        if (!b) return;
-        const ta = item.querySelector('textarea');
-        const inp = item.querySelector('input[type="text"], input:not([type])');
-        const sel = item.querySelector('select');
-        if (ta) b.content = ta.value;
-        if (inp && b.type !== 'image' && b.type !== 'video') b.content = inp.value;
-        if (inp && (b.type === 'image' || b.type === 'video')) b.url = inp.value;
-        if (sel) b.level = parseInt(sel.value);
+function formatError(data) {
+    if (typeof data === 'string') return data;
+    return Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('\n');
+}
+
+function setSaveButtons(disabled) {
+    document.getElementById('btn-draft').disabled = disabled;
+    document.getElementById('btn-publish').disabled = disabled;
+}
+
+function setStatus(msg) { document.getElementById('save-status').textContent = msg; }
+
+// ===== プレビュー =====
+function openPreview() {
+    // タイトル
+    document.getElementById('preview-title').textContent = document.getElementById('editor-title').value || '（タイトルなし）';
+    // サムネ
+    const prevThumb = document.getElementById('preview-thumb');
+    if (thumbUrl) { prevThumb.src = thumbUrl; prevThumb.style.display = 'block'; }
+    else { prevThumb.style.display = 'none'; }
+    // 本文
+    document.getElementById('preview-body').innerHTML = blocksToHtml(blocks);
+    // CSS
+    const rawCss = document.getElementById('custom-css-input').value;
+    document.getElementById('preview-custom-style').textContent = scopePreviewCss(rawCss);
+    // 表示
+    const modal = document.getElementById('preview-modal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+function closePreview() {
+    document.getElementById('preview-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+function closePreviewIfOutside(e) {
+    if (e.target === document.getElementById('preview-modal')) closePreview();
+}
+
+function blocksToHtml(blist) {
+    return blist.map(b => {
+        switch (b.type) {
+            case 'heading': {
+                const lv = Math.min(Math.max(parseInt(b.level || 2), 2), 4);
+                return `<h${lv}>${escHtmlDisplay(b.content)}</h${lv}>`;
+            }
+            case 'paragraph':
+                return `<p>${escHtmlDisplay(b.content).replace(/\n/g, '<br>')}</p>`;
+            case 'blockquote':
+                return `<blockquote>${escHtmlDisplay(b.content)}</blockquote>`;
+            case 'divider':
+                return '<hr>';
+            case 'image':
+                if (!b.url) return '';
+                return `<img src="${escHtml(b.url)}" alt="${escHtml(b.alt || '')}" style="max-width:100%;">`;
+            case 'video':
+                if (!b.url) return '';
+                return `<video controls src="${escHtml(b.url)}" style="max-width:100%;"></video>`;
+            default: return '';
+        }
+    }).join('\n');
+}
+
+function scopePreviewCss(css) {
+    if (!css) return '';
+    // 各ルールを .preview-body-area 配下にスコープ
+    return css.replace(/([^{}]+)\{/g, (m, sel) => {
+        const scoped = sel.trim().split(',')
+            .map(s => `.preview-body-area ${s.trim()}`)
+            .join(', ');
+        return scoped + ' {';
     });
-    return blocks.map(({ id, ...rest }) => rest);
 }
 
-function setStatus(msg) {
-    document.getElementById('save-status').textContent = msg;
-}
-
-function escHtml(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
+// ===== CSS エディタ =====
 function toggleCssEditor() {
     const w = document.getElementById('css-editor-wrap');
     w.style.display = w.style.display === 'none' ? 'block' : 'none';
 }
 
-// ---- 既存記事を読み込む ----
+// ===== 既存記事読み込み =====
 async function loadExistingArticle() {
-    if (!EDIT_SLUG) return;
+    if (!currentSlug) return;
     const token = localStorage.getItem('access_token');
-    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
-    const res = await fetch(`${API_BASE}/${EDIT_SLUG}/`, { headers });
-    if (!res.ok) return;
+    const res = await fetch(`${API_BASE}/${currentSlug}/`, {
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+    if (!res.ok) { alert('記事の読み込みに失敗しました。'); return; }
     const a = await res.json();
 
     document.getElementById('editor-title').value = a.title || '';
     document.getElementById('editor-headline').textContent = '記事を編集';
     document.getElementById('btn-delete').style.display = 'inline-block';
+
     if (a.thumbnail_url_resolved) {
         thumbUrl = a.thumbnail_url_resolved;
         const prev = document.getElementById('thumb-preview');
-        prev.src = thumbUrl;
-        prev.style.display = 'block';
+        prev.src = thumbUrl; prev.style.display = 'block';
     }
     if (a.custom_css) {
         document.getElementById('custom-css-input').value = a.custom_css;
     }
-    blocks = (a.body || []).map((b, i) => ({ id: Date.now() + i, ...b }));
+    blocks = (a.body || []).map((b, i) => ({ id: i + 10, ...b }));
+    _blockIdCounter = blocks.length + 10;
     renderBlocks();
 }
 
-// ---- オンボーディング（初回のみ） ----
+// ===== オンボーディング =====
 function showOnboardingIfNeeded() {
-    if (!EDIT_SLUG && !localStorage.getItem('article_editor_onboarding_v220')) {
+    if (!currentSlug && !localStorage.getItem('article_editor_onboarding_v220')) {
         document.getElementById('onboarding-overlay').style.display = 'flex';
     }
 }
@@ -492,12 +664,25 @@ function closeOnboarding() {
     document.getElementById('onboarding-overlay').style.display = 'none';
 }
 
-// ---- 初期化 ----
+// ===== ユーティリティ =====
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escHtmlDisplay(s) {
+    // プレビュー用: & < > のみエスケープ（タグは含まない前提）
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===== 初期化 =====
 (async function init() {
     const token = localStorage.getItem('access_token');
     if (!token) { window.location.href = '/login/'; return; }
-    await loadExistingArticle();
-    if (!blocks.length) addBlock('paragraph');
+    if (currentSlug) {
+        await loadExistingArticle();
+    } else {
+        addBlock('paragraph');
+    }
+    markClean(); // 読み込み直後はクリーン状態
     showOnboardingIfNeeded();
 })();
 </script>

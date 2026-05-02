@@ -91,7 +91,7 @@ urlpatterns += [
     path('api/contact/', frontend_views.ContactView.as_view(), name='contact'),
     path('api/inquiry/', frontend_views.InquiryView.as_view(), name='inquiry'),
     # Articles (Ver 2.20)
-    path('api/articles', include('articles.urls')),
+    path('api/articles/', include('articles.urls')),
     
     # Admin API endpoints
     path('api/', include('adminpanel.urls')),

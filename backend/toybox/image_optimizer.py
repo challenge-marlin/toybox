@@ -317,6 +317,10 @@ def get_thumbnail_url(
         if not file_path or not file_path.exists():
             logger.debug(f'Original file not found: {original_path}')
             return None
+
+        # GIF アニメは JPG サムネにすると1フレーム静止画になるため元URLのまま返す
+        if file_path.suffix.lower() == '.gif':
+            return original_url
         
         # サムネイルファイルのパスを生成
         thumbnail_filename = f"{file_path.stem}_thumb.jpg"

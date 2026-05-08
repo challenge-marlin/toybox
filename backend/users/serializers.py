@@ -63,8 +63,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'role': user.role,  # ロール情報を追加
         }
         
-        # ペナルティメッセージがある場合は含める
-        if user.penalty_message and user.penalty_type:
+        # ログイン時に強制表示するのは重大措置のみ（WARNINGは自動表示しない）
+        if user.penalty_message and user.penalty_type in ('SUSPEND', 'BAN'):
             response_data['penalty'] = {
                 'type': user.penalty_type,
                 'message': user.penalty_message,

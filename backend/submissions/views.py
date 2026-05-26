@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Q, Count, F, IntegerField, Sum, Case, When, Value
+from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Submission, Reaction, SubmissionRepost
 from .serializers import SubmissionSerializer, SubmissionCreateSerializer, ReactionSerializer
@@ -1033,7 +1034,7 @@ class PopularFeedView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        """Get popular feed items ordered by likes count."""
+        """Get popular feed items ordered by total acquired TP (weighted reactions + legacy likes×2)."""
         queryset = Submission.objects.filter(deleted_at__isnull=True)
         
         # Get limit param
@@ -1043,13 +1044,23 @@ class PopularFeedView(APIView):
         except (ValueError, TypeError):
             limit = 12
         
-        # Annotate with reactions count
+        # 旧いいね（likes_count）は 2TP として加算
+        # モダンリアクションは REACTION_POINTS に従って重み付け合算
+        from gamification.services import REACTION_POINTS
+        reaction_score_expr = Case(
+            *[When(reactions__type=k, then=Value(v)) for k, v in REACTION_POINTS.items()],
+            default=Value(0),
+            output_field=IntegerField(),
+        )
         queryset = queryset.annotate(
-            reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL))
+            reactions_count=Count('reactions', filter=Q(reactions__type=Reaction.Type.SUBMIT_MEDAL)),
+            reaction_tp=Coalesce(Sum(reaction_score_expr), Value(0)),
+        ).annotate(
+            tp_score=F('reaction_tp') + (F('likes_count') * Value(2)),
         )
         
-        # Order by reactions count descending, then by created_at descending
-        queryset = queryset.order_by('-reactions_count', '-created_at')
+        # Order by TP score descending, then by created_at descending
+        queryset = queryset.order_by('-tp_score', '-created_at')
         
         # Get items
         items = list(queryset[:limit])
@@ -1087,6 +1098,12 @@ class PopularFeedView(APIView):
             if not title:
                 title = item_data.get('caption') or None
             
+            tp_score = 0
+            try:
+                if idx < len(items):
+                    tp_score = int(getattr(items[idx], 'tp_score', 0) or 0)
+            except (AttributeError, ValueError, TypeError):
+                tp_score = 0
             feed_items.append({
                 'id': str(item_data['id']),
                 'anonId': item_data.get('author_display_id') or 'unknown',
@@ -1101,6 +1118,7 @@ class PopularFeedView(APIView):
                 'hashtags': item_data.get('hashtags', []),
                 'gameUrl': item_data.get('game_url'),
                 'likesCount': item_data.get('reactions_count', 0),
+                'tpScore': tp_score,
                 'liked': item_data.get('user_reacted', False),
                 'allReactions': item_data.get('all_reactions', []),
             })

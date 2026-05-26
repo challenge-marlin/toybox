@@ -1,5 +1,5 @@
 """
-Articles app views - Ver 2.20
+Articles app views - Ver 2.22
 """
 import logging
 from django.utils import timezone
@@ -31,6 +31,18 @@ class ArticleListCreateView(generics.ListCreateAPIView):
         if author_id:
             qs = qs.filter(author__display_id=author_id, status=Article.Status.PUBLISHED)
             return qs
+        # フォロー中のユーザー＋自分の記事のみ
+        followed = self.request.query_params.get('followed')
+        if followed and user.is_authenticated:
+            from submissions.models import UserFollow
+            following_ids = list(
+                UserFollow.objects.filter(follower=user).values_list('following_id', flat=True)
+            )
+            following_ids.append(user.pk)
+            return qs.filter(
+                author_id__in=following_ids,
+                status=Article.Status.PUBLISHED,
+            )
         if user.is_authenticated:
             from django.db.models import Q
             return qs.filter(

@@ -266,17 +266,17 @@ def privacy(request):
 
 
 def articles(request):
-    """記事一覧ページ - Ver 2.21"""
+    """記事一覧ページ - Ver 2.22"""
     return render(request, 'frontend/articles.html')
 
 
 def article_detail(request, slug):
-    """記事詳細ページ - Ver 2.21"""
+    """記事詳細ページ - Ver 2.22"""
     return render(request, 'frontend/article_detail.html', {'slug': slug})
 
 
 def article_editor(request, slug=None):
-    """記事エディタページ - Ver 2.21"""
+    """記事エディタページ - Ver 2.22"""
     return render(request, 'frontend/article_editor.html', {'slug': slug or ''})
 
 

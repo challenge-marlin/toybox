@@ -1,5 +1,5 @@
 """
-Articles app models - Ver 2.20
+Articles app models - Ver 2.22
 """
 import uuid
 from django.db import models

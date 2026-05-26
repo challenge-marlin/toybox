@@ -1683,6 +1683,7 @@
         Promise.all([fetchMoreSubmissionsBatch(), fetchMoreArticlesBatch()])
         .then(function(results) {
             var incoming = results[0].concat(results[1]);
+            // 既存＋新規をまとめて新着順（createdAt 降順）にソート
             followFeedAllItems = followFeedAllItems.concat(incoming).sort(function(a, b) {
                 return new Date(b.createdAt) - new Date(a.createdAt);
             });
@@ -1847,11 +1848,21 @@
     function _renderRankingList(el, ranking) {
         if (!el) return;
         if (ranking && ranking.length > 0) {
-            el.innerHTML = ranking.map((r) => {
+            // li の自動連番を使うのでulへ切り替え（rank表示を独自描画）
+            el.style.listStyle = 'none';
+            el.style.paddingLeft = '0';
+            el.innerHTML = ranking.map((r, idx) => {
+                const rank = idx + 1;
                 const displayName = r.displayName || r.anonId;
                 const urlId = r.anonUrlId || r.anonId;
                 const score = r.score != null ? r.score : (r.count != null ? r.count : 0);
-                return `<li style="display: flex; align-items: center; gap: 0.5rem;">
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+                const rankColor = rank <= 3 ? 'var(--steam-gold-300)' : 'var(--steam-iron-200)';
+                const rankLabel = medal
+                    ? `<span style="font-weight:700;color:${rankColor};min-width:1.8rem;">${medal}</span>`
+                    : `<span style="font-weight:700;color:${rankColor};min-width:2.4rem;font-size:0.78rem;">第${rank}位</span>`;
+                return `<li style="display: flex; align-items: center; gap: 0.4rem; padding: 0.15rem 0;">
+                    ${rankLabel}
                     <a href="/profile/view/?user=${encodeURIComponent(urlId)}" style="color: var(--steam-gold-400); text-decoration: underline;">${displayName}</a>
                     <span style="color: var(--steam-iron-300); font-size: 0.75rem;">(${score} TP相当)</span>
                 </li>`;

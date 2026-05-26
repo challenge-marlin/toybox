@@ -1,5 +1,5 @@
 """
-Articles app serializers - Ver 2.20
+Articles app serializers - Ver 2.22
 """
 import re
 import uuid
@@ -41,6 +41,7 @@ def sanitize_css(css: str) -> str:
 
 class ArticleSerializer(serializers.ModelSerializer):
     author_display_id = serializers.SerializerMethodField()
+    author_display_name = serializers.SerializerMethodField()
     author_avatar_url = serializers.SerializerMethodField()
     thumbnail_url_resolved = serializers.SerializerMethodField()
     all_reactions = serializers.SerializerMethodField()
@@ -51,7 +52,7 @@ class ArticleSerializer(serializers.ModelSerializer):
         model = Article
         fields = [
             'id', 'title', 'slug',
-            'author', 'author_display_id', 'author_avatar_url',
+            'author', 'author_display_id', 'author_display_name', 'author_avatar_url',
             'thumbnail_url_resolved',
             'body', 'custom_css', 'status', 'published_at',
             'all_reactions', 'reactions_count', 'user_reacted',
@@ -61,6 +62,16 @@ class ArticleSerializer(serializers.ModelSerializer):
 
     def get_author_display_id(self, obj):
         return obj.author.display_id
+
+    def get_author_display_name(self, obj):
+        author = obj.author
+        try:
+            meta = getattr(author, 'meta', None)
+            if meta and meta.display_name:
+                return meta.display_name
+        except Exception:
+            pass
+        return author.display_id
 
     def get_author_avatar_url(self, obj):
         return obj.author.avatar_url or None

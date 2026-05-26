@@ -1,5 +1,5 @@
 """
-Articles app URLs - Ver 2.20
+Articles app URLs - Ver 2.22
 """
 from django.urls import path
 from . import views

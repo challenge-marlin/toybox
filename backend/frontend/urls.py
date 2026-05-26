@@ -25,7 +25,7 @@ urlpatterns = [
     path('derivative-guidelines/', views.derivative_guidelines, name='derivative-guidelines'),
     path('privacy/', views.privacy, name='privacy'),
     path('topic-help/', views.topic_help, name='topic-help'),
-    # Articles - Ver 2.20
+    # Articles - Ver 2.22
     path('articles/', views.articles, name='articles'),
     path('articles/new/', views.article_editor, name='article-new'),
     path('articles/<str:slug>/edit/', views.article_editor, name='article-edit'),

@@ -311,7 +311,7 @@ ACHIEVEMENT_DEFINITIONS = [
     {'name': 'クールマン',              'color': 'blue',    'condition_text': '😎かっこいいリアクションを10件もらう',  'secret': False, 'ultra_secret': False},
     {'name': '驚異のクリエイター',      'color': 'blue',    'condition_text': '🤩すごいリアクションを10件もらう',      'secret': False, 'ultra_secret': False},
     {'name': '万能クリエイター',        'color': 'blue',    'condition_text': '画像・動画・ゲームをすべて投稿する',    'secret': False, 'ultra_secret': False},
-    {'name': '夜型クリエイター',        'color': 'blue',    'condition_text': '深夜（0〜4時）に投稿する',             'secret': False, 'ultra_secret': False},
+    {'name': 'モーニングクリエイター',  'color': 'blue',    'condition_text': '午前10〜11時に投稿する',               'secret': False, 'ultra_secret': False},
     {'name': 'カードコレクター',        'color': 'blue',    'condition_text': 'カードを5枚以上集める',                 'secret': False, 'ultra_secret': False},
     {'name': '3日坊主じゃない',         'color': 'blue',    'condition_text': '3日連続で投稿する',                     'secret': False, 'ultra_secret': False},
     # === 中級 (GOLD) ===
@@ -402,8 +402,9 @@ def _compute_user_stats(user: User) -> dict:
     jst_hours    = [dt.astimezone(JST).hour    for dt in datetimes]
     jst_weekdays = [dt.astimezone(JST).weekday() for dt in datetimes]  # 5=土, 6=日
 
-    has_morning_post = any(6 <= h <= 8 for h in jst_hours)
-    has_night_post   = any(0 <= h <= 3 for h in jst_hours)
+    has_morning_post         = any(6 <= h <= 8 for h in jst_hours)
+    has_night_post           = any(0 <= h <= 3 for h in jst_hours)
+    has_morning_creator_post = any(h == 10 for h in jst_hours)
     has_weekend_post = any(wd >= 5 for wd in jst_weekdays)
 
     jst_dates = sorted(set(dt.astimezone(JST).date() for dt in datetimes))
@@ -431,9 +432,10 @@ def _compute_user_stats(user: User) -> dict:
         'total_reactions':   total_reactions,
         'card_count':        card_count,
         'article_count':     article_count,
-        'has_morning_post':  has_morning_post,
-        'has_night_post':    has_night_post,
-        'has_weekend_post':  has_weekend_post,
+        'has_morning_post':         has_morning_post,
+        'has_night_post':           has_night_post,
+        'has_morning_creator_post': has_morning_creator_post,
+        'has_weekend_post':         has_weekend_post,
         'max_streak':        max_streak,
     }
 
@@ -478,7 +480,7 @@ def _check_achievement(name: str, s: dict) -> bool:
         'クールマン':             cl >= 10,
         '驚異のクリエイター':     aw >= 10,
         '万能クリエイター':       ip >= 1 and vp >= 1 and gp >= 1,
-        '夜型クリエイター':       s['has_night_post'],
+        'モーニングクリエイター': s['has_morning_creator_post'],
         'カードコレクター':       cc >= 5,
         '3日坊主じゃない':        str_ >= 3,
         # 中級 (GOLD)

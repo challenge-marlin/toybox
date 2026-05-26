@@ -53,6 +53,11 @@
 .tab-btn { background: none; border: none; padding: 0.5rem 1rem; color: var(--steam-iron-400); cursor: pointer; font-size: 0.875rem; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s; }
 .tab-btn.active { color: var(--steam-gold-300); border-bottom-color: var(--steam-gold-400); }
 #articles-loading { text-align: center; padding: 2rem; color: var(--steam-iron-400); }
+.articles-pagination { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+.page-btn { background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600); color: var(--steam-iron-200); border-radius: 6px; padding: 0.4rem 1rem; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+.page-btn:hover:not(:disabled) { border-color: var(--steam-gold-500); color: var(--steam-gold-300); }
+.page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.page-info { font-size: 0.8rem; color: var(--steam-iron-400); }
 </style>
 {% endblock %}
 
@@ -77,6 +82,11 @@
         <div class="icon">📝</div>
         <div>まだ記事がありません</div>
     </div>
+    <div id="articles-pagination" class="articles-pagination" style="display:none;">
+        <button class="page-btn" id="page-prev" onclick="changePage(currentPage - 1)">＜ 前ページ</button>
+        <span class="page-info" id="page-info"></span>
+        <button class="page-btn" id="page-next" onclick="changePage(currentPage + 1)">次ページ ＞</button>
+    </div>
 </div>
 
 <!-- 初回新機能ポップアップ（localStorage で一度きり） -->
@@ -88,7 +98,7 @@
             ゲームや画像をAIで作るまでのプロセスを<br>
             <strong>記事として投稿</strong>できるようになりました！<br>
             <br>
-            初回公開で <strong style="color:var(--steam-gold-400);">3.0 TP</strong> もらえます 🎉
+            公開のたびに <strong style="color:var(--steam-gold-400);">10 TP</strong> もらえます 🎉
         </p>
         <button onclick="closeNewFeaturePopup()" style="background:var(--steam-gold-500); color:#000; border:none; border-radius:6px; padding:0.6rem 1.5rem; font-weight:700; cursor:pointer; font-size:0.9rem;">
             さっそく見てみる
@@ -99,21 +109,29 @@
 <script>
 const API_BASE = '/api/articles';
 let currentTab = 'all';
+let currentPage = 1;
+const PAGE_SIZE = 10;
+let totalCount = 0;
 
-async function loadArticles(tab) {
+async function loadArticles(tab, page) {
+    page = page || 1;
     document.getElementById('articles-loading').style.display = 'block';
     document.getElementById('articles-list').style.display = 'none';
     document.getElementById('articles-empty').style.display = 'none';
+    document.getElementById('articles-pagination').style.display = 'none';
 
     const token = localStorage.getItem('access_token');
     const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
 
     try {
-        const url = tab === 'mine' ? `${API_BASE}/mine/` : `${API_BASE}/`;
+        const url = tab === 'mine'
+            ? `${API_BASE}/mine/`
+            : `${API_BASE}/?page=${page}`;
         const res = await fetch(url, { headers });
         if (!res.ok) throw new Error('fetch error');
         const data = await res.json();
         const articles = Array.isArray(data) ? data : (data.results || []);
+        totalCount = data.count || articles.length;
 
         document.getElementById('articles-loading').style.display = 'none';
 
@@ -125,9 +143,27 @@ async function loadArticles(tab) {
         const list = document.getElementById('articles-list');
         list.innerHTML = articles.map(a => renderCard(a, tab === 'mine')).join('');
         list.style.display = 'block';
+
+        // ページネーション表示（mine タブ以外）
+        if (tab !== 'mine') {
+            const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+            if (totalPages > 1) {
+                document.getElementById('page-prev').disabled = (page <= 1);
+                document.getElementById('page-next').disabled = !data.next;
+                document.getElementById('page-info').textContent = `${page} / ${totalPages} ページ`;
+                document.getElementById('articles-pagination').style.display = 'flex';
+            }
+        }
     } catch (e) {
         document.getElementById('articles-loading').innerHTML = '<span style="color:var(--steam-iron-400);">読み込みに失敗しました</span>';
     }
+}
+
+function changePage(page) {
+    if (page < 1) return;
+    currentPage = page;
+    loadArticles(currentTab, currentPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function renderCard(a, isMine) {
@@ -196,9 +232,10 @@ async function deleteArticle(slug) {
 
 function switchTab(tab) {
     currentTab = tab;
+    currentPage = 1;
     document.getElementById('tab-all').classList.toggle('active', tab === 'all');
     document.getElementById('tab-mine').classList.toggle('active', tab === 'mine');
-    loadArticles(tab);
+    loadArticles(tab, 1);
 }
 
 function escHtml(s) {
@@ -207,13 +244,13 @@ function escHtml(s) {
 
 // 初回ポップアップ（localStorage）
 function showNewFeaturePopupIfNeeded() {
-    if (!localStorage.getItem('article_feature_announced_v220')) {
+    if (!localStorage.getItem('article_feature_announced_v221')) {
         document.getElementById('article-new-feature-popup').style.display = 'flex';
     }
 }
 
 function closeNewFeaturePopup() {
-    localStorage.setItem('article_feature_announced_v220', '1');
+    localStorage.setItem('article_feature_announced_v221', '1');
     document.getElementById('article-new-feature-popup').style.display = 'none';
 }
 
@@ -224,7 +261,7 @@ if (token) {
     document.getElementById('tab-mine').style.display = 'block';
 }
 
-loadArticles('all');
+loadArticles('all', 1);
 showNewFeaturePopupIfNeeded();
 </script>
 {% endblock %}

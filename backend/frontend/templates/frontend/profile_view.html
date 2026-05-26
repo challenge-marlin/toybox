@@ -1216,6 +1216,13 @@
                 // リアクションバーを最新データで更新
                 renderLightboxReactions(data.all_reactions || data.allReactions || []);
 
+                // submissions キャッシュを最新リアクションで更新 → カードのトリガーボタンも同期
+                const lbSub = submissions.find(x => x.id === assetId);
+                if (lbSub && data.all_reactions) {
+                    lbSub.allReactions = data.all_reactions;
+                    updateProfileTriggerBtn(assetId, lbSub.allReactions);
+                }
+
                 // タイトル・キャプション・ハッシュタグ
                 if (data.title) { lightboxTitle.textContent = data.title; lightboxTitle.style.display = 'block'; }
                 else { lightboxTitle.style.display = 'none'; }
@@ -1295,12 +1302,13 @@
             btnEl.classList.toggle('reacted', reacted);
             const countEl = btnEl.querySelector('.r-count');
             if (countEl) countEl.textContent = data.count > 0 ? data.count : '';
-            // submissions キャッシュも更新
+            // submissions キャッシュも更新 → トリガーボタン再描画
             const s = submissions.find(x => x.id === currentLightboxAssetId);
             if (s && s.allReactions) {
                 const existing = s.allReactions.find(r => r.type === reactionType);
                 if (existing) { existing.count = data.count; existing.user_reacted = reacted; }
                 else s.allReactions.push({ type: reactionType, count: data.count, user_reacted: reacted });
+                updateProfileTriggerBtn(currentLightboxAssetId, s.allReactions);
             }
         } catch (e) { console.error('lightbox reaction error', e); }
     }

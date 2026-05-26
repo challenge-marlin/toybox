@@ -128,11 +128,11 @@ class ArticleReactionView(views.APIView):
             user=request.user, article=article, type=reaction_type
         )
 
-        # 記事著者へのポイント付与（submissions と同様）
+        # 記事著者へのポイント付与（リアクション受信で5TP）
         if created and article.author != request.user:
             try:
-                from gamification.services import award_reaction_received_points
-                award_reaction_received_points(article.author, reaction_type)
+                from gamification.services import award_points
+                award_points(article.author, 'article_reaction_received', 5, 'リアクション受信')
             except Exception:
                 logger.exception('article reaction pt award failed')
 

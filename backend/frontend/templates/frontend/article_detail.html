@@ -22,6 +22,22 @@
 .article-content video { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
 .article-content blockquote { border-left: 3px solid var(--steam-gold-500); padding-left: 1rem; color: var(--steam-iron-300); font-style: italic; margin: 1rem 0; }
 .article-content hr { border: none; border-top: 1px solid var(--steam-iron-700); margin: 2rem 0; }
+/* 吹き出し */
+.article-content .speech-bubble-row { display: flex; margin: 0.75rem 0; }
+.article-content .speech-bubble-row--left { justify-content: flex-start; }
+.article-content .speech-bubble-row--right { justify-content: flex-end; }
+.article-content .speech-bubble { max-width: 78%; }
+.article-content .speech-bubble-speaker { font-size: 0.72rem; color: var(--steam-iron-400); margin: 0 0 0.2rem; }
+.article-content .speech-bubble-row--right .speech-bubble-speaker { text-align: right; }
+.article-content .speech-bubble-body {
+    background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600);
+    border-radius: 14px; padding: 0.6rem 0.9rem; line-height: 1.65; color: var(--steam-iron-100);
+}
+.article-content .speech-bubble-row--left .speech-bubble-body { border-bottom-left-radius: 4px; }
+.article-content .speech-bubble-row--right .speech-bubble-body {
+    background: rgba(212, 160, 23, 0.12); border-color: var(--steam-gold-600, #9a7b1a);
+    border-bottom-right-radius: 4px;
+}
 
 /* コードブロック */
 .code-block-wrap {
@@ -142,6 +158,16 @@ let currentUserDisplayId = null;
 function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function nl2br(s) {
+    return escHtml(s || '').replace(/\n/g, '<br>');
+}
+function renderSpeechBubbleHtml(side, content, speaker) {
+    const align = side === 'right' ? 'right' : 'left';
+    const speakerHtml = speaker ? `<p class="speech-bubble-speaker">${escHtml(speaker)}</p>` : '';
+    return `<div class="speech-bubble-row speech-bubble-row--${align}">
+        <div class="speech-bubble">${speakerHtml}<div class="speech-bubble-body">${nl2br(content)}</div></div>
+    </div>`;
+}
 
 // カスタムCSS を article-content-scoped クラスにスコープ付け
 function scopeCustomCss(css) {
@@ -173,6 +199,9 @@ function renderBlocks(blocks) {
                 return `<video controls src="${escHtml(block.url)}" style="max-width:100%;"></video>`;
             case 'blockquote':
                 return `<blockquote>${escHtml(block.content || '').replace(/\n/g, '<br>')}</blockquote>`;
+            case 'speech_left':
+            case 'speech_right':
+                return renderSpeechBubbleHtml(block.type === 'speech_right' ? 'right' : 'left', block.content, block.speaker);
             case 'divider':
                 return '<hr>';
             case 'code': {

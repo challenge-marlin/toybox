@@ -1458,7 +1458,7 @@ def _reaction_score_case():
     )
 
 
-def _ranking_submissions_by_reaction_score(start, end, limit=10):
+def _ranking_submissions_by_reaction_score(start, end, limit=10, request=None):
     """期間内に付いたリアクションの重み付き合計で作品をランキング。"""
     rows = (
         Reaction.objects.filter(
@@ -1485,8 +1485,9 @@ def _ranking_submissions_by_reaction_score(start, end, limit=10):
             url_id = author.studysphere_login_code if (author.studysphere_user_id or author.studysphere_login_code) else anon_id
 
             from submissions.serializers import SubmissionSerializer
-            sub_data = SubmissionSerializer(sub, context={}).data
+            sub_data = SubmissionSerializer(sub, context={'request': request}).data
             display_image_url = sub_data.get('display_image_url') or sub_data.get('image_url') or None
+            all_reactions = sub_data.get('all_reactions') or []
 
             ranking.append({
                 'id': str(sub.id),
@@ -1501,7 +1502,7 @@ def _ranking_submissions_by_reaction_score(start, end, limit=10):
                 'gameUrl': getattr(sub, 'game_url', None),
                 'title': getattr(sub, 'title', None) or None,
                 'createdAt': sub.created_at.isoformat() if sub.created_at else None,
-                'allReactions': [],
+                'allReactions': all_reactions,
             })
         except Submission.DoesNotExist:
             continue
@@ -1553,7 +1554,7 @@ class RankingDailyView(APIView):
         today = timezone.localdate()
         start = timezone.make_aware(datetime.combine(today, datetime.min.time()))
         end = timezone.make_aware(datetime.combine(today, datetime.max.time()))
-        ranking = _ranking_submissions_by_reaction_score(start, end, limit=10)
+        ranking = _ranking_submissions_by_reaction_score(start, end, limit=10, request=request)
         return Response({'ranking': ranking, 'period': 'daily'})
 
 
@@ -1569,7 +1570,7 @@ class RankingWeeklyView(APIView):
         sunday = monday + timedelta(days=6)
         start = timezone.make_aware(datetime.combine(monday, datetime.min.time()))
         end = timezone.make_aware(datetime.combine(sunday, datetime.max.time()))
-        ranking = _ranking_submissions_by_reaction_score(start, end, limit=10)
+        ranking = _ranking_submissions_by_reaction_score(start, end, limit=10, request=request)
         return Response({'ranking': ranking, 'period': 'weekly'})
 
 

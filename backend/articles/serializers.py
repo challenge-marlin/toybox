@@ -124,20 +124,14 @@ class ArticleWriteSerializer(serializers.ModelSerializer):
         return value
 
     def _award_article_pt(self, article):
-        """初回公開時100TP、以降は記事1本につき30TP。二重付与防止付き。"""
+        """記事公開時に10TP付与。二重付与防止付き。"""
         if article.pt_awarded:
             return
         if article.status != Article.Status.PUBLISHED:
             return
 
-        # 初回公開か判定（他に pt_awarded=True の公開済み記事があるか）
-        first_ever = not Article.objects.filter(
-            author=article.author,
-            status=Article.Status.PUBLISHED,
-            pt_awarded=True,
-        ).exists()
-        pt_amount = 100 if first_ever else 30
-        pt_label  = '記事初回公開ボーナス' if first_ever else '記事公開'
+        pt_amount = 10
+        pt_label  = '記事公開'
 
         from gamification.services import award_points
         try:

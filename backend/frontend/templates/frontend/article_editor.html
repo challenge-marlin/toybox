@@ -134,6 +134,23 @@
 .preview-body-area video { max-width: 100%; border-radius: 8px; margin: 1rem 0; display: block; }
 .preview-body-area blockquote { border-left: 3px solid var(--steam-gold-500); padding: 0.4rem 1rem; color: var(--steam-iron-300); font-style: italic; margin: 1rem 0; }
 .preview-body-area hr { border: none; border-top: 1px solid var(--steam-iron-700); margin: 1.75rem 0; }
+/* 吹き出し */
+.speech-bubble-row { display: flex; margin: 0.75rem 0; }
+.speech-bubble-row--left { justify-content: flex-start; }
+.speech-bubble-row--right { justify-content: flex-end; }
+.speech-bubble { max-width: 78%; }
+.speech-bubble-speaker { font-size: 0.72rem; color: var(--steam-iron-400); margin: 0 0 0.2rem; }
+.speech-bubble-row--right .speech-bubble-speaker { text-align: right; }
+.speech-bubble-body {
+    background: var(--steam-iron-800); border: 1px solid var(--steam-iron-600);
+    border-radius: 14px; padding: 0.6rem 0.9rem; line-height: 1.65; color: var(--steam-iron-100);
+}
+.speech-bubble-row--left .speech-bubble-body { border-bottom-left-radius: 4px; }
+.speech-bubble-row--right .speech-bubble-body {
+    background: rgba(212, 160, 23, 0.12); border-color: var(--steam-gold-600, #9a7b1a);
+    border-bottom-right-radius: 4px;
+}
+.block-speech-label { font-size: 0.72rem; color: var(--steam-gold-400); margin-bottom: 0.25rem; }
 /* コードブロック（プレビュー・詳細共通） */
 .code-block-wrap { position:relative; margin:1rem 0; border-radius:8px; overflow:hidden; background:#0d1117; border:1px solid #30363d; }
 .code-block-lang { display:inline-block; background:#161b22; color:#8b949e; font-size:0.7rem; padding:0.2rem 0.6rem; border-bottom-right-radius:6px; font-family:monospace; }
@@ -183,6 +200,8 @@
             <button class="add-block-btn" onclick="addBlock('paragraph')">＋ 段落</button>
             <button class="add-block-btn" onclick="addBlock('heading', {level:2})">＋ 見出し</button>
             <button class="add-block-btn" onclick="addBlock('blockquote')">＋ 引用</button>
+            <button class="add-block-btn" onclick="addBlock('speech_left')">＋ 左寄せ吹き出し</button>
+            <button class="add-block-btn" onclick="addBlock('speech_right')">＋ 右寄せ吹き出し</button>
             <button class="add-block-btn" onclick="addBlock('divider')">＋ 区切り線</button>
             <button class="add-block-btn" onclick="addBlock('code')">＋ コード</button>
             <button class="add-block-btn" onclick="addBlock('image')">＋ 画像</button>
@@ -436,8 +455,20 @@ function renderBlockItem(b, i) {
             oninput="getBlock(${b.id}).content=this.value; markDirty();">`;
 
     } else if (b.type === 'blockquote') {
-        inner = `<textarea class="block-input" rows="2"
-            placeholder="引用テキストを入力..."
+        inner = `<textarea class="block-input" rows="4"
+            placeholder="引用テキストを入力...（Enterで改行）"
+            oninput="getBlock(${b.id}).content=this.value; markDirty();"
+            >${escHtml(b.content)}</textarea>`;
+
+    } else if (b.type === 'speech_left' || b.type === 'speech_right') {
+        const label = b.type === 'speech_left' ? '左寄せ吹き出し' : '右寄せ吹き出し';
+        inner = `<div class="block-speech-label">${label}</div>
+        <input type="text" class="block-input" style="font-size:0.8rem; margin-bottom:0.3rem;"
+            placeholder="話者名（任意）"
+            value="${escHtml(b.speaker || '')}"
+            oninput="getBlock(${b.id}).speaker=this.value; markDirty();">
+        <textarea class="block-input" rows="3"
+            placeholder="セリフを入力...（Enterで改行）"
             oninput="getBlock(${b.id}).content=this.value; markDirty();"
             >${escHtml(b.content)}</textarea>`;
 
@@ -726,7 +757,10 @@ function blocksToHtml(blist) {
             case 'paragraph':
                 return `<p>${escHtmlDisplay(b.content).replace(/\n/g, '<br>')}</p>`;
             case 'blockquote':
-                return `<blockquote>${escHtmlDisplay(b.content)}</blockquote>`;
+                return `<blockquote>${escHtmlDisplay(b.content).replace(/\n/g, '<br>')}</blockquote>`;
+            case 'speech_left':
+            case 'speech_right':
+                return renderSpeechBubbleHtml(b.type === 'speech_right' ? 'right' : 'left', b.content, b.speaker);
             case 'divider':
                 return '<hr>';
             case 'code': {
@@ -796,12 +830,12 @@ async function loadExistingArticle() {
 
 // ===== オンボーディング =====
 function showOnboardingIfNeeded() {
-    if (!currentSlug && !localStorage.getItem('article_editor_onboarding_v220')) {
+    if (!currentSlug && !localStorage.getItem('article_editor_onboarding_v221')) {
         document.getElementById('onboarding-overlay').style.display = 'flex';
     }
 }
 function closeOnboarding() {
-    localStorage.setItem('article_editor_onboarding_v220', '1');
+    localStorage.setItem('article_editor_onboarding_v221', '1');
     document.getElementById('onboarding-overlay').style.display = 'none';
 }
 
@@ -812,6 +846,16 @@ function escHtml(s) {
 function escHtmlDisplay(s) {
     // プレビュー用: & < > のみエスケープ（タグは含まない前提）
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function nl2br(s) {
+    return escHtmlDisplay(s).replace(/\n/g, '<br>');
+}
+function renderSpeechBubbleHtml(side, content, speaker) {
+    const align = side === 'right' ? 'right' : 'left';
+    const speakerHtml = speaker ? `<p class="speech-bubble-speaker">${escHtmlDisplay(speaker)}</p>` : '';
+    return `<div class="speech-bubble-row speech-bubble-row--${align}">
+        <div class="speech-bubble">${speakerHtml}<div class="speech-bubble-body">${nl2br(content)}</div></div>
+    </div>`;
 }
 
 // ===== 初期化 =====

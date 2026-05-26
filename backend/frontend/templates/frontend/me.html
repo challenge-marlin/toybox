@@ -1496,6 +1496,11 @@
     let followFeedItems = [];
     let followFeedCursor = null;
     let followFeedLoading = false;
+    // 統合タイムライン用（投稿＋記事を時系列でマージ）
+    let followFeedAllItems = [];      // { type:'submission'|'article', createdAt, data }
+    let followArticlePage = 1;
+    let followArticleHasMore = true;
+    let followSubmissionHasMore = true;
 
     function renderFollowFeedCard(it) {
         var thumb = it.imageThumbnailUrl || it.displayImageUrl || it.imageUrl || '';
@@ -1559,27 +1564,106 @@
         '</div>';
     }
 
+    function renderFollowArticleCard(a) {
+        var thumb = a.thumbnail_url_resolved || '';
+        var title = a.title || '（無題）';
+        var name = a.author_display_id || '';
+        var when = a.published_at ? new Date(a.published_at).toLocaleString('ja-JP') : (a.created_at ? new Date(a.created_at).toLocaleString('ja-JP') : '');
+        var slug = a.slug || '';
+        var totalReactions = (a.all_reactions || []).reduce(function(s, r) { return s + (r.count || 0); }, 0);
+        return '<div class="me-feed-row" style="display:flex;flex-direction:column;gap:0;padding:0.6rem;border-radius:8px;border:1px solid var(--steam-iron-700);background:var(--steam-iron-900);max-width:100%;box-sizing:border-box;">' +
+            '<a href="/articles/' + encodeURIComponent(slug) + '/" style="display:flex;gap:0.75rem;align-items:flex-start;text-decoration:none;border-radius:6px;padding:0.1rem;margin:-0.1rem;transition:background 0.15s;" onmouseover="this.style.background=\'var(--steam-iron-800)\'" onmouseout="this.style.background=\'transparent\'">' +
+            '<div style="width:72px;height:72px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--steam-iron-800);display:flex;align-items:center;justify-content:center;">' +
+                (thumb ? '<img src="' + thumb + '" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<span style="font-size:1.4rem;">📝</span>') +
+            '</div>' +
+            '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:0.75rem;">' +
+                    '<span style="display:inline-block;margin-right:0.35rem;padding:0.08rem 0.35rem;border-radius:4px;background:rgba(99,179,237,0.18);color:#63b3ed;font-size:0.6rem;font-weight:700;vertical-align:middle;">記事</span>' +
+                    '<span style="color:var(--steam-gold-400);font-weight:600;">' + name + '</span>' +
+                    ' <span style="color:var(--steam-iron-500);font-size:0.65rem;">' + when + '</span>' +
+                '</div>' +
+                '<div style="font-size:0.85rem;font-weight:600;color:var(--steam-iron-100);margin-top:0.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + '</div>' +
+                (totalReactions > 0 ? '<div style="font-size:0.7rem;color:var(--steam-iron-400);margin-top:0.1rem;">❤ ' + totalReactions + '</div>' : '') +
+            '</div></a>' +
+        '</div>';
+    }
+
+    function renderUnifiedFollowFeed() {
+        var stream = document.getElementById('follow-feed-stream');
+        if (!stream) return;
+        if (!followFeedAllItems.length) {
+            stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">まだ表示できる投稿がありません。</div>';
+            return;
+        }
+        stream.innerHTML = followFeedAllItems.map(function(item) {
+            if (item.type === 'article') return renderFollowArticleCard(item.data);
+            return renderFollowFeedCard(item.data);
+        }).join('');
+    }
+
+    function updateFollowMoreBtn() {
+        var moreBtn = document.getElementById('follow-feed-more-btn');
+        if (!moreBtn) return;
+        var hasMore = followSubmissionHasMore || followArticleHasMore;
+        moreBtn.style.display = hasMore ? 'block' : 'none';
+        moreBtn.textContent = 'もっと見る';
+    }
+
+    function fetchMoreSubmissionsBatch() {
+        if (!followSubmissionHasMore) return Promise.resolve([]);
+        var authHdr = { 'Authorization': 'Bearer ' + token };
+        var url = '/api/feed/following/?limit=6' + (followFeedCursor ? '&cursor=' + encodeURIComponent(followFeedCursor) : '');
+        return fetch(url, { headers: authHdr })
+            .then(function(r) { return r.ok ? r.json() : { items: [] }; })
+            .then(function(data) {
+                var inc = data.items || [];
+                followFeedItems = followFeedItems.concat(inc);
+                followFeedCursor = data.nextCursor || null;
+                if (!followFeedCursor) followSubmissionHasMore = false;
+                return inc.map(function(x) {
+                    return { type: 'submission', createdAt: x.createdAt, data: x };
+                });
+            })
+            .catch(function() { return []; });
+    }
+
+    function fetchMoreArticlesBatch() {
+        if (!followArticleHasMore) return Promise.resolve([]);
+        var authHdr = { 'Authorization': 'Bearer ' + token };
+        var url = '/api/articles/?page=' + followArticlePage + '&page_size=6';
+        return fetch(url, { headers: authHdr })
+            .then(function(r) { return r.ok ? r.json() : { results: [] }; })
+            .then(function(data) {
+                var results = data.results || (Array.isArray(data) ? data : []);
+                if (!data.next) followArticleHasMore = false;
+                followArticlePage += 1;
+                return results.map(function(a) {
+                    return { type: 'article', createdAt: a.published_at || a.created_at, data: a };
+                });
+            })
+            .catch(function() { followArticleHasMore = false; return []; });
+    }
+
     function loadFollowingFeed() {
         if (followFeedLoading) return;
         followFeedLoading = true;
+        followFeedItems = [];
+        followFeedCursor = null;
+        followFeedAllItems = [];
+        followArticlePage = 1;
+        followArticleHasMore = true;
+        followSubmissionHasMore = true;
         var stream = document.getElementById('follow-feed-stream');
-        var moreBtn = document.getElementById('follow-feed-more-btn');
         var wrap = document.getElementById('follow-feed-scroll-wrap');
         if (wrap) wrap.classList.remove('is-expanded');
         if (stream) stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">読み込み中...</div>';
-        fetch('/api/feed/following/?limit=6', { headers: { 'Authorization': 'Bearer ' + token } })
-        .then(function(r) { return r.ok ? r.json() : { items: [] }; })
-        .then(function(data) {
-            followFeedItems = data.items || [];
-            followFeedCursor = data.nextCursor || null;
-            if (stream) {
-                if (!followFeedItems.length) stream.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.85rem;">まだ表示できる投稿がありません。</div>';
-                else stream.innerHTML = followFeedItems.map(renderFollowFeedCard).join('');
-            }
-            if (moreBtn) {
-                moreBtn.style.display = followFeedCursor ? 'block' : 'none';
-                moreBtn.textContent = 'もっと見る';
-            }
+        Promise.all([fetchMoreSubmissionsBatch(), fetchMoreArticlesBatch()])
+        .then(function(results) {
+            followFeedAllItems = results[0].concat(results[1]).sort(function(a, b) {
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+            renderUnifiedFollowFeed();
+            updateFollowMoreBtn();
             if (wrap) wrap.scrollTop = 0;
         })
         .catch(function() {
@@ -1589,24 +1673,21 @@
     }
 
     function loadMoreFollowingFeed() {
-        if (followFeedLoading || !followFeedCursor) return;
+        if (followFeedLoading) return;
+        if (!followSubmissionHasMore && !followArticleHasMore) return;
         followFeedLoading = true;
-        var stream = document.getElementById('follow-feed-stream');
         var moreBtn = document.getElementById('follow-feed-more-btn');
         var wrap = document.getElementById('follow-feed-scroll-wrap');
         if (wrap) wrap.classList.add('is-expanded');
         if (moreBtn) moreBtn.textContent = '読み込み中…';
-        fetch('/api/feed/following/?limit=6&cursor=' + encodeURIComponent(followFeedCursor), { headers: { 'Authorization': 'Bearer ' + token } })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            var inc = data.items || [];
-            followFeedItems = followFeedItems.concat(inc);
-            followFeedCursor = data.nextCursor || null;
-            if (stream) stream.innerHTML = followFeedItems.map(renderFollowFeedCard).join('');
-            if (moreBtn) {
-                moreBtn.style.display = followFeedCursor ? 'block' : 'none';
-                moreBtn.textContent = 'もっと見る';
-            }
+        Promise.all([fetchMoreSubmissionsBatch(), fetchMoreArticlesBatch()])
+        .then(function(results) {
+            var incoming = results[0].concat(results[1]);
+            followFeedAllItems = followFeedAllItems.concat(incoming).sort(function(a, b) {
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+            renderUnifiedFollowFeed();
+            updateFollowMoreBtn();
         })
         .finally(function() { followFeedLoading = false; });
     }
@@ -1730,10 +1811,10 @@
     function loadRecentArticles() {
         const grid = document.getElementById('recent-articles-grid');
         if (!grid) return;
-        fetch('/api/articles/?limit=4')
+        fetch('/api/articles/?limit=6')
         .then(r => r.json())
         .then(data => {
-            const list = Array.isArray(data) ? data : (data.results || []);
+            const list = (Array.isArray(data) ? data : (data.results || [])).slice(0, 6);
             if (!list.length) {
                 grid.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.8rem;">まだ記事がありません</div>';
                 return;
@@ -2835,6 +2916,21 @@
                 // リアクションバーを最新データで更新
                 renderLightboxReactions(data.all_reactions || data.allReactions || []);
 
+                // followFeedItemsキャッシュを最新リアクションで更新 → カードのボタンも同期
+                if (data.all_reactions) {
+                    var lbItem = followFeedItems.find(function(x) { return String(x.id) === String(currentLightboxAssetId); });
+                    if (lbItem) {
+                        lbItem.allReactions = data.all_reactions;
+                        var lbCard = document.getElementById('follow-card-' + currentLightboxAssetId);
+                        if (lbCard) {
+                            var tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = renderFollowFeedCard(lbItem);
+                            var newCard = tempDiv.firstElementChild;
+                            if (newCard) lbCard.replaceWith(newCard);
+                        }
+                    }
+                }
+
                 // タイトルを表示
                 if (data.title) { lightboxTitle.textContent = data.title; lightboxTitle.style.display = 'block'; }
                 else { lightboxTitle.style.display = 'none'; }
@@ -2923,6 +3019,25 @@
             btnEl.classList.toggle('reacted', reacted);
             const countEl = btnEl.querySelector('.r-count');
             if (countEl) countEl.textContent = data.count > 0 ? data.count : '';
+
+            // followFeedItemsキャッシュ更新 → カードのボタンも直接更新
+            var lbFeedItem = followFeedItems.find(function(x) { return String(x.id) === String(currentLightboxAssetId); });
+            if (lbFeedItem) {
+                if (!lbFeedItem.allReactions) lbFeedItem.allReactions = [];
+                var lbAr = lbFeedItem.allReactions;
+                var lbEx = lbAr.find(function(r) { return r.type === reactionType; });
+                if (lbEx) { lbEx.count = data.count; lbEx.user_reacted = reacted; }
+                else if (reacted) { lbAr.push({ type: reactionType, count: data.count, user_reacted: true }); }
+                var lbCardEl = document.getElementById('follow-card-' + currentLightboxAssetId);
+                if (lbCardEl) {
+                    var rxBtn = lbCardEl.querySelector('.me-follow-rx[data-rtype="' + reactionType + '"]');
+                    if (rxBtn) {
+                        rxBtn.classList.toggle('reacted', reacted);
+                        var cntSpan = rxBtn.querySelector('span:nth-child(2)');
+                        if (cntSpan) cntSpan.textContent = data.count > 0 ? String(data.count) : '';
+                    }
+                }
+            }
         } catch (e) { console.error('lightbox reaction error', e); }
     }
 

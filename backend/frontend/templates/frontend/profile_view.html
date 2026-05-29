@@ -87,7 +87,8 @@
         0%, 100% { box-shadow: 0 0 0 3px #00e5ff, 0 0 12px rgba(0,229,255,0.6); }
         50%       { box-shadow: 0 0 0 3px #2979ff, 0 0 20px rgba(41,121,255,0.7); }
     }
-    .official-avatar {
+    .official-avatar,
+    .neon-title-avatar {
         border: none !important;
         animation: official-border-pulse 2.5s ease-in-out infinite !important;
     }
@@ -492,19 +493,27 @@
     
     <!-- プロフィール文 -->
     <div class="profile-view-bio" id="profile-bio" style="display: none;"></div>
-    
-    <!-- 提出一覧 -->
-    <h2 class="profile-view-submissions-title">提出一覧</h2>
+
+    <!-- 記事一覧（投稿一覧より上に表示） -->
+    <div id="profile-articles-section" style="margin-top:1.5rem;">
+        <h2 class="profile-view-submissions-title" style="margin-bottom:0.75rem;">📝 記事</h2>
+        <div id="profile-articles-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:0.75rem;">
+            <div style="grid-column:1/-1;text-align:center;color:var(--steam-iron-400);font-size:0.875rem;">読み込み中...</div>
+        </div>
+    </div>
+
+    <!-- ブックマーク一覧（投稿一覧より上に表示） -->
+    <div id="profile-bookmarks-section" style="margin-top:2rem; display:none;">
+        <h2 class="profile-view-submissions-title" style="margin-bottom:0.75rem;">🔖 ブックマーク</h2>
+        <div class="profile-view-submissions-grid" id="bookmarks-grid"></div>
+    </div>
+
+    <!-- 投稿一覧 -->
+    <h2 class="profile-view-submissions-title" style="margin-top:2rem;">投稿一覧</h2>
     <div class="profile-view-submissions-grid" id="submissions-grid">
         <div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">読み込み中...</div>
     </div>
     <button class="profile-view-load-more" id="load-more-button" style="display: none;" onclick="loadMore()">さらに読み込む</button>
-
-    <!-- 記事一覧 -->
-    <div id="profile-articles-section" style="margin-top:2rem; display:none;">
-        <h2 class="profile-view-submissions-title" style="margin-bottom:0.75rem;">📝 記事</h2>
-        <div id="profile-articles-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:0.75rem;"></div>
-    </div>
 </main>
 
 <!-- ライトボックス -->
@@ -573,6 +582,7 @@
     }
     
     let currentUserId = null;
+    let profileAuthorUserId = null;
     let nextCursor = null;
     let submissions = [];
 
@@ -645,6 +655,7 @@
                 const metaData = await profileRes.json();
                 // URLパラメータから取得したIDをそのまま使用（StudySphereユーザーの場合はトークン）
                 currentUserId = targetDisplayId;
+                profileAuthorUserId = metaData.authorUserId || metaData.author_user_id || null;
                 
                 // プロフィール情報を表示
                 // APIレスポンスはキャメルケース（headerUrl, avatarUrl）で返される
@@ -696,10 +707,11 @@
                 
                 const isOfficial = metaData.isOfficial || metaData.is_official || false;
                 const officialBadge = isOfficial ? '<span class="official-badge" title="公式アカウント"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : '';
-                // 公式ユーザーはアバター枠にボーダーを付与
-                if (isOfficial) {
-                    const avatarWrap = document.getElementById('avatar-image');
-                    if (avatarWrap) avatarWrap.classList.add('official-avatar');
+                const avatarWrap = document.getElementById('avatar-image');
+                if (avatarWrap && typeof window.applyTitleAvatarNeon === 'function') {
+                    window.applyTitleAvatarNeon(avatarWrap, activeTitle, isOfficial);
+                } else if (isOfficial && avatarWrap) {
+                    avatarWrap.classList.add('official-avatar');
                 }
                 
                 if (displayName) {
@@ -722,8 +734,8 @@
                 // 称号を表示（v2.0: 有効期限廃止・SVGバッジ対応）
                 const titleEl = document.getElementById('profile-title');
                 if (activeTitle && titleEl) {
-                    // v2.0: 常にSVGバッジを表示
-                    titleEl.innerHTML = buildTitleSvgBadge(activeTitle);
+                    const atColor = metaData.activeTitleColor || metaData.active_title_color;
+                    titleEl.innerHTML = buildTitleSvgBadge(activeTitle, atColor);
                 } else if (titleEl) {
                     titleEl.innerHTML = '';
                 }
@@ -812,7 +824,9 @@
         submissions = [];
         nextCursor = null;
         // 記事もロード
-        loadProfileArticles(currentUserId);
+        loadProfileArticles(profileAuthorUserId, currentUserId);
+        // ブックマークもロード
+        loadProfileBookmarks(currentUserId);
         
         try {
             do {
@@ -837,7 +851,7 @@
             document.getElementById('load-more-button').style.display = 'none';
         } catch (err) {
             console.error('Failed to load submissions:', err);
-            document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">提出物の読み込みに失敗しました</div>';
+            document.getElementById('submissions-grid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">投稿の読み込みに失敗しました</div>';
             document.getElementById('load-more-button').style.display = 'none';
         }
     }
@@ -846,7 +860,7 @@
         const grid = document.getElementById('submissions-grid');
         
         if (submissions.length === 0) {
-            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">提出はまだありません</div>';
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--steam-iron-300); font-size: 0.875rem;">投稿はまだありません</div>';
             return;
         }
         
@@ -923,16 +937,22 @@
         }).join('');
     }
     
-    function loadProfileArticles(displayId) {
+    function loadProfileArticles(authorUserId, fallbackAuthorKey) {
         const sec = document.getElementById('profile-articles-section');
         const grid = document.getElementById('profile-articles-grid');
-        if (!sec || !grid || !displayId) return;
-        fetch('/api/articles/?author=' + encodeURIComponent(displayId) + '&limit=12')
+        if (!sec || !grid) return;
+        sec.style.display = 'block';
+        const authorParam = authorUserId
+            ? ('author_user_id=' + encodeURIComponent(authorUserId))
+            : ('author=' + encodeURIComponent(fallbackAuthorKey || ''));
+        fetch('/api/articles/?' + authorParam + '&limit=12')
             .then(r => r.json())
             .then(data => {
                 const list = Array.isArray(data) ? data : (data.results || []);
-                if (!list.length) return;
-                sec.style.display = 'block';
+                if (!list.length) {
+                    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--steam-iron-400);font-size:0.875rem;">記事がありません</div>';
+                    return;
+                }
                 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 grid.innerHTML = list.map(a => {
                     const thumb = a.thumbnail_url_resolved
@@ -940,6 +960,7 @@
                         : `<div style="width:100%;height:80px;display:flex;align-items:center;justify-content:center;background:var(--steam-iron-800);border-radius:7px 7px 0 0;font-size:2rem;color:var(--steam-iron-600);">📝</div>`;
                     const reactions = a.reactions_count || 0;
                     const date = a.published_at ? new Date(a.published_at).toLocaleDateString('ja-JP') : '';
+                    const authorName = esc(a.author_display_name || a.author_display_id || '');
                     return `<a href="/articles/${a.slug}/" style="display:block;text-decoration:none;color:inherit;border-radius:8px;background:var(--steam-iron-900);border:1px solid var(--steam-iron-700);overflow:hidden;transition:border-color 0.2s;"
                         onmouseover="this.style.borderColor='var(--steam-gold-500)'" onmouseout="this.style.borderColor='var(--steam-iron-700)'">
                         ${thumb}
@@ -947,12 +968,55 @@
                             <span style="background:var(--steam-gold-500);color:#000;font-size:0.58rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:3px;letter-spacing:0.04em;">ARTICLE</span>
                             <div style="font-size:0.82rem;font-weight:600;color:var(--steam-iron-100);line-height:1.3;margin-top:0.3rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(a.title)}</div>
                             <div style="font-size:0.68rem;color:var(--steam-iron-400);margin-top:0.3rem; display:flex; justify-content:space-between;">
-                                <span>${date}</span><span>⭐${reactions}</span>
+                                <span>${authorName}</span><span>${date} · ⭐${reactions}</span>
                             </div>
                         </div>
                     </a>`;
                 }).join('');
-            }).catch(() => {});
+            }).catch(() => {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--steam-iron-400);font-size:0.875rem;">記事の読み込みに失敗しました</div>';
+            });
+    }
+
+    function loadProfileBookmarks(displayId) {
+        const sec = document.getElementById('profile-bookmarks-section');
+        const grid = document.getElementById('bookmarks-grid');
+        if (!sec || !grid || !displayId) return;
+        const token = localStorage.getItem('access_token');
+        fetch('/api/user/bookmarks/' + encodeURIComponent(displayId) + '/?limit=30', {
+            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            const list = (data && data.items) ? data.items : [];
+            if (!list.length) { sec.style.display = 'none'; return; }
+            sec.style.display = 'block';
+            grid.innerHTML = list.map(s => {
+                const isGame = s.gameUrl;
+                const isVideo = s.videoUrl;
+                const thumbnailUrl = s.imageThumbnailUrl || s.displayImageUrl;
+                const originalImageUrl = s.imageUrl || s.displayImageUrl;
+                const imageUrl = thumbnailUrl || originalImageUrl;
+                let content = '';
+                if (isGame) {
+                    content = imageUrl
+                        ? `<img src="${imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${s.gameUrl}', 'game', '${s.id}')">`
+                        : `<div class="game-icon" onclick="openLightbox('${s.gameUrl}', 'game', '${s.id}')" style="cursor:pointer;"><div class="game-icon-text">GAME</div></div>`;
+                } else if (isVideo) {
+                    content = `<video src="${s.videoUrl}" muted preload="metadata" onclick="openLightbox('${s.videoUrl}', 'video', '${s.id}')"></video>`;
+                } else {
+                    const imageSrc = thumbnailUrl || originalImageUrl;
+                    const lightboxImageSrc = originalImageUrl || imageSrc;
+                    content = `<img src="${imageSrc}" alt="" onclick="openLightbox('${lightboxImageSrc}', 'image', '${s.id}')">`;
+                }
+                const total = s.allReactions ? s.allReactions.reduce((sum, r) => sum + (r.count||0), 0) : 0;
+                return `<div class="profile-view-submission-item ${isGame ? 'game' : (isVideo ? 'video' : '')}" data-submission-id="${s.id}">
+                    ${content}
+                    ${total > 0 ? `<div style="position:absolute;bottom:0.3rem;right:0.3rem;background:rgba(0,0,0,0.6);color:#fff;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:9999px;">❤ ${total}</div>` : ''}
+                </div>`;
+            }).join('');
+        })
+        .catch(() => { sec.style.display = 'none'; });
     }
 
     function loadMore() {
@@ -967,6 +1031,9 @@
         { type: 'funny',        emoji: '😂', label: '笑える！' },
         { type: 'moved',        emoji: '😭', label: '感動した' },
         { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
+        { type: 'beautiful',    emoji: '✨', label: 'きれい' },
+        { type: 'emotional',    emoji: '🥹', label: 'エモい！' },
+        { type: 'god_game',     emoji: '🎮', label: '神ゲー！' },
     ];
     let profileActiveDropdownId = null;
 

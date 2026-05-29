@@ -79,6 +79,9 @@ class ArticleReaction(models.Model):
         FUNNY = 'funny', '笑える！'
         MOVED = 'moved', '感動した'
         COOL = 'cool', 'かっこいい！'
+        BEAUTIFUL = 'beautiful', 'きれい'
+        EMOTIONAL = 'emotional', 'エモい！'
+        GOD_GAME = 'god_game', '神ゲー！'
 
     EMOJI_MAP = {
         'submit_medal': '👍',
@@ -87,6 +90,9 @@ class ArticleReaction(models.Model):
         'funny': '😂',
         'moved': '😭',
         'cool': '😎',
+        'beautiful': '✨',
+        'emotional': '🥹',
+        'god_game': '🎮',
     }
 
     type = models.CharField('リアクションタイプ', max_length=50, choices=Type.choices)

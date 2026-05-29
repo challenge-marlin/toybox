@@ -35,7 +35,7 @@ restore_services() {
   RESTORE_RAN=1
   set +e
   log "Restoring services..."
-  local attempt ec
+  local attempt ec web_id web_running
   for attempt in 1 2 3; do
     compose up -d web worker beat
     ec=$?
@@ -45,13 +45,17 @@ restore_services() {
       continue
     fi
     sleep 3
-    if docker inspect -f '{{.State.Running}}' backend-web-1 2>/dev/null | grep -qx true; then
-      log "✅ backend-web-1 running (attempt $attempt)"
+    # 稼働中スタックの web コンテナを compose から特定して状態確認
+    # （旧 backend-web-1 のハードコードをやめ、誤った RESTORE FAILED 判定を防ぐ）
+    web_id="$(compose ps -q web 2>/dev/null | head -1)"
+    web_running="$(docker inspect -f '{{.State.Running}}' "$web_id" 2>/dev/null)"
+    if [ -n "$web_id" ] && [ "$web_running" = "true" ]; then
+      log "✅ web container running (attempt $attempt)"
       compose ps >>"$LOGFILE" 2>&1 || true
       log "Nightly backup finished (services restored)"
       return 0
     fi
-    log "⚠️ compose succeeded but backend-web-1 not Running (attempt $attempt/3)"
+    log "⚠️ compose succeeded but web container not Running (attempt $attempt/3)"
     sleep 8
   done
   compose ps >>"$LOGFILE" 2>&1 || true
@@ -76,6 +80,36 @@ fi
 # 同一バックアップセット（DB + メディア）で同じタイムスタンプを使う
 export BACKUP_DATE="${BACKUP_DATE:-$(date +%Y%m%d_%H%M%S)}"
 log "Backup timestamp: ${BACKUP_DATE}"
+
+# ============================================================================
+# 稼働中スタックの DBコンテナ / メディアボリュームを自動検出
+# ----------------------------------------------------------------------------
+# 旧スタック(backend-*)をハードコードしていたため、本番(toybox-*)へ移行後も
+# 古いDB/メディアをバックアップし続ける不具合があった（2026-05 修正）。
+# ここで compose から実体を解決し、サブスクリプトへ環境変数で渡す。
+# サービス停止前（=web稼働中）に解決することで web のマウント情報を参照できる。
+# ============================================================================
+detect_stack_targets() {
+  set +e
+  local db_id web_id
+  db_id="$(compose ps -q db 2>/dev/null | head -1)"
+  if [ -n "$db_id" ]; then
+    DB_CONTAINER_NAME="$(docker inspect -f '{{.Name}}' "$db_id" 2>/dev/null | sed 's#^/##')"
+  fi
+  web_id="$(compose ps -q web 2>/dev/null | head -1)"
+  if [ -n "$web_id" ]; then
+    # /app/public/uploads にマウントされた named volume を取得
+    MEDIA_VOLUME_NAME="$(docker inspect "$web_id" \
+      --format '{{range .Mounts}}{{if eq .Destination "/app/public/uploads"}}{{.Name}}{{end}}{{end}}' 2>/dev/null)"
+  fi
+  set -e
+}
+detect_stack_targets
+
+# 既定値（検出に失敗しても本番 toybox-* を対象にする）
+export DB_CONTAINER_NAME="${DB_CONTAINER_NAME:-toybox-db-1}"
+export MEDIA_VOLUME_NAME="${MEDIA_VOLUME_NAME:-toybox_media_volume}"
+log "Backup targets: DB container=${DB_CONTAINER_NAME}, media volume=${MEDIA_VOLUME_NAME}"
 
 # 1) Web/Worker/Beat を停止（書き込み停止）
 log "Stopping services (web/worker/beat) for backup..."

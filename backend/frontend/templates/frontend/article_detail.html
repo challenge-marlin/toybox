@@ -294,8 +294,8 @@ function renderArticle(a) {
     document.getElementById('article-title').textContent = a.title;
     document.title = a.title + ' - TOYBOX！';
 
-    // 著者
-    document.getElementById('author-name').textContent = a.author_display_id;
+    // 著者（表示名を優先。未設定の場合はIDにフォールバック）
+    document.getElementById('author-name').textContent = a.author_display_name || a.author_display_id;
     if (a.author_avatar_url) {
         const img = document.getElementById('author-avatar');
         img.src = a.author_avatar_url;

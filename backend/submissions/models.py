@@ -99,6 +99,9 @@ class Reaction(models.Model):
         FUNNY = 'funny', '笑える！'
         MOVED = 'moved', '感動した'
         COOL = 'cool', 'かっこいい！'
+        BEAUTIFUL = 'beautiful', 'きれい'
+        EMOTIONAL = 'emotional', 'エモい！'
+        GOD_GAME = 'god_game', '神ゲー！'
     
     # 絵文字マッピング（フロントエンド表示用）
     EMOJI_MAP = {
@@ -108,6 +111,9 @@ class Reaction(models.Model):
         'funny': '😂',
         'moved': '😭',
         'cool': '😎',
+        'beautiful': '✨',
+        'emotional': '🥹',
+        'god_game': '🎮',
     }
     
     type = models.CharField('リアクションタイプ', max_length=50, choices=Type.choices)
@@ -163,3 +169,40 @@ class SubmissionRepost(models.Model):
 
     def __str__(self):
         return f'repost {self.user_id} -> submission {self.submission_id}'
+
+
+class SubmissionBookmark(models.Model):
+    """投稿のブックマーク（TP消費なし・1投稿につき1ユーザー1回）。
+    ブックマークした作品はそのユーザーのプロフィールに一覧表示される。"""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='submission_bookmarks',
+        verbose_name='ブックマークしたユーザー',
+    )
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name='bookmarks',
+        verbose_name='投稿',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'submission_bookmarks'
+        verbose_name = 'ブックマーク'
+        verbose_name_plural = 'ブックマーク'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'submission'],
+                name='uniq_submission_bookmark_user_submission',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['submission', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'bookmark {self.user_id} -> submission {self.submission_id}'

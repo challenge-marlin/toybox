@@ -207,7 +207,7 @@ function renderCard(a, isMine) {
                 <div class="article-title">${displayTitle}${draftBadge}</div>
                 ${editBtn}${deleteBtn}
             </div>
-            <div class="article-meta">${escHtml(a.author_display_id)} · ${date}</div>
+            <div class="article-meta">${escHtml(a.author_display_name || a.author_display_id)} · ${date}</div>
             ${excerpt ? `<div class="article-excerpt">${escHtml(excerpt)}</div>` : ''}
             <div class="article-reactions">
                 <span class="reaction-pill">👍 ${totalReactions}</span>

@@ -30,9 +30,32 @@ BACKUP_DIR="/backup/toybox/database"
 DATE="${BACKUP_DATE:-$(date +%Y%m%d_%H%M%S)}"
 LOGFILE="/var/log/toybox_backup.log"
 NOTIFY_SCRIPT="/var/www/toybox/scripts/send_backup_notification.sh"
-CONTAINER_NAME="backend-db-1"
-DATABASE_NAME="toybox"
-DB_USER="postgres"
+
+# ============================================================================
+# バックアップ対象のDBコンテナ
+# ----------------------------------------------------------------------------
+# 重要: 本番アプリは「toybox」スタック（toybox-db-1）で稼働している。
+# かつて存在した旧スタック「backend-db-1」をハードコードしていたため、
+# 旧DBの古いデータだけがバックアップされる不具合があった（2026-05 修正）。
+#
+# 解決策:
+#   - backup_nightly.sh が稼働中スタックから DB_CONTAINER_NAME を検出して渡す。
+#   - 単体実行時は既定で稼働中の toybox-db-1 を対象にする。
+#   - いずれの名前でも見つからない場合は、稼働中の *-db-1 を自動探索する。
+# ============================================================================
+CONTAINER_NAME="${DB_CONTAINER_NAME:-toybox-db-1}"
+DATABASE_NAME="${DB_NAME:-toybox}"
+DB_USER="${DB_USER:-postgres}"
+
+# 指定コンテナが稼働していない場合は、稼働中のDBコンテナを自動探索する
+# （旧スタック backend-* は避け、それ以外の *-db-1 を優先する）
+if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+    AUTO_DB=$(docker ps --format '{{.Names}}' | grep -E '(^|[-_])db([-_]1)?$' | grep -v '^backend-' | head -1 || true)
+    [ -z "${AUTO_DB:-}" ] && AUTO_DB=$(docker ps --format '{{.Names}}' | grep -E '(^|[-_])db([-_]1)?$' | head -1 || true)
+    if [ -n "${AUTO_DB:-}" ]; then
+        CONTAINER_NAME="$AUTO_DB"
+    fi
+fi
 
 # メール通知用の詳細情報を格納
 DETAILS=""
@@ -178,6 +201,41 @@ if docker cp "$BACKUP_FILE" "$CONTAINER_NAME:$TEMP_BACKUP_PATH" 2>> "$LOGFILE"; 
     docker exec "$CONTAINER_NAME" rm -f "$TEMP_BACKUP_PATH" 2>/dev/null || true
 else
     log "⚠️ Warning: Could not verify backup file (docker cp failed)"
+fi
+
+# ============================================================================
+# データ鮮度チェック（古いDBを誤ってバックアップしていないかを検知）
+# ----------------------------------------------------------------------------
+# 旧スタックを参照していた不具合の再発を早期に発見するため、
+# バックアップ元DBの「最新投稿日時」と件数をログ・通知に記録する。
+# ============================================================================
+log "バックアップ対象DB: コンテナ=${CONTAINER_NAME} / DB=${DATABASE_NAME}"
+DETAILS="$DETAILS\n対象DBコンテナ: ${CONTAINER_NAME}"
+
+LATEST_POST=$(docker exec -e PGCLIENTENCODING=UTF8 "$CONTAINER_NAME" \
+    psql -U "$DB_USER" -d "$DATABASE_NAME" -t -A \
+    -c "SELECT COALESCE(MAX(created_at)::text, '(none)') FROM submissions;" 2>/dev/null \
+    | tr -d '\r' | head -1 || echo "(query failed)")
+SUB_COUNT=$(docker exec "$CONTAINER_NAME" \
+    psql -U "$DB_USER" -d "$DATABASE_NAME" -t -A \
+    -c "SELECT COUNT(id) FROM submissions;" 2>/dev/null \
+    | tr -d '\r' | head -1 || echo "0")
+SUB_COUNT=${SUB_COUNT:-0}
+
+log "Live data freshness: submissions=${SUB_COUNT}, latest_created_at=${LATEST_POST}"
+DETAILS="$DETAILS\n投稿件数: ${SUB_COUNT}\n最新投稿日時: ${LATEST_POST}"
+
+# 最新投稿が2日以上前の場合は警告（古いDBを掴んでいる可能性）
+if [ "$LATEST_POST" != "(none)" ] && [ "$LATEST_POST" != "(query failed)" ]; then
+    LATEST_EPOCH=$(date -d "$LATEST_POST" +%s 2>/dev/null || echo 0)
+    NOW_EPOCH=$(date +%s)
+    if [ "$LATEST_EPOCH" -gt 0 ]; then
+        AGE_DAYS=$(( (NOW_EPOCH - LATEST_EPOCH) / 86400 ))
+        if [ "$AGE_DAYS" -ge 2 ]; then
+            log "⚠️ Warning: 最新投稿が ${AGE_DAYS} 日前です。古いDBを参照していないか確認してください（コンテナ=${CONTAINER_NAME}）。"
+            DETAILS="$DETAILS\n⚠️ 警告: 最新投稿が${AGE_DAYS}日前です（古いDB参照の可能性）"
+        fi
+    fi
 fi
 
 # ============================================================================

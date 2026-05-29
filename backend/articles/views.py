@@ -19,6 +19,22 @@ ALLOWED_IMAGE_EXTS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTS = {'mp4', 'webm', 'mov'}
 
 
+def _resolve_author_user(author_param, request):
+    """プロフィールAPIと同じロジックで著者ユーザーを解決する。"""
+    from users.models import User
+    if not author_param:
+        return None
+    author_str = str(author_param).strip()
+    if author_str.isdigit():
+        return User.objects.filter(pk=int(author_str)).first()
+    if author_str == 'StudySphereUser' and request.user.is_authenticated:
+        return request.user
+    user = User.objects.filter(display_id=author_str).first()
+    if not user:
+        user = User.objects.filter(studysphere_login_code=author_str).first()
+    return user
+
+
 class ArticleListCreateView(generics.ListCreateAPIView):
     """記事一覧（公開のみ）＋新規作成。"""
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -26,11 +42,15 @@ class ArticleListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = Article.objects.select_related('author').prefetch_related('reactions').order_by('-created_at')
         user = self.request.user
-        # author フィルター（display_id で検索）
+        # 著者フィルター（author_user_id / author / display_id / login_code / StudySphereUser）
+        author_user_id = self.request.query_params.get('author_user_id')
         author_id = self.request.query_params.get('author')
-        if author_id:
-            qs = qs.filter(author__display_id=author_id, status=Article.Status.PUBLISHED)
-            return qs
+        author_key = author_user_id or author_id
+        if author_key:
+            author_user = _resolve_author_user(author_key, self.request)
+            if author_user:
+                return qs.filter(author=author_user, status=Article.Status.PUBLISHED)
+            return qs.none()
         # フォロー中のユーザー＋自分の記事のみ
         followed = self.request.query_params.get('followed')
         if followed and user.is_authenticated:
@@ -140,11 +160,12 @@ class ArticleReactionView(views.APIView):
             user=request.user, article=article, type=reaction_type
         )
 
-        # 記事著者へのポイント付与（リアクション受信で5TP）
+        # 記事著者へのポイント付与（リアクション種別ごとのTP。未定義は5TP）
         if created and article.author != request.user:
             try:
-                from gamification.services import award_points
-                award_points(article.author, 'article_reaction_received', 5, 'リアクション受信')
+                from gamification.services import award_points, REACTION_POINTS
+                pt = REACTION_POINTS.get(reaction_type, 5)
+                award_points(article.author, 'article_reaction_received', pt, 'リアクション受信')
             except Exception:
                 logger.exception('article reaction pt award failed')
 

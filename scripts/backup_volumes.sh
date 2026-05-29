@@ -14,6 +14,25 @@ DATE="${BACKUP_DATE:-$(date +%Y%m%d_%H%M%S)}"
 LOGFILE="/var/log/toybox_backup.log"
 NOTIFY_SCRIPT="/var/www/toybox/scripts/send_backup_notification.sh"
 
+# ============================================================================
+# バックアップ対象のメディアボリューム
+# ----------------------------------------------------------------------------
+# 重要: 本番は「toybox」スタックの toybox_media_volume を使用している。
+# 旧スタックの backend_media_volume をハードコードしていたため、
+# 古いメディアだけがバックアップされる不具合があった（2026-05 修正）。
+#
+# 解決策:
+#   - backup_nightly.sh が稼働中スタックから MEDIA_VOLUME_NAME を検出して渡す。
+#   - 単体実行時は既定で toybox_media_volume を対象にする。
+#   - 見つからない場合は *_media_volume を自動探索する。
+# ============================================================================
+MEDIA_VOLUME="${MEDIA_VOLUME_NAME:-toybox_media_volume}"
+if ! docker volume ls --format '{{.Name}}' | grep -q "^${MEDIA_VOLUME}$"; then
+  AUTO_VOL=$(docker volume ls --format '{{.Name}}' | grep -E '_media_volume$' | grep -v '^backend_' | head -1 || true)
+  [ -z "${AUTO_VOL:-}" ] && AUTO_VOL=$(docker volume ls --format '{{.Name}}' | grep -E '_media_volume$' | head -1 || true)
+  [ -n "${AUTO_VOL:-}" ] && MEDIA_VOLUME="$AUTO_VOL"
+fi
+
 # メール通知用の詳細情報を格納
 DETAILS=""
 
@@ -32,15 +51,15 @@ mkdir -p "$BACKUP_DIR"
 # 重要:
 # - -C /data . を使うことで、tar内に「data/」階層を作らない（リストア後の階層ズレを防止）
 # - DBは .dump で復元する方針のため、postgres_dataボリュームのtarはこのスクリプトでは作らない
-log "Backing up media_volume..."
+log "Backing up media volume: ${MEDIA_VOLUME}"
 MEDIA_FILE="$BACKUP_DIR/media_volume_${DATE}.tar.gz"
 if docker run --rm \
-  -v backend_media_volume:/data \
+  -v "${MEDIA_VOLUME}":/data \
   -v "$BACKUP_DIR":/backup \
   alpine tar czf "/backup/media_volume_${DATE}.tar.gz" -C /data . 2>> "$LOGFILE"; then
   SIZE=$(du -h "$MEDIA_FILE" | cut -f1)
-  log "✅ media_volume backup successful: $SIZE (${MEDIA_FILE})"
-  DETAILS="バックアップファイル: media_volume_${DATE}.tar.gz\nファイルサイズ: $SIZE"
+  log "✅ media_volume backup successful: $SIZE (${MEDIA_FILE}) [volume=${MEDIA_VOLUME}]"
+  DETAILS="バックアップファイル: media_volume_${DATE}.tar.gz\n対象ボリューム: ${MEDIA_VOLUME}\nファイルサイズ: $SIZE"
 else
   log "❌ media_volume backup failed!"
   DETAILS="エラー: media_volume のバックアップに失敗しました\n出力: ${LOGFILE} を確認してください"

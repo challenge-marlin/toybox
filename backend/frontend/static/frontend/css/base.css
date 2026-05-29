@@ -35,6 +35,28 @@
   
   --bg: #0f0f10;
   --fg: #eae6df;
+
+  /* ランキング入賞バッジ（ダーク） */
+  --badge-gold-text: #fde68a;
+  --badge-gold-accent: #fbbf24;
+  --badge-gold-bg-start: rgba(234, 179, 8, 0.32);
+  --badge-gold-bg-end: rgba(120, 80, 10, 0.18);
+  --badge-gold-border: rgba(251, 191, 36, 0.55);
+  --badge-silver-text: #e8edf5;
+  --badge-silver-accent: #cbd5e1;
+  --badge-silver-bg-start: rgba(148, 163, 184, 0.28);
+  --badge-silver-bg-end: rgba(71, 85, 105, 0.2);
+  --badge-silver-border: rgba(203, 213, 225, 0.45);
+  --badge-bronze-text: #fed7aa;
+  --badge-bronze-accent: #fb923c;
+  --badge-bronze-bg-start: rgba(251, 146, 60, 0.28);
+  --badge-bronze-bg-end: rgba(120, 53, 15, 0.2);
+  --badge-bronze-border: rgba(251, 146, 60, 0.5);
+  --badge-default-text: #fde68a;
+  --badge-default-accent: #fbbf24;
+  --badge-default-bg-start: rgba(234, 179, 8, 0.22);
+  --badge-default-bg-end: rgba(120, 80, 10, 0.14);
+  --badge-default-border: rgba(234, 179, 8, 0.4);
 }
 
 /* ライトモード用のカラーパレット */
@@ -60,6 +82,27 @@
   
   --bg: #F2F3F5;
   --fg: #1F232A;
+
+  --badge-gold-text: #3d2608;
+  --badge-gold-accent: #6f4622;
+  --badge-gold-bg-start: rgba(212, 168, 75, 0.55);
+  --badge-gold-bg-end: rgba(140, 92, 46, 0.28);
+  --badge-gold-border: rgba(111, 70, 34, 0.55);
+  --badge-silver-text: #2c3440;
+  --badge-silver-accent: #4b5563;
+  --badge-silver-bg-start: rgba(148, 163, 184, 0.45);
+  --badge-silver-bg-end: rgba(100, 116, 139, 0.22);
+  --badge-silver-border: rgba(75, 85, 99, 0.4);
+  --badge-bronze-text: #4a2808;
+  --badge-bronze-accent: #9a3412;
+  --badge-bronze-bg-start: rgba(251, 146, 60, 0.42);
+  --badge-bronze-bg-end: rgba(180, 83, 9, 0.2);
+  --badge-bronze-border: rgba(154, 52, 18, 0.45);
+  --badge-default-text: #58371b;
+  --badge-default-accent: #6f4622;
+  --badge-default-bg-start: rgba(212, 168, 75, 0.4);
+  --badge-default-bg-end: rgba(140, 92, 46, 0.2);
+  --badge-default-border: rgba(111, 70, 34, 0.42);
 }
 
 /* ライトモード時の背景色を明るく */
@@ -181,5 +224,104 @@ textarea:focus {
   border: 1px solid var(--steam-iron-700);
   background: var(--steam-iron-900);
   padding: 1.5rem;
+}
+
+.ranking-badges-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+/* ランキング入賞・ゴールド系ピルバッジ（ライト/ダーク両対応） */
+.ranking-entry-badge,
+.gold-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--badge-tier-text, var(--badge-gold-text));
+  font-weight: 700;
+  background: linear-gradient(
+    135deg,
+    var(--badge-tier-bg-start, var(--badge-gold-bg-start)) 0%,
+    var(--badge-tier-bg-end, var(--badge-gold-bg-end)) 100%
+  );
+  border: 1px solid var(--badge-tier-border, var(--badge-gold-border));
+  border-radius: 9999px;
+  padding: 0.28rem 0.8rem 0.28rem 0.55rem;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  max-width: 100%;
+}
+
+.gold-pill-badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.65rem 0.2rem 0.5rem;
+  --badge-tier-text: var(--badge-gold-text);
+  --badge-tier-accent: var(--badge-gold-accent);
+  --badge-tier-bg-start: var(--badge-gold-bg-start);
+  --badge-tier-bg-end: var(--badge-gold-bg-end);
+  --badge-tier-border: var(--badge-gold-border);
+}
+
+.ranking-entry-badge__medal {
+  font-size: 1.05rem;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+.ranking-entry-badge__label {
+  letter-spacing: 0.01em;
+}
+
+.ranking-entry-badge .rank-num {
+  color: var(--badge-tier-accent, var(--badge-gold-accent));
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+
+.ranking-entry-badge--gold {
+  --badge-tier-text: var(--badge-gold-text);
+  --badge-tier-accent: var(--badge-gold-accent);
+  --badge-tier-bg-start: var(--badge-gold-bg-start);
+  --badge-tier-bg-end: var(--badge-gold-bg-end);
+  --badge-tier-border: var(--badge-gold-border);
+}
+
+.ranking-entry-badge--silver {
+  --badge-tier-text: var(--badge-silver-text);
+  --badge-tier-accent: var(--badge-silver-accent);
+  --badge-tier-bg-start: var(--badge-silver-bg-start);
+  --badge-tier-bg-end: var(--badge-silver-bg-end);
+  --badge-tier-border: var(--badge-silver-border);
+}
+
+.ranking-entry-badge--bronze {
+  --badge-tier-text: var(--badge-bronze-text);
+  --badge-tier-accent: var(--badge-bronze-accent);
+  --badge-tier-bg-start: var(--badge-bronze-bg-start);
+  --badge-tier-bg-end: var(--badge-bronze-bg-end);
+  --badge-tier-border: var(--badge-bronze-border);
+}
+
+.ranking-entry-badge--default {
+  --badge-tier-text: var(--badge-default-text);
+  --badge-tier-accent: var(--badge-default-accent);
+  --badge-tier-bg-start: var(--badge-default-bg-start);
+  --badge-tier-bg-end: var(--badge-default-bg-end);
+  --badge-tier-border: var(--badge-default-border);
+}
+
+[data-theme="light"] .ranking-entry-badge,
+[data-theme="light"] .gold-pill-badge {
+  box-shadow:
+    0 1px 3px rgba(88, 55, 27, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 

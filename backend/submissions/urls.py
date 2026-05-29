@@ -31,6 +31,8 @@ urlpatterns = [
     path('feed/', views.FeedView.as_view(), name='feed'),
     # User submissions endpoint
     path('user/submissions/<str:display_id>/', views.UserSubmissionsView.as_view(), name='user-submissions'),
+    # User bookmarks endpoint
+    path('user/bookmarks/<str:display_id>/', views.UserBookmarksView.as_view(), name='user-bookmarks'),
     # Submitters and ranking endpoints
     path('submitters/today/', views.SubmittersTodayView.as_view(), name='submitters-today'),
     path('ranking/daily/', views.RankingDailyView.as_view(), name='ranking-daily'),

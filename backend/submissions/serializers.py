@@ -34,6 +34,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
     title_color = serializers.SerializerMethodField()
     reactions_count = serializers.SerializerMethodField()
     user_reacted = serializers.SerializerMethodField()
+    user_bookmarked = serializers.SerializerMethodField()
     all_reactions = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     display_image_url = serializers.SerializerMethodField()
@@ -50,7 +51,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             'image_url', 'video_url', 'game_url',
             'title', 'caption', 'hashtags', 'spell', 'ai_tool', 'ai_tool_label', 'comment_enabled', 'status',
             'active_title', 'active_title_image_url', 'title_color',
-            'reactions_count', 'user_reacted', 'all_reactions',
+            'reactions_count', 'user_reacted', 'user_bookmarked', 'all_reactions',
             'created_at', 'deleted_at'
         ]
         read_only_fields = ['id', 'author', 'created_at', 'deleted_at', 'status']
@@ -338,6 +339,14 @@ class SubmissionSerializer(serializers.ModelSerializer):
             return obj.reactions.filter(user=request.user, type=Reaction.Type.SUBMIT_MEDAL).exists()
         return False
     
+    def get_user_bookmarked(self, obj):
+        """Check if current user has bookmarked this submission."""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            from .models import SubmissionBookmark
+            return SubmissionBookmark.objects.filter(user=request.user, submission=obj).exists()
+        return False
+
     def get_all_reactions(self, obj):
         """Get all reaction counts and current user's reactions per type."""
         request = self.context.get('request')

@@ -497,8 +497,12 @@
         </div>
         <div id="lightbox-actions" style="display: none; gap: 0.6rem; align-items: center; flex-wrap: wrap; flex-direction: column;">
             <div class="lightbox-reaction-bar" id="lightbox-reaction-bar">
-                <!-- JSで6種リアクションボタンを挿入 -->
+                <!-- JSでリアクションボタンを挿入 -->
             </div>
+            <button id="lightbox-bookmark-btn" onclick="toggleLightboxBookmark(event)" style="display: inline-flex; align-items: center; gap: 0.4rem; background: var(--steam-iron-800); color: var(--steam-gold-200); border: 1px solid var(--steam-iron-600); border-radius: 9999px; padding: 0.45rem 1rem; font-size: 0.85rem; cursor: pointer;">
+                <span id="lightbox-bookmark-icon">🔖</span>
+                <span id="lightbox-bookmark-label">ブックマーク</span>
+            </button>
             <button id="discord-share-btn" class="discord-share-btn" onclick="shareToDiscord()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #5865F2; color: white; border: none; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer;">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.363-.43.85-.59 1.23a18.33 18.33 0 0 0-5.934 0A9.145 9.145 0 0 0 9.464 3a19.736 19.736 0 0 0-3.759 1.369C2.83 8.165 2.18 11.86 2.454 15.5a19.9 19.9 0 0 0 4.883 2.469c.395-.54.747-1.11 1.053-1.706a12.7 12.7 0 0 1-1.66-.8c.14-.103.277-.211.408-.322 3.219 1.5 6.711 1.5 9.896 0 .133.111.27.219.41.322-.53.31-1.09.583-1.668.8.306.596.658 1.166 1.053 1.706a19.9 19.9 0 0 0 4.882-2.469c.4-5.09-.683-8.753-2.524-11.131ZM9.861 13.623c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958.978 0 1.766.88 1.748 1.958 0 1.078-.77 1.957-1.748 1.957Zm4.295 0c-.96 0-1.748-.88-1.748-1.957 0-1.078.77-1.958 1.748-1.958s1.748.88 1.748 1.958c0 1.078-.77 1.957-1.748 1.957Z"/>
@@ -575,7 +579,7 @@
                     </div>
                     <div style="font-size:0.875rem; font-weight:600; color:var(--steam-iron-100); line-height:1.35; margin-bottom:0.5rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escFeedHtml(a.title)}</div>
                     <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--steam-iron-400);">
-                        <span>${escFeedHtml(a.author_display_id || '')}</span>
+                        <span>${escFeedHtml(a.author_display_name || a.author_display_id || '')}</span>
                         <span>⭐${reactions} · ${date}</span>
                     </div>
                 </div>
@@ -721,9 +725,16 @@
                 renderFeed();
                 initialized = true;
             } else {
-                // 初回ロード：記事も取得してマージ
                 const subItems = data.items || [];
                 nextCursor = data.nextCursor || null;
+                // ハッシュタグ検索中は記事をマージしない（記事にはハッシュタグが無く、無関係な結果が混ざるため）
+                if (activeFilter) {
+                    items = subItems;
+                    renderFeed();
+                    initialized = true;
+                    return;
+                }
+                // 初回ロード：記事も取得してマージ
                 fetch('/api/articles/?limit=20')
                     .then(r => r.json())
                     .then(artData => {
@@ -1000,6 +1011,9 @@
         { type: 'funny',        emoji: '😂', label: '笑える！' },
         { type: 'moved',        emoji: '😭', label: '感動した' },
         { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
+        { type: 'beautiful',    emoji: '✨', label: 'きれい' },
+        { type: 'emotional',    emoji: '🥹', label: 'エモい！' },
+        { type: 'god_game',     emoji: '🎮', label: '神ゲー！' },
     ];
     let activeDropdownId = null;
 
@@ -1223,6 +1237,52 @@
     
     // ライトボックス機能
     let currentLightboxAssetId = null;
+    let currentLightboxBookmarked = false;
+    let currentLightboxIsOwnPost = false;
+
+    function updateLightboxBookmarkVisibility(isOwn) {
+        currentLightboxIsOwnPost = !!isOwn;
+        const btn = document.getElementById('lightbox-bookmark-btn');
+        if (btn) btn.style.display = isOwn ? 'none' : 'inline-flex';
+    }
+
+    function setLightboxBookmarkState(bookmarked) {
+        currentLightboxBookmarked = !!bookmarked;
+        const icon = document.getElementById('lightbox-bookmark-icon');
+        const label = document.getElementById('lightbox-bookmark-label');
+        const btn = document.getElementById('lightbox-bookmark-btn');
+        if (icon) icon.textContent = bookmarked ? '✅' : '🔖';
+        if (label) label.textContent = bookmarked ? 'ブックマーク済み' : 'ブックマーク';
+        if (btn) {
+            btn.style.background = bookmarked ? 'var(--steam-gold-500)' : 'var(--steam-iron-800)';
+            btn.style.color = bookmarked ? '#000' : 'var(--steam-gold-200)';
+        }
+    }
+
+    function toggleLightboxBookmark(event) {
+        if (event) event.stopPropagation();
+        if (currentLightboxIsOwnPost) return;
+        const token = localStorage.getItem('access_token');
+        if (!token) { alert('ログインが必要です'); return; }
+        const sid = currentLightboxAssetId;
+        if (!sid) return;
+        const willBookmark = !currentLightboxBookmarked;
+        setLightboxBookmarkState(willBookmark); // 楽観的更新
+        fetch('/api/submissions/' + encodeURIComponent(sid) + '/bookmark/', {
+            method: willBookmark ? 'POST' : 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d && d.error) {
+                setLightboxBookmarkState(!willBookmark);
+                alert(d.error);
+                return;
+            }
+            if (d && typeof d.bookmarked === 'boolean') setLightboxBookmarkState(d.bookmarked);
+        })
+        .catch(() => { setLightboxBookmarkState(!willBookmark); });
+    }
     
     async function openLightbox(src, type, assetId) {
         const lightbox = document.getElementById('lightbox');
@@ -1237,6 +1297,9 @@
         const lightboxGameLink = document.getElementById('lightbox-game-link');
         
         currentLightboxAssetId = assetId;
+        setLightboxBookmarkState(false);
+        const cardItem = items.find(x => x.id === assetId) || popularItems.find(x => x.id === assetId);
+        updateLightboxBookmarkVisibility(cardItem && cardItem.isOwnPost);
         
         if (type === 'video') {
             lightboxImage.style.display = 'none';
@@ -1278,6 +1341,9 @@
             { type: 'funny',        emoji: '😂', label: '笑える！' },
             { type: 'moved',        emoji: '😭', label: '感動した' },
             { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
+            { type: 'beautiful',    emoji: '✨', label: 'きれい' },
+            { type: 'emotional',    emoji: '🥹', label: 'エモい！' },
+            { type: 'god_game',     emoji: '🎮', label: '神ゲー！' },
         ];
         function renderLightboxReactions(allReactions) {
             const bar = document.getElementById('lightbox-reaction-bar');
@@ -1325,6 +1391,18 @@
                     if (data.all_reactions) {
                         renderLightboxReactions(data.all_reactions);
                     }
+
+                    // ブックマーク状態を反映
+                    setLightboxBookmarkState(!!data.user_bookmarked);
+                    try {
+                        const t = localStorage.getItem('access_token');
+                        if (t && data.author) {
+                            const payload = JSON.parse(atob(t.split('.')[1]));
+                            if (payload.user_id && String(data.author) === String(payload.user_id)) {
+                                updateLightboxBookmarkVisibility(true);
+                            }
+                        }
+                    } catch (e) { /* ignore */ }
                     
                     // ゲーム投稿の場合、サムネイルを表示
                     if (type === 'game') {
@@ -1620,11 +1698,31 @@
         var sc = row.score != null ? row.score : 0;
         var medalEmoji = rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : '';
         var rankLabel = medalEmoji ? (medalEmoji + ' 第' + rank + '位') : ('第' + rank + '位');
-        var ptBadge = '<div style="display:flex;justify-content:flex-end;padding:0.1rem 0.4rem 0;">'
-            + '<span style="font-size:0.72rem;font-weight:700;color:var(--steam-gold-300);">'
-            + rankLabel + ' ' + sc + 'pt</span></div>';
+        // 順位はカード（四角）の外側・上部に表示してカード内をごちゃごちゃさせない
+        var header = '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.3rem;margin-bottom:0.35rem;padding:0 0.15rem;">'
+            + '<span style="font-size:0.82rem;font-weight:800;color:var(--steam-gold-300);">' + rankLabel + '</span>'
+            + '<span style="font-size:0.7rem;font-weight:700;color:var(--steam-iron-300);">' + sc + 'pt</span></div>';
         var baseCard = renderFeedItem(row);
-        return baseCard.replace('<button class="reaction-trigger-btn', ptBadge + '<button class="reaction-trigger-btn');
+        return '<div class="feed-rank-cell">' + header + baseCard + '</div>';
+    }
+
+    // 通知などから特定投稿の拡大表示を開く（?submission=<id>）
+    function openSubmissionById(submissionId) {
+        if (!submissionId) return;
+        const token = localStorage.getItem('access_token');
+        fetch('/api/submissions/' + encodeURIComponent(submissionId) + '/', {
+            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            if (!data) return;
+            let type = 'image';
+            let src = data.image_url || data.imageUrl || data.display_image_url || data.displayImageUrl || '';
+            if (data.video_url || data.videoUrl) { type = 'video'; src = data.video_url || data.videoUrl; }
+            else if (data.game_url || data.gameUrl) { type = 'game'; src = data.game_url || data.gameUrl; }
+            openLightbox(src, type, String(submissionId));
+        })
+        .catch(() => {});
     }
 
     function loadReactionRankingsForFeed() {
@@ -1697,6 +1795,9 @@
             loadPopularFeed(); // 人気作品を読み込む
             loadPopularHashtags(); // 人気ハッシュタグを読み込む
             loadReactionRankingsForFeed();
+            // 通知から遷移してきた場合、該当投稿の拡大画像を開く
+            var _subParam = new URLSearchParams(window.location.search).get('submission');
+            if (_subParam) { setTimeout(function() { openSubmissionById(_subParam); }, 600); }
             var hsi = document.getElementById('hashtag-search-input');
             if (hsi) {
                 hsi.addEventListener('keydown', function(e) {

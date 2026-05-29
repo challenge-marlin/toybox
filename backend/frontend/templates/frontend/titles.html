@@ -41,6 +41,7 @@
     .tier-gold     { background: #78350f; color: #fbbf24; border: 1px solid #d97706; }
     .tier-red      { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
     .tier-rainbow  { background: #1e1028; color: #e879f9; border: 1px solid #a855f7; }
+    .tier-neon     { background: #071428; color: #4fc3f7; border: 1px solid #00e5ff; box-shadow: 0 0 8px rgba(0,229,255,0.35); }
     .tier-official { background: #071428; color: #4fc3f7; border: 1px solid #00bcd4; }
     /* ── グリッド ── */
     .titles-grid {
@@ -133,7 +134,8 @@
         0%, 100% { box-shadow: 0 0 0 3px #00e5ff, 0 0 10px rgba(0,229,255,0.55); }
         50%       { box-shadow: 0 0 0 3px #2979ff, 0 0 16px rgba(41,121,255,0.7); }
     }
-    .official-avatar {
+    .official-avatar,
+    .neon-title-avatar {
         border-radius: 50% !important;
         animation: official-border-pulse 2.5s ease-in-out infinite !important;
         border: none !important;
@@ -197,11 +199,19 @@
 
     let _rainbowSvgId = 0;
 
+    function buildNeonSvgBadge(titleName) {
+        return buildOfficialSvgBadge(titleName || '称号').replace('OFFICIAL', 'TRANSCEND');
+    }
+
     function buildTitleSvgBadge(titleName, color) {
         const name    = titleName || '称号';
         const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         const fs      = name.length > 9 ? 10 : name.length > 6 ? 12 : 14;
         const W = 160, H = 40;
+
+        if (color === 'neon') {
+            return buildNeonSvgBadge(name);
+        }
 
         if (color === 'rainbow') {
             const uid = ++_rainbowSvgId;
@@ -255,6 +265,7 @@
         gold:     { ja: '中級',   cls: 'tier-gold'     },
         red:      { ja: '上級',   cls: 'tier-red'      },
         rainbow:  { ja: '伝説',   cls: 'tier-rainbow'  },
+        neon:     { ja: '超越',   cls: 'tier-neon'     },
         official: { ja: 'その他', cls: 'tier-official' },
     };
 
@@ -275,7 +286,7 @@
             }
 
             // 色でグループ化（順序維持）
-            const ORDER = ['green','blue','gold','red','rainbow','official'];
+            const ORDER = ['green','blue','gold','red','rainbow','neon','official'];
             const groups = {};
             ORDER.forEach(c => { groups[c] = []; });
             achievements.forEach(a => {
@@ -292,9 +303,16 @@
   <div class="titles-grid">`;
                 for (const a of items) {
                     const color = a.earned ? a.color : 'locked';
-                    const badge = (a.color === 'official' && a.earned)
-                        ? buildOfficialSvgBadge(a.name)
-                        : buildTitleSvgBadge(a.name, color);
+                    const displayName = a.name;
+                    const titleKey = a.titleKey || a.name;
+                    let badge;
+                    if (a.color === 'official' && a.earned) {
+                        badge = buildOfficialSvgBadge(titleKey);
+                    } else if (a.color === 'neon' && a.earned) {
+                        badge = buildNeonSvgBadge(titleKey);
+                    } else {
+                        badge = buildTitleSvgBadge(displayName, color);
+                    }
                     const nameClass = a.earned ? '' : 'locked-name';
                     const cond = a.conditionText || '';
                     let action = '';
@@ -302,7 +320,7 @@
                         if (a.isActive) {
                             action = '<span class="title-active-badge">✓ 表示中</span>';
                         } else {
-                            const safeName = a.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+                            const safeName = titleKey.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
                             action = `<button class="title-set-btn" onclick="setActiveTitle('${safeName}', this)">この称号を使う</button>`;
                         }
                     } else {
@@ -310,7 +328,7 @@
                     }
                     html += `<div class="title-card ${a.earned ? 'earned' : 'locked'} ${a.isActive ? 'active-card' : ''}">
       <div class="title-badge-wrap">${badge}</div>
-      <div class="title-name ${nameClass}">${a.name}</div>
+      <div class="title-name ${nameClass}">${displayName}</div>
       ${action}
     </div>`;
                 }

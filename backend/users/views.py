@@ -931,7 +931,10 @@ class ProfileGetView(APIView):
                 mutual_follow = is_following and is_follower
 
             is_official = 'TOYBOX!公式' in (meta.earned_titles or [])
+            from gamification.services import get_title_color
+            active_title_color = get_title_color(active_title) if active_title else None
             response_data = {
+                'authorUserId': user.id,
                 'anonId': anon_id,
                 'displayName': display_name,
                 'avatarUrl': avatar_url,
@@ -939,6 +942,7 @@ class ProfileGetView(APIView):
                 'headerUrl': header_url,
                 'bio': meta.bio,
                 'activeTitle': active_title,
+                'activeTitleColor': active_title_color,
                 'activeTitleImageUrl': active_title_image_url,
                 'activeTitleUntil': active_title_until.isoformat() if active_title_until else None,
                 'earnedTitles': list(meta.earned_titles or []),
@@ -1008,8 +1012,10 @@ class AchievementsView(APIView):
             name = defn['name']
             is_earned = name in earned_set
             is_ultra = defn['ultra_secret'] and not is_earned
+            display_name = '？？？' if is_ultra else name
             items.append({
-                'name':           '？？？' if is_ultra else name,
+                'name':           display_name,
+                'titleKey':       name,
                 'color':          defn['color'],
                 'conditionText':  defn['condition_text'] if not defn['secret'] else '？？？',
                 'secret':         defn['secret'],

@@ -47,6 +47,51 @@
         font-size: 0.875rem;
     }
 
+    /* ランキング入賞バッジ（me 専用・base.css 未同期時も表示） */
+    .ranking-badges-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.35rem;
+        width: 100%;
+    }
+    .ranking-entry-badge,
+    .gold-pill-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.72rem;
+        line-height: 1.35;
+        font-weight: 700;
+        border-radius: 9999px;
+        padding: 0.28rem 0.8rem 0.28rem 0.55rem;
+        max-width: 100%;
+        color: #fde68a;
+        background: linear-gradient(135deg, rgba(234, 179, 8, 0.32) 0%, rgba(120, 80, 10, 0.18) 100%);
+        border: 1px solid rgba(251, 191, 36, 0.55);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    .gold-pill-badge { font-size: 0.7rem; padding: 0.2rem 0.65rem 0.2rem 0.5rem; }
+    .ranking-entry-badge__medal { font-size: 1.05rem; line-height: 1; flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
+    .ranking-entry-badge .rank-num { color: #fbbf24; font-weight: 800; font-size: 0.78rem; }
+    .ranking-entry-badge--silver { color: #e8edf5; background: linear-gradient(135deg, rgba(148, 163, 184, 0.28) 0%, rgba(71, 85, 105, 0.2) 100%); border-color: rgba(203, 213, 225, 0.45); }
+    .ranking-entry-badge--silver .rank-num { color: #cbd5e1; }
+    .ranking-entry-badge--bronze { color: #fed7aa; background: linear-gradient(135deg, rgba(251, 146, 60, 0.28) 0%, rgba(120, 53, 15, 0.2) 100%); border-color: rgba(251, 146, 60, 0.5); }
+    .ranking-entry-badge--bronze .rank-num { color: #fb923c; }
+    [data-theme="light"] .ranking-entry-badge,
+    [data-theme="light"] .gold-pill-badge {
+        color: #3d2608;
+        background: linear-gradient(135deg, rgba(212, 168, 75, 0.55) 0%, rgba(140, 92, 46, 0.28) 100%);
+        border-color: rgba(111, 70, 34, 0.55);
+        box-shadow: 0 1px 3px rgba(88, 55, 27, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+    [data-theme="light"] .ranking-entry-badge .rank-num { color: #6f4622; }
+    [data-theme="light"] .ranking-entry-badge--silver { color: #2c3440; background: linear-gradient(135deg, rgba(148, 163, 184, 0.45) 0%, rgba(100, 116, 139, 0.22) 100%); border-color: rgba(75, 85, 99, 0.4); }
+    [data-theme="light"] .ranking-entry-badge--silver .rank-num { color: #4b5563; }
+    [data-theme="light"] .ranking-entry-badge--bronze { color: #4a2808; background: linear-gradient(135deg, rgba(251, 146, 60, 0.42) 0%, rgba(180, 83, 9, 0.2) 100%); border-color: rgba(154, 52, 18, 0.45); }
+    [data-theme="light"] .ranking-entry-badge--bronze .rank-num { color: #9a3412; }
+
     /* 新着投稿カードグリッド */
     .new-arrivals-grid {
         display: grid;
@@ -168,7 +213,8 @@
         0%, 100% { box-shadow: 0 0 0 3px #00e5ff, 0 0 12px rgba(0,229,255,0.6); }
         50%       { box-shadow: 0 0 0 3px #2979ff, 0 0 20px rgba(41,121,255,0.7); }
     }
-    .official-avatar {
+    .official-avatar,
+    .neon-title-avatar {
         border: none !important;
         animation: official-border-pulse 2.5s ease-in-out infinite !important;
     }
@@ -420,7 +466,7 @@
         color: #fb7185;
         background: rgba(251,113,133,0.12);
     }
-    .me-follow-repost-btn {
+    .me-follow-bookmark-btn {
         font-size: 0.68rem;
         padding: 0.15rem 0.45rem;
         border-radius: 6px;
@@ -430,10 +476,14 @@
         cursor: pointer;
         font-weight: 600;
     }
-    .me-follow-repost-btn:hover:not(:disabled) {
+    .me-follow-bookmark-btn:hover:not(:disabled) {
         background: rgba(212,175,55,0.12);
     }
-    .me-follow-repost-btn:disabled {
+    .me-follow-bookmark-btn.bookmarked {
+        background: var(--steam-gold-500);
+        color: #000;
+    }
+    .me-follow-bookmark-btn:disabled {
         opacity: 0.45;
         cursor: not-allowed;
     }
@@ -461,11 +511,11 @@
                     <span>未設定</span>
                 </div>
                 <div style="color: var(--steam-iron-100); font-weight: 600; font-size: 0.875rem;" id="profile-name">—</div>
-                <div id="studysphere-link-badge" style="display: none; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--steam-gold-400); font-weight: 600; background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); border-radius: 9999px; padding: 0.15rem 0.6rem;">
+                <div id="studysphere-link-badge" class="gold-pill-badge" style="display: none;">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                     StudySphere連携済み
                 </div>
-                <div id="ranking-badges" style="display: flex; flex-direction: column; align-items: center; gap: 0.3rem; margin-top: 0.25rem;"></div>
+                <div id="ranking-badges" class="ranking-badges-stack"></div>
                 <div id="profile-follow-stats" style="font-size: 0.72rem; color: var(--steam-iron-400); margin-top: 0.25rem;"></div>
                 <div id="profile-mutual-badge" style="display: none; font-size: 0.7rem; color: #34d399; margin-top: 0.15rem; font-weight: 600;">相互フォロー</div>
                 <div id="profile-title" style="display: none; justify-content: center; margin: 0.25rem 0;"></div>
@@ -616,9 +666,9 @@
             </div>
         </section>
         
-        <!-- 提出者（当日） -->
+        <!-- 投稿した人（当日） -->
         <section class="me-section">
-            <h2>提出者（当日）</h2>
+            <h2>投稿した人（当日）</h2>
             <div style="font-size: 0.875rem; color: var(--steam-iron-100); margin-bottom: 0.5rem;" id="submitters-count">0名</div>
             <ul id="submitters-list" style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--steam-iron-200); max-height: 10rem; overflow: auto;">
                 <li>データなし</li>
@@ -1251,9 +1301,12 @@
             const avatarThumbnailUrl = data.avatarThumbnailUrl || data.avatar_thumbnail_url;
             console.log('[Profile Image Debug] me.html - Avatar URL:', avatarUrl, 'Thumbnail:', avatarThumbnailUrl);
 
-            // 公式ユーザーはアバター枠にボーダーを付与
-            if ((data.isOfficial || data.is_official) && avatarDiv) {
-                avatarDiv.classList.add('official-avatar');
+            if (avatarDiv && typeof window.applyTitleAvatarNeon === 'function') {
+                window.applyTitleAvatarNeon(
+                    avatarDiv,
+                    data.activeTitle || data.active_title,
+                    data.isOfficial || data.is_official || (data.earnedTitles || data.earned_titles || []).includes('TOYBOX!公式')
+                );
                 avatarDiv.style.border = 'none';
             }
             
@@ -1276,10 +1329,11 @@
             const titleElement = document.getElementById('profile-title');
             const titleUntilElement = document.getElementById('profile-title-until');
             
-            if (data.activeTitle) {
+            if (data.activeTitle || data.active_title) {
+                const at = data.activeTitle || data.active_title;
+                const atColor = data.activeTitleColor || data.active_title_color;
                 if (titleElement) {
-                    // v2.0: 常にSVGバッジを表示
-                    titleElement.innerHTML = buildTitleSvgBadge(data.activeTitle);
+                    titleElement.innerHTML = buildTitleSvgBadge(at, atColor);
                     titleElement.style.display = 'flex';
                 }
                 if (titleUntilElement) {
@@ -1329,8 +1383,11 @@
             var html = '';
             results.forEach(function(r) {
                 if (!r) return;
-                html += '<div style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.72rem;color:#fde68a;font-weight:700;background:rgba(234,179,8,0.13);border:1px solid rgba(234,179,8,0.4);border-radius:9999px;padding:0.18rem 0.65rem;">'
-                    + r.medal + ' ' + r.label + ' <span style="color:#fbbf24;">' + r.rank + '位</span>になりました！'
+                var tier = r.rank === 1 ? 'gold' : (r.rank === 2 ? 'silver' : (r.rank === 3 ? 'bronze' : 'default'));
+                html += '<div class="ranking-entry-badge ranking-entry-badge--' + tier + '">'
+                    + '<span class="ranking-entry-badge__medal" aria-hidden="true">' + r.medal + '</span>'
+                    + '<span class="ranking-entry-badge__label">' + r.label
+                    + ' <span class="rank-num">' + r.rank + '位</span>になりました！</span>'
                     + '</div>';
             });
             badgesEl.innerHTML = html;
@@ -1413,6 +1470,9 @@
         { type: 'funny',        emoji: '😂', label: '笑える！' },
         { type: 'moved',        emoji: '😭', label: '感動した' },
         { type: 'cool',         emoji: '😎', label: 'かっこいい！' },
+        { type: 'beautiful',    emoji: '✨', label: 'きれい' },
+        { type: 'emotional',    emoji: '🥹', label: 'エモい！' },
+        { type: 'god_game',     emoji: '🎮', label: '神ゲー！' },
     ];
 
     async function toggleFollowTimelineReaction(ev, btnEl) {
@@ -1447,48 +1507,40 @@
         } catch (e) { console.error('toggleFollowTimelineReaction', e); }
     }
 
-    async function repostFromFollowTimeline(ev, btnEl) {
+    async function bookmarkFromFollowTimeline(ev, btnEl) {
         ev.stopPropagation();
         ev.preventDefault();
         var sid = btnEl.getAttribute('data-sid');
         if (!token || !sid) return;
+        var willBookmark = btnEl.getAttribute('data-bookmarked') !== '1';
         btnEl.disabled = true;
         try {
-            var res = await fetch('/api/submissions/' + sid + '/repost/', {
-                method: 'POST',
+            var res = await fetch('/api/submissions/' + sid + '/bookmark/', {
+                method: willBookmark ? 'POST' : 'DELETE',
                 headers: { 'Authorization': 'Bearer ' + token, 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }
             });
             var data = await res.json().catch(function() { return {}; });
             if (!res.ok) {
-                showToast('error', data.error || 'リポストに失敗しました');
+                showToast('error', data.error || 'ブックマークに失敗しました');
                 btnEl.disabled = false;
                 return;
             }
+            if (data.error) {
+                showToast('error', data.error);
+                btnEl.disabled = false;
+                return;
+            }
+            var bookmarked = (typeof data.bookmarked === 'boolean') ? data.bookmarked : willBookmark;
             var item = followFeedItems.find(function(x) { return String(x.id) === String(sid); });
-            if (item) {
-                item.userReposted = true;
-                item.repostCount = data.repostCount != null ? data.repostCount : ((item.repostCount || 0) + 1);
-            }
-            var card = document.getElementById('follow-card-' + sid);
-            if (card) {
-                var cntSpan = card.querySelector('.me-repost-count');
-                if (cntSpan) cntSpan.textContent = '×' + (data.repostCount != null ? data.repostCount : '');
-                var repWrap = card.querySelector('.me-follow-actions');
-                if (repWrap) {
-                    var rb = repWrap.querySelector('.me-follow-repost-btn');
-                    if (rb) {
-                        var done = document.createElement('span');
-                        done.style.cssText = 'font-size:0.65rem;color:var(--steam-iron-400);';
-                        done.textContent = 'リポスト済み';
-                        rb.replaceWith(done);
-                    }
-                }
-            }
-            showToast('success', '🔁 リポストしました（−5TP）');
-            if (typeof loadPoints === 'function') setTimeout(loadPoints, 400);
+            if (item) item.userBookmarked = bookmarked;
+            btnEl.setAttribute('data-bookmarked', bookmarked ? '1' : '0');
+            btnEl.innerHTML = bookmarked ? '✅ ブックマーク済み' : '🔖 ブックマーク';
+            btnEl.classList.toggle('bookmarked', bookmarked);
+            showToast('success', bookmarked ? '🔖 ブックマークしました' : 'ブックマークを解除しました');
+            btnEl.disabled = false;
         } catch (e) {
-            console.error('repostFromFollowTimeline', e);
-            showToast('error', 'リポストに失敗しました');
+            console.error('bookmarkFromFollowTimeline', e);
+            showToast('error', 'ブックマークに失敗しました');
             btnEl.disabled = false;
         }
     }
@@ -1540,16 +1592,10 @@
             var cnt = s.c > 0 ? String(s.c) : '';
             return '<button type="button" class="' + cls + '" title="' + rd.label + '" data-sid="' + it.id + '" data-rtype="' + rd.type + '" onclick="toggleFollowTimelineReaction(event,this)"><span>' + rd.emoji + '</span><span style="font-size:0.58rem;min-width:0.65rem;text-align:center">' + cnt + '</span></button>';
         }).join('');
-        var rc = it.repostCount != null ? it.repostCount : 0;
-        var ur = !!it.userReposted;
         var isOwn = !!it.isOwnPost;
-        var repPart = isOwn
-            ? '<span style="font-size:0.65rem;color:var(--steam-iron-500);">自分の投稿</span>'
-            : (ur
-                ? '<span style="font-size:0.65rem;color:var(--steam-iron-400);">リポスト済み</span>'
-                : '<button type="button" class="me-follow-repost-btn" data-sid="' + it.id + '" onclick="repostFromFollowTimeline(event,this)">🔁 リポスト <span style="opacity:0.85;">−5TP</span></button>');
-        var actionsRow = '<div class="me-follow-actions" onclick="event.stopPropagation()">' + rxBtns + '<span style="flex:1;min-width:0.25rem"></span>' + repPart +
-            '<span class="me-repost-count" data-sid="' + it.id + '" style="font-size:0.65rem;color:var(--steam-iron-400);margin-left:0.25rem;">×' + rc + '</span></div>';
+        var bm = !!it.userBookmarked;
+        var bmPart = isOwn ? '' : ('<button type="button" class="me-follow-bookmark-btn' + (bm ? ' bookmarked' : '') + '" data-sid="' + it.id + '" data-bookmarked="' + (bm ? '1' : '0') + '" onclick="bookmarkFromFollowTimeline(event,this)">' + (bm ? '✅ ブックマーク済み' : '🔖 ブックマーク') + '</button>');
+        var actionsRow = '<div class="me-follow-actions" onclick="event.stopPropagation()">' + rxBtns + '<span style="flex:1;min-width:0.25rem"></span>' + bmPart + '</div>';
         return '<div class="me-feed-row me-follow-card" id="follow-card-' + it.id + '" style="display:flex;flex-direction:column;gap:0.2rem;padding:0.6rem;border-radius:8px;border:1px solid var(--steam-iron-700);background:var(--steam-iron-900);max-width:100%;box-sizing:border-box;">' +
             '<div ' + rowClick + ' style="display:flex;gap:0.75rem;align-items:flex-start;' + cursorStyle + 'transition:background 0.15s;border-radius:6px;padding:0.1rem;margin:-0.1rem;" onmouseover="if(\'' + (open ? '1' : '') + '\')this.style.background=\'var(--steam-iron-800)\'" onmouseout="this.style.background=\'transparent\'">' +
             '<div style="width:72px;height:72px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--steam-iron-800);">' +
@@ -1567,7 +1613,7 @@
     function renderFollowArticleCard(a) {
         var thumb = a.thumbnail_url_resolved || '';
         var title = a.title || '（無題）';
-        var name = a.author_display_id || '';
+        var name = a.author_display_name || a.author_display_id || '';
         var when = a.published_at ? new Date(a.published_at).toLocaleString('ja-JP') : (a.created_at ? new Date(a.created_at).toLocaleString('ja-JP') : '');
         var slug = a.slug || '';
         var totalReactions = (a.all_reactions || []).reduce(function(s, r) { return s + (r.count || 0); }, 0);
@@ -1728,8 +1774,10 @@
             const seenIds = new Set();
             if (data.submitters && data.submitters.length > 0) {
                 for (const s of data.submitters) {
-                    if (!seenIds.has(s.anonId)) {
-                        seenIds.add(s.anonId);
+                    // 一意なuserIdで重複排除（StudySphereユーザー等が1人に潰れないように）
+                    const key = (s.userId !== undefined && s.userId !== null) ? ('u:' + s.userId) : (s.anonUrlId || s.anonId);
+                    if (!seenIds.has(key)) {
+                        seenIds.add(key);
                         uniqueSubmitters.push(s);
                     }
                 }

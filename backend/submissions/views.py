@@ -12,7 +12,7 @@ from datetime import timedelta
 from django.db.models import Q, Count, F, IntegerField, Sum, Case, When, Value
 from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Submission, Reaction, SubmissionRepost
+from .models import Submission, Reaction, SubmissionRepost, SubmissionBookmark
 from .serializers import SubmissionSerializer, SubmissionCreateSerializer, ReactionSerializer
 from users.models import UserMeta, User, UserFollow
 from lottery.services import handle_submission_and_lottery
@@ -77,75 +77,31 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             result = {'player_awarded': False, 'author_awarded': False}
         return Response({'ok': True, **result})
 
-    @action(detail=True, methods=['post'], url_path='repost')
-    def repost(self, request, pk=None):
-        """リポスト（5TP消費・同一投稿につき1回・自分の投稿は不可）。元投稿者に5TP付与。"""
-        from django.db import transaction
-        from gamification.models import PointHistory, UserPoint
-        from gamification.services import award_points, spend_points
-
+    @action(detail=True, methods=['post', 'delete'], url_path='bookmark')
+    def bookmark(self, request, pk=None):
+        """ブックマークの追加・削除（TP消費なし）。POSTで追加、DELETEで削除。
+        ブックマークした作品はそのユーザーのプロフィールに一覧表示される。"""
+        if not request.user.is_authenticated:
+            return Response({'error': 'ログインが必要です'}, status=status.HTTP_401_UNAUTHORIZED)
         submission = self.get_object()
+
+        if request.method == 'DELETE':
+            SubmissionBookmark.objects.filter(user=request.user, submission=submission).delete()
+            count = SubmissionBookmark.objects.filter(submission=submission).count()
+            return Response({'ok': True, 'bookmarked': False, 'bookmarkCount': count})
+
         if submission.author_id == request.user.id:
-            return Response({'error': '自分の投稿はリポストできません'}, status=status.HTTP_400_BAD_REQUEST)
-
-        with transaction.atomic():
-            link, created = SubmissionRepost.objects.get_or_create(
-                user=request.user,
-                submission=submission,
+            return Response(
+                {'error': '自分の投稿はブックマークできません'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            if not created:
-                return Response({'error': 'すでにリポスト済みです'}, status=status.HTTP_400_BAD_REQUEST)
-            hist = spend_points(
-                request.user,
-                PointHistory.ActionType.REPOST,
-                5,
-                f'repost submission:{submission.id}',
-            )
-            if not hist:
-                SubmissionRepost.objects.filter(pk=link.pk).delete()
-                up0 = UserPoint.objects.filter(user=request.user).first()
-                bal0 = int(up0.total_points) if up0 else 0
-                return Response(
-                    {'error': 'TPが不足しています', 'required': 5, 'balance': bal0},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            try:
-                award_points(
-                    submission.author,
-                    PointHistory.ActionType.REPOST_RECEIVED,
-                    5,
-                    f'repost received submission:{submission.id}',
-                )
-            except Exception as e:
-                logger.warning(f'[Point] repost_received award failed: {e}', exc_info=True)
-                raise
 
-        repost_count = SubmissionRepost.objects.filter(submission=submission).count()
-        new_bal = int(UserPoint.objects.get(user=request.user).total_points)
-
-        if submission.author_id != request.user.id:
-            try:
-                target_meta, _ = UserMeta.objects.get_or_create(user=submission.author)
-                actor_meta, _ = UserMeta.objects.get_or_create(user=request.user)
-                actor_name = actor_meta.display_name or request.user.display_id
-                notifications = list(target_meta.notifications or [])
-                notifications.append({
-                    'type': 'repost',
-                    'fromAnonId': request.user.display_id,
-                    'fromDisplayName': actor_name,
-                    'submissionId': str(submission.id),
-                    'message': f'{actor_name} さんがあなたの投稿をリポストしました',
-                    'read': False,
-                    'createdAt': str(timezone.now().isoformat()),
-                })
-                if len(notifications) > 50:
-                    notifications = notifications[-50:]
-                target_meta.notifications = notifications
-                target_meta.save(update_fields=['notifications'])
-            except Exception as e:
-                logger.warning(f'Repost notification failed: {e}')
-
-        return Response({'ok': True, 'repostCount': repost_count, 'spentTp': 5, 'balance': new_bal})
+        _, created = SubmissionBookmark.objects.get_or_create(
+            user=request.user,
+            submission=submission,
+        )
+        count = SubmissionBookmark.objects.filter(submission=submission).count()
+        return Response({'ok': True, 'bookmarked': True, 'created': created, 'bookmarkCount': count})
 
     @action(detail=True, methods=['post'], url_path='react/submit_medal')
     def react_submit_medal(self, request, pk=None):
@@ -204,8 +160,13 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             # ポイント付与（投稿者本人以外からのリアクションのみ）
             if submission.author != request.user:
                 try:
-                    from gamification.services import award_reaction_received_points, award_points
+                    from gamification.services import (
+                        award_reaction_received_points,
+                        award_points,
+                        check_and_grant_achievement_titles,
+                    )
                     award_reaction_received_points(submission.author, reaction_type)
+                    check_and_grant_achievement_titles(submission.author)
                     # リアクションを送ったユーザーにも1TP付与
                     award_points(request.user, 'reaction_given', 1, 'リアクションをした')
                 except Exception as e:
@@ -284,8 +245,12 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             # ポイント付与（新規いいね・投稿者本人以外から）
             if created and submission.author != request.user:
                 try:
-                    from gamification.services import award_reaction_received_points
+                    from gamification.services import (
+                        award_reaction_received_points,
+                        check_and_grant_achievement_titles,
+                    )
                     award_reaction_received_points(submission.author, Reaction.Type.SUBMIT_MEDAL)
+                    check_and_grant_achievement_titles(submission.author)
                 except Exception as e:
                     logger.warning(f'[Point] like point award failed: {e}')
 
@@ -779,6 +744,7 @@ def _build_feed_item_payload(request, item, logger, user_reposted_ids=None):
         'titleColor': item_data.get('title_color'),
         'repostCount': int(repost_count) if repost_count else 0,
         'userReposted': user_reposted,
+        'userBookmarked': item_data.get('user_bookmarked', False),
         'isOwnPost': bool(
             getattr(request, 'user', None) is not None
             and getattr(request.user, 'is_authenticated', False)
@@ -847,8 +813,11 @@ class FeedView(APIView):
                     _c_fun=Count('reactions', filter=Q(reactions__type=Reaction.Type.FUNNY)),
                     _c_mov=Count('reactions', filter=Q(reactions__type=Reaction.Type.MOVED)),
                     _c_cool=Count('reactions', filter=Q(reactions__type=Reaction.Type.COOL)),
+                    _c_beau=Count('reactions', filter=Q(reactions__type=Reaction.Type.BEAUTIFUL)),
+                    _c_emo=Count('reactions', filter=Q(reactions__type=Reaction.Type.EMOTIONAL)),
+                    _c_god=Count('reactions', filter=Q(reactions__type=Reaction.Type.GOD_GAME)),
                 ).annotate(
-                    _total_rx=F('reactions_count') + F('_c_awe') + F('_c_cute') + F('_c_fun') + F('_c_mov') + F('_c_cool'),
+                    _total_rx=F('reactions_count') + F('_c_awe') + F('_c_cute') + F('_c_fun') + F('_c_mov') + F('_c_cool') + F('_c_beau') + F('_c_emo') + F('_c_god'),
                     _score=(
                         F('reactions_count') * Value(3)
                         + F('_c_awe') * Value(5)
@@ -856,6 +825,9 @@ class FeedView(APIView):
                         + F('_c_fun') * Value(4)
                         + F('_c_mov') * Value(4)
                         + F('_c_cool') * Value(5)
+                        + F('_c_beau') * Value(3)
+                        + F('_c_emo') * Value(5)
+                        + F('_c_god') * Value(10)
                     ),
                     repost_count=Count('reposts'),
                 ).filter(_total_rx__gte=3).order_by('-_score', '-created_at')
@@ -1428,11 +1400,13 @@ class SubmittersTodayView(APIView):
         end = timezone.make_aware(datetime.combine(today, datetime.max.time()))
         
         # Get unique users who submitted today
+        # NOTE: モデルの Meta.ordering=['-created_at'] が distinct() に混入して
+        # 重複排除が効かなくなるため、order_by() で並び順をクリアしてから distinct する
         user_ids = Submission.objects.filter(
             created_at__gte=start,
             created_at__lte=end,
             deleted_at__isnull=True
-        ).values_list('author', flat=True).distinct()
+        ).order_by('author').values_list('author', flat=True).distinct()
         
         submitters = []
         for user_id in user_ids:
@@ -1442,17 +1416,19 @@ class SubmittersTodayView(APIView):
                 
                 # Get display name from display_name field, fallback to display_id
                 # StudySphere経由のユーザーの場合、IDを非表示にする
-                anon_id = 'StudySphereUser' if (user.studysphere_user_id or user.studysphere_login_code) else user.display_id
+                is_studysphere = bool(user.studysphere_user_id or user.studysphere_login_code)
+                anon_id = 'StudySphereUser' if is_studysphere else user.display_id
                 display_name = None
                 if meta and meta.display_name:
                     display_name = meta.display_name
                 else:
                     display_name = anon_id
                 
-                # URL用のID（StudySphereユーザーの場合はトークン）
-                url_id = user.studysphere_login_code if (user.studysphere_user_id or user.studysphere_login_code) else anon_id
+                # URL用のID（StudySphereユーザーの場合はトークン。無ければdisplay_idにフォールバック）
+                url_id = (user.studysphere_login_code or user.display_id) if is_studysphere else user.display_id
                 
                 submitters.append({
+                    'userId': user.id,  # 重複排除用の一意なID（全ユーザーを区別するため）
                     'anonId': anon_id,
                     'anonUrlId': url_id,  # URL用のID
                     'displayName': display_name
@@ -1690,6 +1666,47 @@ class TimelineView(APIView):
                 {'error': 'タイムラインの読み込みに失敗しました。', 'details': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class UserBookmarksView(APIView):
+    """指定ユーザーがブックマークした投稿の一覧を返す（プロフィール表示用）。"""
+    permission_classes = [AllowAny]
+
+    def get(self, request, display_id):
+        # display_id / studysphere_login_code でユーザー解決
+        if display_id == 'StudySphereUser' and request.user.is_authenticated:
+            user = request.user
+        else:
+            user = User.objects.filter(display_id=display_id).first()
+            if not user:
+                user = User.objects.filter(studysphere_login_code=display_id).first()
+            if not user:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            limit = int(request.query_params.get('limit', 30))
+            limit = max(1, min(100, limit))
+        except (ValueError, TypeError):
+            limit = 30
+
+        bookmarks = (
+            SubmissionBookmark.objects.filter(
+                user=user,
+                submission__deleted_at__isnull=True,
+            )
+            .select_related('submission', 'submission__author', 'submission__author__meta')
+            .order_by('-created_at')[:limit]
+        )
+
+        items = []
+        for bm in bookmarks:
+            try:
+                items.append(_build_feed_item_payload(request, bm.submission, logger))
+            except Exception as e:
+                logger.error(f'Error serializing bookmark {bm.id}: {e}', exc_info=True)
+                continue
+
+        return Response({'items': items, 'count': len(items)})
 
 
 def _detect_submission_type(submission) -> str:

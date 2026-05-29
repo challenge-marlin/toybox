@@ -283,8 +283,8 @@ def grant_immediate_rewards(meta: UserMeta, boost_rarity: bool = False) -> dict:
 
 
 # ============================================================
-# 全アチーブメント定義（50種類）
-# color: 'green'=入門, 'blue'=初級, 'gold'=中級, 'red'=上級, 'rainbow'=伝説
+# 全アチーブメント定義
+# color: 'green'=入門, 'blue'=初級, 'gold'=中級, 'red'=上級, 'rainbow'=伝説, 'neon'=超越（ネオン演出）
 # secret: True=条件非公開, ultra_secret: True=名前も非公開（？？？表示）
 # ============================================================
 ACHIEVEMENT_DEFINITIONS = [
@@ -299,6 +299,9 @@ ACHIEVEMENT_DEFINITIONS = [
     {'name': '笑わせ屋',                'color': 'green',   'condition_text': '😂笑えるリアクションを5件もらう',       'secret': False, 'ultra_secret': False},
     {'name': '感動屋',                  'color': 'green',   'condition_text': '😭感動したリアクションを5件もらう',     'secret': False, 'ultra_secret': False},
     {'name': 'かわいいの使い手',        'color': 'green',   'condition_text': '🥰かわいいリアクションを5件もらう',     'secret': False, 'ultra_secret': False},
+    {'name': 'きれいの使い手',          'color': 'green',   'condition_text': '✨きれいリアクションを5件もらう',       'secret': False, 'ultra_secret': False},
+    {'name': 'エモの伝え手',            'color': 'green',   'condition_text': '🥹エモい！リアクションを5件もらう',     'secret': False, 'ultra_secret': False},
+    {'name': '神ゲー見習い',            'color': 'green',   'condition_text': '🎮神ゲーリアクションを5件もらう',       'secret': False, 'ultra_secret': False},
     {'name': '朝活クリエイター',        'color': 'green',   'condition_text': '朝（6〜9時）に投稿する',               'secret': False, 'ultra_secret': False},
     {'name': '週末クリエイター',        'color': 'green',   'condition_text': '土曜または日曜に投稿する',             'secret': False, 'ultra_secret': False},
     # === 初級 (BLUE) ===
@@ -310,6 +313,9 @@ ACHIEVEMENT_DEFINITIONS = [
     {'name': 'コミュニティの星',        'color': 'blue',    'condition_text': 'リアクションを合計100件もらう',         'secret': False, 'ultra_secret': False},
     {'name': 'クールマン',              'color': 'blue',    'condition_text': '😎かっこいいリアクションを10件もらう',  'secret': False, 'ultra_secret': False},
     {'name': '驚異のクリエイター',      'color': 'blue',    'condition_text': '🤩すごいリアクションを10件もらう',      'secret': False, 'ultra_secret': False},
+    {'name': '輝きの職人',              'color': 'blue',    'condition_text': '✨きれいリアクションを10件もらう',      'secret': False, 'ultra_secret': False},
+    {'name': '心を揺らす者',            'color': 'blue',    'condition_text': '🥹エモい！リアクションを10件もらう',    'secret': False, 'ultra_secret': False},
+    {'name': '神ゲーの証人',            'color': 'blue',    'condition_text': '🎮神ゲーリアクションを10件もらう',      'secret': False, 'ultra_secret': False},
     {'name': '万能クリエイター',        'color': 'blue',    'condition_text': '画像・動画・ゲームをすべて投稿する',    'secret': False, 'ultra_secret': False},
     {'name': 'モーニングクリエイター',  'color': 'blue',    'condition_text': '午前10〜11時に投稿する',               'secret': False, 'ultra_secret': False},
     {'name': 'カードコレクター',        'color': 'blue',    'condition_text': 'カードを5枚以上集める',                 'secret': False, 'ultra_secret': False},
@@ -325,6 +331,9 @@ ACHIEVEMENT_DEFINITIONS = [
     {'name': 'トリプルマスター',        'color': 'gold',    'condition_text': '3ジャンルそれぞれ5本以上投稿する',     'secret': False, 'ultra_secret': False},
     {'name': '一週間の炎',              'color': 'gold',    'condition_text': '7日連続で投稿する',                     'secret': False, 'ultra_secret': False},
     {'name': 'レアコレクター',          'color': 'gold',    'condition_text': 'カードを10枚以上集める',                'secret': False, 'ultra_secret': False},
+    {'name': '美の達人',                'color': 'gold',    'condition_text': '✨きれいリアクションを25件もらう',      'secret': False, 'ultra_secret': False},
+    {'name': 'エモの巨匠',              'color': 'gold',    'condition_text': '🥹エモい！リアクションを25件もらう',    'secret': False, 'ultra_secret': False},
+    {'name': '神ゲーの王者',            'color': 'gold',    'condition_text': '🎮神ゲーリアクションを25件もらう',      'secret': False, 'ultra_secret': False},
     # === 上級 (RED, 条件秘密) ===
     {'name': 'マスタークリエイター',    'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
     {'name': '絵の達人',                'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
@@ -333,10 +342,20 @@ ACHIEVEMENT_DEFINITIONS = [
     {'name': '伝説のスター',            'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
     {'name': '継続の意志',              'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
     {'name': '熱狂のクリエイター',      'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
+    {'name': '美の化身',                'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
+    {'name': 'エモの神託',              'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
+    {'name': '神ゲーの覇者',            'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
     # === 伝説 (RAINBOW) ===
     {'name': 'レジェンドクリエイター',  'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
     {'name': 'ゲームの神様',            'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
     {'name': '創造神',                  'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
+    {'name': 'きらめきの伝説',          'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
+    {'name': 'エモの伝説',              'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
+    {'name': '神ゲーの神話',            'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': False},
+    # === 超越 (NEON) — 未獲得は？？？・獲得後にネオン演出 ===
+    {'name': 'きらめきの極星',          'color': 'neon',    'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
+    {'name': 'エモの星雲',              'color': 'neon',    'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
+    {'name': '神ゲーの宇宙',            'color': 'neon',    'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
     # === 超秘密（名前も非公開） ===
     {'name': '影の芸術家',              'color': 'red',     'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
     {'name': '深淵のクリエイター',      'color': 'rainbow', 'condition_text': '？？？',                                'secret': True,  'ultra_secret': True},
@@ -355,6 +374,28 @@ ACHIEVEMENT_DEFINITIONS = [
 
 # 称号名 → カラー の高速参照用
 ACHIEVEMENT_COLOR_MAP = {a['name']: a['color'] for a in ACHIEVEMENT_DEFINITIONS}
+
+# 超越ティア（ネオン演出対象）
+NEON_TITLE_NAMES = frozenset(
+    name for name, color in ACHIEVEMENT_COLOR_MAP.items() if color == 'neon'
+)
+
+
+def get_title_color(title_name: str) -> str:
+    """称号名から表示ティア色を返す。"""
+    if not title_name:
+        return 'gold'
+    return ACHIEVEMENT_COLOR_MAP.get(title_name, 'gold')
+
+
+def title_has_neon_effects(title_name: str) -> bool:
+    """バッジ・アバターにネオン演出を付ける称号か。"""
+    return get_title_color(title_name) == 'neon'
+
+
+def get_title_display_name(title_name: str) -> str:
+    """UIに表示する称号名（未獲得の超秘密称号は？？？）。"""
+    return title_name or ''
 
 
 def _compute_user_stats(user: User) -> dict:
@@ -388,6 +429,9 @@ def _compute_user_stats(user: User) -> dict:
     cute_count         = rxcount(Reaction.Type.CUTE)
     cool_count         = rxcount(Reaction.Type.COOL)
     awesome_count      = rxcount(Reaction.Type.AWESOME)
+    beautiful_count    = rxcount(Reaction.Type.BEAUTIFUL)
+    emotional_count    = rxcount(Reaction.Type.EMOTIONAL)
+    god_game_count     = rxcount(Reaction.Type.GOD_GAME)
     total_reactions    = Reaction.objects.filter(submission_id__in=my_ids).count()
 
     card_count = UserCard.objects.filter(user=user).count()
@@ -429,6 +473,9 @@ def _compute_user_stats(user: User) -> dict:
         'cute_count':        cute_count,
         'cool_count':        cool_count,
         'awesome_count':     awesome_count,
+        'beautiful_count':   beautiful_count,
+        'emotional_count':   emotional_count,
+        'god_game_count':    god_game_count,
         'total_reactions':   total_reactions,
         'card_count':        card_count,
         'article_count':     article_count,
@@ -453,6 +500,9 @@ def _check_achievement(name: str, s: dict) -> bool:
     ct  = s['cute_count']
     cl  = s['cool_count']
     aw  = s['awesome_count']
+    bf  = s['beautiful_count']
+    em  = s['emotional_count']
+    gg  = s['god_game_count']
     cc  = s['card_count']
     str_= s['max_streak']
 
@@ -468,6 +518,9 @@ def _check_achievement(name: str, s: dict) -> bool:
         '笑わせ屋':               fn >= 5,
         '感動屋':                 mv >= 5,
         'かわいいの使い手':       ct >= 5,
+        'きれいの使い手':         bf >= 5,
+        'エモの伝え手':           em >= 5,
+        '神ゲー見習い':           gg >= 5,
         '朝活クリエイター':       s['has_morning_post'],
         '週末クリエイター':       s['has_weekend_post'],
         # 初級 (BLUE)
@@ -479,6 +532,9 @@ def _check_achievement(name: str, s: dict) -> bool:
         'コミュニティの星':       tr >= 100,
         'クールマン':             cl >= 10,
         '驚異のクリエイター':     aw >= 10,
+        '輝きの職人':             bf >= 10,
+        '心を揺らす者':           em >= 10,
+        '神ゲーの証人':           gg >= 10,
         '万能クリエイター':       ip >= 1 and vp >= 1 and gp >= 1,
         'モーニングクリエイター': s['has_morning_creator_post'],
         'カードコレクター':       cc >= 5,
@@ -494,6 +550,9 @@ def _check_achievement(name: str, s: dict) -> bool:
         'トリプルマスター':       ip >= 5 and vp >= 5 and gp >= 5,
         '一週間の炎':             str_ >= 7,
         'レアコレクター':         cc >= 10,
+        '美の達人':               bf >= 25,
+        'エモの巨匠':             em >= 25,
+        '神ゲーの王者':           gg >= 25,
         # 上級 (RED, 条件秘密)
         'マスタークリエイター':   tp >= 100,
         '絵の達人':               ip >= 100,
@@ -502,10 +561,20 @@ def _check_achievement(name: str, s: dict) -> bool:
         '伝説のスター':           lk >= 500,
         '継続の意志':             str_ >= 30,
         '熱狂のクリエイター':     tr >= 1000,
+        '美の化身':               bf >= 50,
+        'エモの神託':             em >= 50,
+        '神ゲーの覇者':           gg >= 50,
         # 伝説 (RAINBOW)
         'レジェンドクリエイター': tp >= 300,
         'ゲームの神様':           gp >= 50,
         '創造神':                 ip >= 50 and vp >= 30 and gp >= 20,
+        'きらめきの伝説':         bf >= 100,
+        'エモの伝説':             em >= 100,
+        '神ゲーの神話':           gg >= 100,
+        # 超越 (NEON)
+        'きらめきの極星':         bf >= 200,
+        'エモの星雲':             em >= 200,
+        '神ゲーの宇宙':           gg >= 200,
         # 超秘密
         '影の芸術家':             vp >= 50,
         '深淵のクリエイター':     lk >= 1000,
@@ -567,6 +636,9 @@ REACTION_POINTS = {
     'funny':        4,   # おもしろい
     'moved':        4,   # 感動した（旧 熱い！相当）
     'cool':         5,   # かっこいい（旧 拍手相当）
+    'beautiful':    3,   # きれい
+    'emotional':    5,   # エモい！
+    'god_game':    10,   # 神ゲー！
 }
 
 # 投稿種別ごとのポイント（1件目 / 2件目以降）
@@ -707,6 +779,9 @@ def award_reaction_received_points(post_author, reaction_type: str) -> int:
         'funny':        'おもしろい',
         'moved':        '感動した',
         'cool':         'かっこいい',
+        'beautiful':    'きれい',
+        'emotional':    'エモい！',
+        'god_game':     '神ゲー！',
     }
     label = emoji_labels.get(reaction_type, reaction_type)
     award_points(

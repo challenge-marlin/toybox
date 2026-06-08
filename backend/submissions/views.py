@@ -51,6 +51,14 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         
         return queryset
     
+    def perform_destroy(self, instance):
+        """自分の投稿のみソフト削除。"""
+        from rest_framework.exceptions import PermissionDenied
+
+        if instance.author_id != self.request.user.id:
+            raise PermissionDenied('自分の投稿のみ削除できます')
+        instance.soft_delete()
+    
     def perform_create(self, serializer):
         """Create submission with current user as author."""
         submission = serializer.save(author=self.request.user)
@@ -328,6 +336,21 @@ class SubmitUploadView(APIView):
         # Save file
         is_video = file.content_type in allowed_video_types
         
+        from django.conf import settings
+        max_video = getattr(settings, 'MAX_UPLOAD_SIZE_VIDEO', 200 * 1024 * 1024)
+        max_image = getattr(settings, 'MAX_UPLOAD_SIZE_POST', 10 * 1024 * 1024)
+        if is_video:
+            if file.size > max_video:
+                return Response(
+                    {'error': '動画ファイルは最大200MBまでアップロードできます'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif file.size > max_image:
+            return Response(
+                {'error': '画像ファイルは最大10MBまでアップロードできます'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
         # Generate filename
         import os
         if is_video:
@@ -382,7 +405,13 @@ class SubmitUploadView(APIView):
         
         # 画像の場合、サムネイルを生成
         thumbnail_url = None
-        if not is_video:
+        if is_video:
+            try:
+                from submissions.utils import generate_video_poster
+                thumbnail_url = generate_video_poster(saved_path, request=request)
+            except Exception as e:
+                logger.warning(f'Failed to generate video poster: {e}')
+        elif not is_video:
             try:
                 from toybox.image_optimizer import generate_thumbnail
                 from django.core.files.storage import default_storage
@@ -443,11 +472,18 @@ class SubmitGameUploadView(APIView):
         # Validate ZIP file
         if not file.name.lower().endswith('.zip'):
             return Response({'error': 'ZIP file required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.conf import settings
+        max_game = getattr(settings, 'MAX_UPLOAD_SIZE_GAME', 200 * 1024 * 1024)
+        if file.size > max_game:
+            return Response(
+                {'error': 'ゲームZIPファイルは最大200MBまでアップロードできます'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         
         import zipfile
         import os
         import shutil
-        from django.conf import settings
         from submissions.utils import normalize_url_path, build_file_url
         
         base_path = None
@@ -687,8 +723,9 @@ def _build_feed_item_payload(request, item, logger, user_reposted_ids=None):
     serializer = SubmissionSerializer(item, context={'request': request})
     item_data = serializer.data
     image_url = item_data.get('image') or item_data.get('image_url')
-    display_image_url = item_data.get('display_image_url') or image_url
-    image_thumbnail_url = item_data.get('image_thumbnail_url') or None
+    thumbnail_url = item_data.get('thumbnail_url') or item_data.get('thumbnail')
+    display_image_url = item_data.get('display_image_url') or thumbnail_url or image_url
+    image_thumbnail_url = item_data.get('image_thumbnail_url') or thumbnail_url or display_image_url
     reactions_count = item_data.get('reactions_count', 0)
     all_reactions = item_data.get('all_reactions', []) or []
     total_reactions = sum(int(x.get('count') or 0) for x in all_reactions)
@@ -726,6 +763,7 @@ def _build_feed_item_payload(request, item, logger, user_reposted_ids=None):
         'createdAt': item_data.get('created_at', ''),
         'imageUrl': image_url,
         'imageThumbnailUrl': image_thumbnail_url,
+        'thumbnailUrl': thumbnail_url,
         'videoUrl': item_data.get('video_url'),
         'displayImageUrl': display_image_url,
         'title': title,
@@ -1321,6 +1359,7 @@ class UserSubmissionsView(APIView):
 
                     from submissions.constants import AI_TOOL_LABELS
                     total_rx = sum(int(x.get('count') or 0) for x in all_reactions)
+                    is_own_post = bool(current_user and sub.author_id == current_user.id)
                     items.append({
                         'id': str(sub.id),
                         'imageUrl': image_url,
@@ -1342,6 +1381,7 @@ class UserSubmissionsView(APIView):
                         'activeTitle': active_title,
                         'activeTitleImageUrl': None,  # v2.0: 実画像未設定時はNone
                         'titleColor': title_color,
+                        'isOwnPost': is_own_post,
                     })
                 except Exception as e:
                     logger.error(f'Error processing submission {sub.id}: {str(e)}', exc_info=True)
@@ -1395,7 +1435,7 @@ class SubmittersTodayView(APIView):
         """Get list of users who submitted today."""
         from datetime import datetime
         
-        today = timezone.now().date()
+        today = timezone.localdate()
         start = timezone.make_aware(datetime.combine(today, datetime.min.time()))
         end = timezone.make_aware(datetime.combine(today, datetime.max.time()))
         
@@ -1503,9 +1543,9 @@ def _ranking_submissions_by_reaction_score(start, end, limit=10, request=None):
     return ranking
 
 
-def _ranking_users_by_reaction_score(start, end, limit=20):
-    """期間内に付いたリアクションの重み付き合計でユーザーをランキング。（後方互換用）"""
-    rows = (
+def _ranking_user_score_rows(start, end, limit=10):
+    """期間内のユーザー別リアクションスコア行（author_id, score）を降順で返す。"""
+    return list(
         Reaction.objects.filter(
             created_at__gte=start,
             created_at__lte=end,
@@ -1515,8 +1555,20 @@ def _ranking_users_by_reaction_score(start, end, limit=20):
         .annotate(score=Sum(_reaction_score_case()))
         .order_by('-score')[:limit]
     )
+
+
+def _get_user_rank_in_period(user_id, start, end, limit=10):
+    """指定ユーザーの期間内ランキング順位（1始まり）。圏外またはスコア0なら None。"""
+    for rank, row in enumerate(_ranking_user_score_rows(start, end, limit=limit), start=1):
+        if row['submission__author'] == user_id and (row['score'] or 0) > 0:
+            return rank
+    return None
+
+
+def _ranking_users_by_reaction_score(start, end, limit=20):
+    """期間内に付いたリアクションの重み付き合計でユーザーをランキング。（後方互換用）"""
     ranking = []
-    for row in rows:
+    for row in _ranking_user_score_rows(start, end, limit=limit):
         user_id = row['submission__author']
         score = row['score'] or 0
         if score <= 0:
@@ -1528,6 +1580,7 @@ def _ranking_users_by_reaction_score(start, end, limit=20):
             display_name = meta.display_name if meta and meta.display_name else anon_id
             url_id = user.studysphere_login_code if (user.studysphere_user_id or user.studysphere_login_code) else anon_id
             ranking.append({
+                'userId': user.id,
                 'anonId': anon_id,
                 'anonUrlId': url_id,
                 'displayName': display_name,
@@ -1539,33 +1592,43 @@ def _ranking_users_by_reaction_score(start, end, limit=20):
 
 
 class RankingDailyView(APIView):
-    """本日（ローカル日付）に付いたリアクションの重み付きスコアでユーザーランキング。"""
+    """本日（ローカル日付）に投稿された作品へ付いたリアクションでユーザーランキング。"""
     permission_classes = [AllowAny]
 
     def get(self, request):
-        from datetime import datetime
+        from submissions.ranking_service import get_daily_ranking_response
 
-        today = timezone.localdate()
-        start = timezone.make_aware(datetime.combine(today, datetime.min.time()))
-        end = timezone.make_aware(datetime.combine(today, datetime.max.time()))
-        ranking = _ranking_submissions_by_reaction_score(start, end, limit=10, request=request)
-        return Response({'ranking': ranking, 'period': 'daily'})
+        return Response(get_daily_ranking_response(request=request))
 
 
 class RankingWeeklyView(APIView):
-    """今週（月曜始まり・ローカル日付）のリアクション重み付きスコアでユーザーランキング。"""
+    """今週（月曜始まり）に投稿された作品へ付いたリアクションでユーザーランキング。"""
     permission_classes = [AllowAny]
 
     def get(self, request):
-        from datetime import datetime
+        from submissions.ranking_service import get_weekly_ranking_response
 
-        today = timezone.localdate()
-        monday = today - timedelta(days=today.weekday())
-        sunday = monday + timedelta(days=6)
-        start = timezone.make_aware(datetime.combine(monday, datetime.min.time()))
-        end = timezone.make_aware(datetime.combine(sunday, datetime.max.time()))
-        ranking = _ranking_submissions_by_reaction_score(start, end, limit=10, request=request)
-        return Response({'ranking': ranking, 'period': 'weekly'})
+        return Response(get_weekly_ranking_response(request=request))
+
+
+class RankingUserBadgesView(APIView):
+    """指定ユーザーのデイリー／週間ユーザーランキング順位（プロフィール入賞バッジ用）。"""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from submissions.ranking_service import get_user_badge_ranks
+
+        user_id_raw = request.query_params.get('user_id')
+        if not user_id_raw:
+            return Response({'error': 'user_id が必要です'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user_id = int(user_id_raw)
+        except (TypeError, ValueError):
+            return Response({'error': 'user_id が不正です'}, status=status.HTTP_400_BAD_REQUEST)
+        if not User.objects.filter(id=user_id).exists():
+            return Response({'daily': None, 'weekly': None})
+
+        return Response(get_user_badge_ranks(user_id))
 
 
 class TimelineView(APIView):

@@ -1,6 +1,18 @@
 toybox.ayatori-inc.co.jp {
 	encode gzip
 
+	# 大容量アップロード（動画・ゲームZIP）
+	handle /api/submit/upload* {
+		reverse_proxy web:8000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-For {remote_host}
+			transport http {
+				read_timeout 600s
+				write_timeout 600s
+			}
+		}
+	}
+
 	# APIエンドポイント
 	handle /api/* {
 		reverse_proxy web:8000 {

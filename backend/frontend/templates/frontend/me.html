@@ -487,6 +487,19 @@
         opacity: 0.45;
         cursor: not-allowed;
     }
+    .me-follow-delete-btn {
+        font-size: 0.68rem;
+        padding: 0.15rem 0.45rem;
+        border-radius: 6px;
+        border: 1px solid rgba(239, 68, 68, 0.55);
+        background: transparent;
+        color: #f87171;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .me-follow-delete-btn:hover {
+        background: rgba(239, 68, 68, 0.12);
+    }
     .me-feed-row {
         max-width: 100%;
         box-sizing: border-box;
@@ -644,7 +657,7 @@
                     <div id="upload-status" style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--steam-iron-200); display: none;">アップロード中…</div>
                 </div>
                 <div id="upload-error" style="font-size: 0.75rem; color: #dc2626; display: none;"></div>
-                <p style="font-size: 0.75rem; color: var(--steam-iron-300);">画像: 最大10MB、動画: 最大1GB（PNG/JPEG/WebP/MP4/WebM/OGG対応）</p>
+                <p style="font-size: 0.75rem; color: var(--steam-iron-300);">画像: 最大10MB（PNG/JPEG/WebP）／ 動画: 最大200MB（MP4/WebM/OGG）</p>
             </div>
         </section>
         
@@ -662,7 +675,7 @@
                     <div style="font-size: 0.75rem; color: var(--steam-iron-300);">ここにドラッグ＆ドロップ、またはクリックして選択</div>
                 </div>
                 <div id="upload-game-error" style="font-size: 0.75rem; color: #dc2626; display: none;"></div>
-                <p style="font-size: 0.75rem; color: var(--steam-iron-300);">必ずindex.htmlを含む <strong style="color: var(--steam-gold-300);">Webブラウザでできるミニゲームで構成されたZIPファイル</strong> をアップロードするようにしてください。最大サイズ: 50MB</p>
+                <p style="font-size: 0.75rem; color: var(--steam-iron-300);">必ずindex.htmlを含む <strong style="color: var(--steam-gold-300);">Webブラウザでできるミニゲームで構成されたZIPファイル</strong> をアップロードするようにしてください。最大サイズ: 200MB</p>
             </div>
         </section>
         
@@ -677,15 +690,15 @@
         
         <!-- デイリーランキング -->
         <section class="me-section">
-            <h2>デイリーランキング</h2>
+            <h2 id="ranking-daily-title">デイリーランキング</h2>
             <ol id="ranking-list" style="list-style: decimal; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: var(--steam-iron-100);">
-                <li>データなし</li>
+                <li>読み込み中…</li>
             </ol>
         </section>
         <section class="me-section">
-            <h2>週間ランキング</h2>
+            <h2 id="ranking-weekly-title">週間ランキング</h2>
             <ol id="ranking-weekly-list" style="list-style: decimal; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: var(--steam-iron-100);">
-                <li>データなし</li>
+                <li>読み込み中…</li>
             </ol>
         </section>
     </aside>
@@ -1350,48 +1363,38 @@
                     titleUntilElement.style.display = 'none';
                 }
             }
-            // ランキング入賞バッジを読み込む
-            loadRankingBadges(_myAnonId);
+            // ランキング入賞バッジを読み込む（authorUserId でユーザー単位の順位を取得）
+            loadRankingBadges(data.authorUserId || data.author_user_id);
         })
         .catch(err => console.error('Failed to load profile:', err));
     }
 
-    function loadRankingBadges(anonId) {
-        if (!anonId) return;
+    function loadRankingBadges(authorUserId) {
+        if (!authorUserId) return;
         const badgesEl = document.getElementById('ranking-badges');
         if (!badgesEl) return;
         const medals = ['🥇', '🥈', '🥉'];
-        function checkRanking(url, label) {
-            return fetch(url)
-                .then(function(r) { return r.ok ? r.json() : null; })
-                .then(function(d) {
-                    if (!d || !d.ranking) return null;
-                    var idx = d.ranking.findIndex(function(item) {
-                        return item.anonId === anonId || item.anonUrlId === anonId;
-                    });
-                    if (idx === -1) return null;
-                    var rank = idx + 1;
-                    var medal = rank <= 3 ? medals[rank - 1] : '🏅';
-                    return { rank: rank, medal: medal, label: label };
-                })
-                .catch(function() { return null; });
-        }
-        Promise.all([
-            checkRanking('/api/ranking/daily/', 'デイリーランキング'),
-            checkRanking('/api/ranking/weekly/', '週間ランキング')
-        ]).then(function(results) {
-            var html = '';
-            results.forEach(function(r) {
-                if (!r) return;
-                var tier = r.rank === 1 ? 'gold' : (r.rank === 2 ? 'silver' : (r.rank === 3 ? 'bronze' : 'default'));
-                html += '<div class="ranking-entry-badge ranking-entry-badge--' + tier + '">'
-                    + '<span class="ranking-entry-badge__medal" aria-hidden="true">' + r.medal + '</span>'
-                    + '<span class="ranking-entry-badge__label">' + r.label
-                    + ' <span class="rank-num">' + r.rank + '位</span>になりました！</span>'
-                    + '</div>';
-            });
-            badgesEl.innerHTML = html;
-        });
+        fetch('/api/ranking/user-badges/?user_id=' + encodeURIComponent(authorUserId))
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(d) {
+                if (!d) return;
+                var html = '';
+                [
+                    { rank: d.daily, label: 'デイリーランキング' },
+                    { rank: d.weekly, label: '週間ランキング' },
+                ].forEach(function(item) {
+                    if (!item.rank) return;
+                    var tier = item.rank === 1 ? 'gold' : (item.rank === 2 ? 'silver' : (item.rank === 3 ? 'bronze' : 'default'));
+                    var medal = item.rank <= 3 ? medals[item.rank - 1] : '🏅';
+                    html += '<div class="ranking-entry-badge ranking-entry-badge--' + tier + '">'
+                        + '<span class="ranking-entry-badge__medal" aria-hidden="true">' + medal + '</span>'
+                        + '<span class="ranking-entry-badge__label">' + item.label
+                        + ' <span class="rank-num">' + item.rank + '位</span>になりました！</span>'
+                        + '</div>';
+                });
+                badgesEl.innerHTML = html;
+            })
+            .catch(function() {});
     }
 
     function loadAnnouncements() {
@@ -1554,8 +1557,64 @@
     let followArticleHasMore = true;
     let followSubmissionHasMore = true;
 
+    function getSubmissionThumbUrl(item) {
+        return item.imageThumbnailUrl || item.displayImageUrl || item.thumbnailUrl || item.imageUrl || '';
+    }
+
+    function renderSubmissionThumbInner(item, imgStyle) {
+        var thumb = getSubmissionThumbUrl(item);
+        var style = imgStyle || 'width:100%;height:100%;object-fit:cover;';
+        if (thumb) {
+            return '<img src="' + thumb.replace(/"/g, '&quot;') + '" alt="" style="' + style + '" loading="lazy">';
+        }
+        if (item.videoUrl) {
+            var vsrc = String(item.videoUrl).replace(/"/g, '&quot;');
+            return '<video src="' + vsrc + '#t=0.1" muted preload="metadata" playsinline style="' + style + '"></video>';
+        }
+        if (item.gameUrl) {
+            return '<div style="' + style + 'display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:var(--steam-iron-800);">🎮</div>';
+        }
+        return '<div style="' + style + 'display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--steam-iron-500);background:var(--steam-iron-800);">—</div>';
+    }
+
+    function captureVideoThumbnailFromFile(file) {
+        return new Promise(function(resolve, reject) {
+            var video = document.createElement('video');
+            video.preload = 'auto';
+            video.muted = true;
+            video.playsInline = true;
+            var objectUrl = URL.createObjectURL(file);
+            var cleaned = false;
+            function cleanup() {
+                if (cleaned) return;
+                cleaned = true;
+                URL.revokeObjectURL(objectUrl);
+            }
+            video.onloadeddata = function() {
+                try { video.currentTime = Math.min(0.5, (video.duration || 1) * 0.05); } catch (e) { video.currentTime = 0.1; }
+            };
+            video.onseeked = function() {
+                try {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 320;
+                    canvas.height = video.videoHeight || 180;
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(function(blob) {
+                        cleanup();
+                        if (blob) resolve(blob);
+                        else reject(new Error('thumbnail blob empty'));
+                    }, 'image/jpeg', 0.85);
+                } catch (err) {
+                    cleanup();
+                    reject(err);
+                }
+            };
+            video.onerror = function() { cleanup(); reject(new Error('video load failed')); };
+            video.src = objectUrl;
+        });
+    }
+
     function renderFollowFeedCard(it) {
-        var thumb = it.imageThumbnailUrl || it.displayImageUrl || it.imageUrl || '';
         var title = it.title || '';
         var caption = it.caption || '';
         var name = it.displayName || it.anonId || '';
@@ -1594,12 +1653,15 @@
         }).join('');
         var isOwn = !!it.isOwnPost;
         var bm = !!it.userBookmarked;
+        var deletePart = isOwn
+            ? ('<button type="button" class="me-follow-delete-btn" data-sid="' + it.id + '" onclick="deleteSubmission(\'' + it.id + '\', event)" title="投稿を削除">🗑 削除</button>')
+            : '';
         var bmPart = isOwn ? '' : ('<button type="button" class="me-follow-bookmark-btn' + (bm ? ' bookmarked' : '') + '" data-sid="' + it.id + '" data-bookmarked="' + (bm ? '1' : '0') + '" onclick="bookmarkFromFollowTimeline(event,this)">' + (bm ? '✅ ブックマーク済み' : '🔖 ブックマーク') + '</button>');
-        var actionsRow = '<div class="me-follow-actions" onclick="event.stopPropagation()">' + rxBtns + '<span style="flex:1;min-width:0.25rem"></span>' + bmPart + '</div>';
+        var actionsRow = '<div class="me-follow-actions" onclick="event.stopPropagation()">' + rxBtns + '<span style="flex:1;min-width:0.25rem"></span>' + deletePart + bmPart + '</div>';
         return '<div class="me-feed-row me-follow-card" id="follow-card-' + it.id + '" style="display:flex;flex-direction:column;gap:0.2rem;padding:0.6rem;border-radius:8px;border:1px solid var(--steam-iron-700);background:var(--steam-iron-900);max-width:100%;box-sizing:border-box;">' +
             '<div ' + rowClick + ' style="display:flex;gap:0.75rem;align-items:flex-start;' + cursorStyle + 'transition:background 0.15s;border-radius:6px;padding:0.1rem;margin:-0.1rem;" onmouseover="if(\'' + (open ? '1' : '') + '\')this.style.background=\'var(--steam-iron-800)\'" onmouseout="this.style.background=\'transparent\'">' +
             '<div style="width:72px;height:72px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--steam-iron-800);">' +
-                (thumb ? '<img src="'+thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--steam-iron-500);">—</div>') +
+                renderSubmissionThumbInner(it) +
             '</div>' +
             '<div class="me-feed-text" style="flex:1;min-width:0;">' +
                 '<div style="font-size:0.75rem;">' +
@@ -1825,17 +1887,7 @@
                 const postUrl = `/profile/view/?user=${urlId}`;
                 const submissionUrl = `/submission/${item.id}/` || postUrl;
                 const displayName = item.displayName || item.anonId || '';
-                let thumbHtml;
-                const thumb = item.imageThumbnailUrl || item.displayImageUrl || item.imageUrl;
-                if (item.gameUrl && !thumb) {
-                    thumbHtml = `<div class="new-arrival-thumb-placeholder">🎮</div>`;
-                } else if (item.videoUrl && !thumb) {
-                    thumbHtml = `<div class="new-arrival-thumb-placeholder">🎬</div>`;
-                } else if (thumb) {
-                    thumbHtml = `<img class="new-arrival-thumb" src="${thumb}" alt="" loading="lazy" onerror="this.style.display='none'">`;
-                } else {
-                    thumbHtml = `<div class="new-arrival-thumb-placeholder">🖼️</div>`;
-                }
+                const thumbHtml = renderSubmissionThumbInner(item, 'width:100%;aspect-ratio:1;object-fit:cover;display:block;');
                 let avHtml = '';
                 if (item.avatarUrl) {
                     avHtml = `<img class="new-arrival-avatar" src="${item.avatarUrl}" alt="" loading="lazy" onerror="this.style.display='none'">`;
@@ -1893,14 +1945,19 @@
             if (grid) grid.innerHTML = '<div style="color:var(--steam-iron-400);font-size:0.8rem;">読み込み失敗</div>';
         });
     }
+    function _rankingSectionTitle(baseTitle, data) {
+        if (!data || !data.isFallback || !data.periodLabel) return baseTitle;
+        if (data.periodLabel === '本日' || data.periodLabel === '今週') return baseTitle;
+        return baseTitle + '（' + data.periodLabel + '）';
+    }
+
     function _renderRankingList(el, ranking) {
         if (!el) return;
         if (ranking && ranking.length > 0) {
-            // li の自動連番を使うのでulへ切り替え（rank表示を独自描画）
             el.style.listStyle = 'none';
             el.style.paddingLeft = '0';
-            el.innerHTML = ranking.map((r, idx) => {
-                const rank = idx + 1;
+            el.innerHTML = ranking.map((r) => {
+                const rank = r.rank != null ? r.rank : 0;
                 const displayName = r.displayName || r.anonId;
                 const urlId = r.anonUrlId || r.anonId;
                 const score = r.score != null ? r.score : (r.count != null ? r.count : 0);
@@ -1916,7 +1973,7 @@
                 </li>`;
             }).join('');
         } else {
-            el.innerHTML = '<li>データなし</li>';
+            el.innerHTML = '<li style="color:var(--steam-iron-400);">読み込み中…</li>';
         }
     }
 
@@ -1927,15 +1984,15 @@
             fetch('/api/ranking/weekly/', { headers: hdr }).then(res => res.json()),
         ])
         .then(([dailyData, weeklyData]) => {
+            const dailyTitle = document.getElementById('ranking-daily-title');
+            const weeklyTitle = document.getElementById('ranking-weekly-title');
+            if (dailyTitle) dailyTitle.textContent = _rankingSectionTitle('デイリーランキング', dailyData);
+            if (weeklyTitle) weeklyTitle.textContent = _rankingSectionTitle('週間ランキング', weeklyData);
             _renderRankingList(document.getElementById('ranking-list'), dailyData.ranking);
             _renderRankingList(document.getElementById('ranking-weekly-list'), weeklyData.ranking);
         })
         .catch(err => {
             console.error('Failed to load ranking:', err);
-            const dl = document.getElementById('ranking-list');
-            const wl = document.getElementById('ranking-weekly-list');
-            if (dl) dl.innerHTML = '<li>データなし</li>';
-            if (wl) wl.innerHTML = '<li>データなし</li>';
         });
     }
     
@@ -1990,9 +2047,16 @@
             return;
         }
         
-        // ファイルサイズの検証（1GB制限）
-        if (file.size > 1024 * 1024 * 1024) {
-            document.getElementById('upload-error').textContent = 'ファイルサイズが大きすぎます（最大1GB）';
+        // ファイルサイズの検証
+        const MAX_VIDEO_SIZE = 200 * 1024 * 1024; // 200MB
+        const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+        if (isVideo && file.size > MAX_VIDEO_SIZE) {
+            document.getElementById('upload-error').textContent = '動画ファイルは最大200MBまでアップロードできます';
+            document.getElementById('upload-error').style.display = 'block';
+            return;
+        }
+        if (!isVideo && file.size > MAX_IMAGE_SIZE) {
+            document.getElementById('upload-error').textContent = '画像ファイルは最大10MBまでアップロードできます';
             document.getElementById('upload-error').style.display = 'block';
             return;
         }
@@ -2031,7 +2095,17 @@
             const uploadData = await uploadRes.json();
             const imageUrl = uploadData.imageUrl;
             const videoUrl = uploadData.videoUrl;
-            const displayImageUrl = uploadData.displayImageUrl || imageUrl || videoUrl;
+            const thumbnailUrl = uploadData.thumbnailUrl || uploadData.displayImageUrl || null;
+            const displayImageUrl = thumbnailUrl || imageUrl || null;
+            
+            let thumbnailBlob = null;
+            if (isVideo) {
+                try {
+                    thumbnailBlob = await captureVideoThumbnailFromFile(file);
+                } catch (capErr) {
+                    console.warn('Video thumbnail capture failed:', capErr);
+                }
+            }
             
             // 2. Hide upload overlay and show submit modal
             document.getElementById('upload-overlay').classList.remove('show');
@@ -2042,6 +2116,8 @@
                 imageUrl: imageUrl,
                 videoUrl: videoUrl,
                 displayImageUrl: displayImageUrl,
+                thumbnailUrl: thumbnailUrl,
+                thumbnailBlob: thumbnailBlob,
                 isVideo: isVideo
             });
         } catch (err) {
@@ -2053,8 +2129,9 @@
         }
     }
     
-    function deleteSubmission(id) {
-        if (!confirm('この提出を削除します。よろしいですか？')) return;
+    function deleteSubmission(id, ev) {
+        if (ev) ev.stopPropagation();
+        if (!confirm('この投稿を削除します。よろしいですか？')) return;
         
         fetch(`/api/submissions/${id}/`, {
             method: 'DELETE',
@@ -2065,8 +2142,16 @@
         })
         .then(res => {
             if (res.ok) {
-                loadFollowingFeed();
+                followFeedAllItems = followFeedAllItems.filter(function(item) {
+                    return !(item.type === 'submission' && String(item.data.id) === String(id));
+                });
+                var card = document.getElementById('follow-card-' + id);
+                if (card) card.remove();
+                if (!followFeedAllItems.length) renderUnifiedFollowFeed();
+                loadNewArrivals();
                 loadPoints();
+            } else if (res.status === 403) {
+                alert('自分の投稿のみ削除できます');
             } else {
                 alert('削除に失敗しました');
             }
@@ -2124,10 +2209,10 @@
             return;
         }
         
-        // ファイルサイズの検証（50MB制限）
-        const maxSize = 50 * 1024 * 1024; // 50MB
+        // ファイルサイズの検証（200MB制限）
+        const maxSize = 200 * 1024 * 1024; // 200MB
         if (file.size > maxSize) {
-            document.getElementById('upload-game-error').textContent = 'ファイルサイズが大きすぎます（最大50MB）';
+            document.getElementById('upload-game-error').textContent = 'ゲームZIPファイルは最大200MBまでアップロードできます';
             document.getElementById('upload-game-error').style.display = 'block';
             return;
         }
@@ -2434,10 +2519,10 @@
             } else {
                 preview.style.display = 'none';
             }
-        } else if (data && data.displayImageUrl) {
+        } else if (data && (data.displayImageUrl || data.videoUrl)) {
             // 画像または動画の場合
             if (data.isVideo) {
-                previewVideo.src = data.displayImageUrl;
+                previewVideo.src = data.videoUrl || data.displayImageUrl;
                 previewVideo.style.display = 'block';
                 previewImage.style.display = 'none';
                 if (previewGame) previewGame.style.display = 'none';
@@ -2770,7 +2855,8 @@
         
         try {
             // サムネイルファイルがある場合はFormDataを使用、ない場合はJSON
-            const hasThumbnail = pendingUploadData.isGame && thumbnailFile;
+            const hasThumbnail = (pendingUploadData.isGame && thumbnailFile)
+                || (pendingUploadData.isVideo && pendingUploadData.thumbnailBlob);
             
             let submitRes;
             if (hasThumbnail) {
@@ -2779,7 +2865,12 @@
                 formData.append('aim', pendingUploadData.isGame ? 'ゲーム提出' : (pendingUploadData.isVideo ? '動画提出' : '画像提出'));
                 formData.append('steps', JSON.stringify(['準備', '実行', '完了']));
                 formData.append('frameType', 'none');
-                if (pendingUploadData.imageUrl) formData.append('imageUrl', pendingUploadData.imageUrl);
+                var posterUrl = (pendingUploadData.isVideo && pendingUploadData.thumbnailUrl)
+                    ? pendingUploadData.thumbnailUrl
+                    : pendingUploadData.imageUrl;
+                if (posterUrl && !(pendingUploadData.isVideo && pendingUploadData.thumbnailBlob)) {
+                    formData.append('imageUrl', posterUrl);
+                }
                 if (pendingUploadData.videoUrl) formData.append('videoUrl', pendingUploadData.videoUrl);
                 if (pendingUploadData.gameUrl) formData.append('gameUrl', pendingUploadData.gameUrl);
                 if (title) formData.append('title', title);
@@ -2787,7 +2878,11 @@
                 if (hashtags.length > 0) formData.append('hashtags', JSON.stringify(hashtags));
                 if (spellVal) formData.append('spell', spellVal);
                 if (aiToolVal) formData.append('aiTool', aiToolVal);
-                formData.append('thumbnail', thumbnailFile);
+                if (pendingUploadData.isGame && thumbnailFile) {
+                    formData.append('thumbnail', thumbnailFile);
+                } else if (pendingUploadData.isVideo && pendingUploadData.thumbnailBlob) {
+                    formData.append('thumbnail', pendingUploadData.thumbnailBlob, 'video_poster.jpg');
+                }
                 
                 submitRes = await fetch('/api/submit/', {
                     method: 'POST',
@@ -2803,9 +2898,11 @@
                     aim: pendingUploadData.isGame ? 'ゲーム提出' : (pendingUploadData.isVideo ? '動画提出' : '画像提出'),
                     steps: ['準備', '実行', '完了'],
                     frameType: 'none',
-                    ...(pendingUploadData.imageUrl ? { imageUrl: pendingUploadData.imageUrl } : {}),
                     ...(pendingUploadData.videoUrl ? { videoUrl: pendingUploadData.videoUrl } : {}),
                     ...(pendingUploadData.gameUrl ? { gameUrl: pendingUploadData.gameUrl } : {}),
+                    ...(pendingUploadData.thumbnailUrl && pendingUploadData.isVideo
+                        ? { imageUrl: pendingUploadData.thumbnailUrl }
+                        : (pendingUploadData.imageUrl ? { imageUrl: pendingUploadData.imageUrl } : {})),
                     ...(title ? { title: title } : {}),
                     ...(caption ? { caption: caption } : {}),
                     ...(hashtags.length > 0 ? { hashtags: hashtags } : {}),

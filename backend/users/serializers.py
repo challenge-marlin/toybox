@@ -237,7 +237,7 @@ class UserMetaSerializer(serializers.ModelSerializer):
         uu = instance.user
         data['follower_count'] = UserFollow.objects.filter(following=uu).count()
         data['following_count'] = UserFollow.objects.filter(follower=uu).count()
-        data['app_version'] = '2.23'
+        data['app_version'] = '2.24'
         data['earned_titles'] = list(instance.earned_titles or [])
         from gamification.services import get_title_color
         data['active_title_color'] = get_title_color(active_title) if active_title else None

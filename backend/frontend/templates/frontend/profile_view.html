@@ -198,6 +198,24 @@
         overflow: hidden;
     }
     
+    .profile-view-delete-btn {
+        position: absolute;
+        top: 0.35rem;
+        right: 0.35rem;
+        z-index: 5;
+        font-size: 0.65rem;
+        padding: 0.2rem 0.45rem;
+        border-radius: 6px;
+        border: 1px solid rgba(239, 68, 68, 0.55);
+        background: rgba(15, 17, 21, 0.85);
+        color: #f87171;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .profile-view-delete-btn:hover {
+        background: rgba(239, 68, 68, 0.2);
+    }
+    
     .profile-view-submission-item.game {
         border-color: #a855f7;
     }
@@ -456,6 +474,37 @@
     .lightbox-close:hover {
         background: rgba(0, 0, 0, 0.9);
     }
+
+    /* ランキング入賞バッジ */
+    .ranking-badges-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+        margin-top: 0.35rem;
+        width: 100%;
+    }
+    .ranking-entry-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.72rem;
+        line-height: 1.35;
+        font-weight: 700;
+        border-radius: 9999px;
+        padding: 0.28rem 0.8rem 0.28rem 0.55rem;
+        max-width: 100%;
+        color: #fde68a;
+        background: linear-gradient(135deg, rgba(234, 179, 8, 0.32) 0%, rgba(120, 80, 10, 0.18) 100%);
+        border: 1px solid rgba(251, 191, 36, 0.55);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    .ranking-entry-badge__medal { font-size: 1.05rem; line-height: 1; flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
+    .ranking-entry-badge .rank-num { color: #fbbf24; font-weight: 800; font-size: 0.78rem; }
+    .ranking-entry-badge--silver { color: #e8edf5; background: linear-gradient(135deg, rgba(148, 163, 184, 0.28) 0%, rgba(71, 85, 105, 0.2) 100%); border-color: rgba(203, 213, 225, 0.45); }
+    .ranking-entry-badge--silver .rank-num { color: #cbd5e1; }
+    .ranking-entry-badge--bronze { color: #fed7aa; background: linear-gradient(135deg, rgba(251, 146, 60, 0.28) 0%, rgba(120, 53, 15, 0.2) 100%); border-color: rgba(251, 146, 60, 0.5); }
+    .ranking-entry-badge--bronze .rank-num { color: #fb923c; }
 </style>
 {% endblock %}
 
@@ -479,6 +528,7 @@
     <div class="profile-view-info">
         <div class="profile-view-name" id="profile-name">—</div>
         <div class="profile-view-id" id="profile-id">—</div>
+        <div id="ranking-badges" class="ranking-badges-stack"></div>
         <div id="profile-follow-stats" style="margin-top: 0.35rem; font-size: 0.78rem; color: var(--steam-iron-400);"></div>
         <div id="profile-mutual-badge" style="display: none; margin-top: 0.2rem; font-size: 0.75rem; color: #34d399; font-weight: 600;">相互フォロー</div>
         <div id="profile-follow-row" style="margin-top: 0.5rem;">
@@ -583,6 +633,7 @@
     
     let currentUserId = null;
     let profileAuthorUserId = null;
+    let profileIsSelf = false;
     let nextCursor = null;
     let submissions = [];
 
@@ -758,6 +809,7 @@
                 const meMeta = await meMetaRes.json();
                 const myKeys = new Set([meMeta.display_id, meMeta.url_id].filter(Boolean));
                 const isSelf = myKeys.has(targetDisplayId);
+                profileIsSelf = isSelf;
 
                 const followStats = document.getElementById('profile-follow-stats');
                 const mutualB = document.getElementById('profile-mutual-badge');
@@ -776,6 +828,8 @@
                         followBtn.textContent = metaData.isFollowing ? 'フォロー解除' : 'フォローする';
                     }
                 }
+
+                loadRankingBadges(profileAuthorUserId);
                 
                 // 提出物を読み込み
                 loadSubmissions();
@@ -783,6 +837,34 @@
         } catch (err) {
             console.error('Failed to load profile:', err);
         }
+    }
+
+    function loadRankingBadges(authorUserId) {
+        if (!authorUserId) return;
+        const badgesEl = document.getElementById('ranking-badges');
+        if (!badgesEl) return;
+        const medals = ['🥇', '🥈', '🥉'];
+        fetch('/api/ranking/user-badges/?user_id=' + encodeURIComponent(authorUserId))
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(d) {
+                if (!d) return;
+                var html = '';
+                [
+                    { rank: d.daily, label: 'デイリーランキング' },
+                    { rank: d.weekly, label: '週間ランキング' },
+                ].forEach(function(item) {
+                    if (!item.rank) return;
+                    var tier = item.rank === 1 ? 'gold' : (item.rank === 2 ? 'silver' : (item.rank === 3 ? 'bronze' : 'default'));
+                    var medal = item.rank <= 3 ? medals[item.rank - 1] : '🏅';
+                    html += '<div class="ranking-entry-badge ranking-entry-badge--' + tier + '">'
+                        + '<span class="ranking-entry-badge__medal" aria-hidden="true">' + medal + '</span>'
+                        + '<span class="ranking-entry-badge__label">' + item.label
+                        + ' <span class="rank-num">' + item.rank + '位</span>になりました！</span>'
+                        + '</div>';
+                });
+                badgesEl.innerHTML = html;
+            })
+            .catch(function() {});
     }
 
     async function toggleProfileFollow() {
@@ -916,6 +998,7 @@
 
             return `
                 <div class="profile-view-submission-item ${isGame ? 'game' : (isVideo ? 'video' : '')}" data-submission-id="${s.id}">
+                    ${profileIsSelf ? `<button type="button" class="profile-view-delete-btn" onclick="deleteProfileSubmission('${s.id}', event)" title="投稿を削除">🗑</button>` : ''}
                     ${content}
                     ${isGame && gameUrl ? `
                         <div class="game-link" onclick="openLightbox('${gameUrl}', 'game', '${s.id}')" style="cursor: pointer;">
@@ -937,6 +1020,32 @@
         }).join('');
     }
     
+    async function deleteProfileSubmission(id, ev) {
+        if (ev) ev.stopPropagation();
+        if (!profileIsSelf) return;
+        if (!confirm('この投稿を削除します。よろしいですか？')) return;
+        try {
+            const res = await fetch('/api/submissions/' + encodeURIComponent(id) + '/', {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'X-CSRFToken': csrftoken
+                }
+            });
+            if (res.ok) {
+                submissions = submissions.filter(s => String(s.id) !== String(id));
+                renderSubmissions();
+            } else if (res.status === 403) {
+                alert('自分の投稿のみ削除できます');
+            } else {
+                alert('削除に失敗しました');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('エラーが発生しました');
+        }
+    }
+
     function loadProfileArticles(authorUserId, fallbackAuthorKey) {
         const sec = document.getElementById('profile-articles-section');
         const grid = document.getElementById('profile-articles-grid');

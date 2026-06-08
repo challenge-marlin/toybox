@@ -239,12 +239,84 @@ def get_submission_file_url(submission, request=None):
     # 動画
     if submission.video_url:
         result['videoUrl'] = submission.video_url
+        if submission.thumbnail and not result['displayImageUrl']:
+            try:
+                if request:
+                    result['displayImageUrl'] = build_https_absolute_uri(request, submission.thumbnail.url)
+                    result['thumbnailUrl'] = result['displayImageUrl']
+                else:
+                    thumb = submission.thumbnail.url
+                    if thumb.startswith('http://'):
+                        thumb = thumb.replace('http://', 'https://', 1)
+                    result['displayImageUrl'] = thumb
+                    result['thumbnailUrl'] = thumb
+            except Exception as e:
+                logger.error(f'Failed to get video thumbnail URL: {str(e)}', exc_info=True)
+        elif submission.image_url and not result['displayImageUrl']:
+            result['displayImageUrl'] = submission.image_url
+            result['thumbnailUrl'] = submission.image_url
     
     # ゲーム
     if submission.game_url:
         result['gameUrl'] = submission.game_url
     
     return result
+
+
+def generate_video_poster(saved_relative_path, request=None):
+    """
+    動画ファイルから先頭フレームのポスター画像を生成する（ffmpeg が利用可能な場合）。
+    Returns: ポスター画像の絶対URL、失敗時 None
+    """
+    import os
+    import shutil
+    import subprocess
+    import tempfile
+
+    if not shutil.which('ffmpeg'):
+        return None
+
+    from django.core.files.storage import default_storage
+    from django.core.files.base import ContentFile
+
+    try:
+        full_path = default_storage.path(saved_relative_path)
+        if not os.path.isfile(full_path):
+            return None
+
+        base_name = os.path.splitext(os.path.basename(saved_relative_path))[0]
+        poster_name = f'{base_name}_poster.jpg'
+        poster_relative = f'submissions/{poster_name}'
+
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            tmp_path = tmp.name
+
+        try:
+            result = subprocess.run(
+                [
+                    'ffmpeg', '-y', '-i', full_path,
+                    '-ss', '00:00:00.500', '-vframes', '1',
+                    '-q:v', '2', tmp_path,
+                ],
+                capture_output=True,
+                timeout=60,
+            )
+            if result.returncode != 0 or not os.path.isfile(tmp_path) or os.path.getsize(tmp_path) == 0:
+                return None
+
+            with open(tmp_path, 'rb') as f:
+                default_storage.save(poster_relative, ContentFile(f.read()))
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+        url_path = f'/uploads/submissions/{poster_name}'
+        return build_file_url(request, url_path, base_path='/uploads/submissions/')
+    except Exception as e:
+        logger.warning('Failed to generate video poster for %s: %s', saved_relative_path, e)
+        return None
 
 
 def audit_zip_file(zip_path):
@@ -355,9 +427,5 @@ def audit_zip_file(zip_path):
         result['is_safe'] = False
     
     return result
-
-
-
-
 
 

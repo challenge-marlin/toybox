@@ -227,6 +227,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'lottery.tasks.daily_submit_cap_enforcer',
         'schedule': 3600.0,  # Every hour
     },
+    'refresh-reaction-rankings-hourly': {
+        'task': 'submissions.tasks.refresh_reaction_rankings_hourly',
+        'schedule': 3600.0,  # Every hour
+    },
 }
 
 # Redis Cache
@@ -248,6 +252,8 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_UPLOAD_SIZE_AVATAR = 2 * 1024 * 1024  # 2MB
 MAX_UPLOAD_SIZE_HEADER = 5 * 1024 * 1024  # 5MB
 MAX_UPLOAD_SIZE_POST = 10 * 1024 * 1024  # 10MB
+MAX_UPLOAD_SIZE_VIDEO = 200 * 1024 * 1024  # 200MB
+MAX_UPLOAD_SIZE_GAME = 200 * 1024 * 1024  # 200MB
 
 # Allowed file types
 ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']

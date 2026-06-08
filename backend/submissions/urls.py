@@ -37,6 +37,7 @@ urlpatterns = [
     path('submitters/today/', views.SubmittersTodayView.as_view(), name='submitters-today'),
     path('ranking/daily/', views.RankingDailyView.as_view(), name='ranking-daily'),
     path('ranking/weekly/', views.RankingWeeklyView.as_view(), name='ranking-weekly'),
+    path('ranking/user-badges/', views.RankingUserBadgesView.as_view(), name='ranking-user-badges'),
     # Timeline endpoint
     path('timeline/', views.TimelineView.as_view(), name='timeline'),
 ]

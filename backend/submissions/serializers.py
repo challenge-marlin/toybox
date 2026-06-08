@@ -102,10 +102,12 @@ class SubmissionSerializer(serializers.ModelSerializer):
         return obj.image_url or None
     
     def get_image_thumbnail_url(self, obj):
-        """Get thumbnail URL for image (not for games)."""
-        if obj.game_url:
+        """Get thumbnail URL for display lists (games, videos, images)."""
+        stored = self._get_stored_thumbnail_url(obj, self.context.get('request'))
+        if stored:
+            return stored
+        if obj.game_url or obj.video_url:
             return None
-        
         try:
             from toybox.image_optimizer import get_thumbnail_url
             image_url = self.get_image(obj)
@@ -119,67 +121,52 @@ class SubmissionSerializer(serializers.ModelSerializer):
             logger.debug(f'Failed to get image thumbnail URL for submission {obj.id}: {e}')
         return None
     
+    def _get_stored_thumbnail_url(self, obj, request):
+        """Submission.thumbnail (ImageField) の表示用URL。"""
+        if not obj.thumbnail:
+            return None
+        import os
+        from django.conf import settings
+        try:
+            if hasattr(obj.thumbnail, 'path') and not os.path.exists(obj.thumbnail.path):
+                if getattr(settings, 'CLEAN_INVALID_MEDIA_URLS', False):
+                    obj.thumbnail = None
+                    obj.save(update_fields=['thumbnail'])
+                return None
+            if request:
+                from toybox.image_utils import build_https_absolute_uri
+                return build_https_absolute_uri(request, obj.thumbnail.url)
+            thumbnail_url = obj.thumbnail.url
+            if thumbnail_url.startswith('http://'):
+                thumbnail_url = thumbnail_url.replace('http://', 'https://', 1)
+            return thumbnail_url
+        except (ValueError, AttributeError, OSError) as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                'Failed to get stored thumbnail for submission %s: %s', obj.id, e
+            )
+            return None
+    
     def get_display_image_url(self, obj):
-        """Get display image URL (prefer thumbnail for games, then thumbnail for images, then image_url, then image field)."""
+        """Get display image URL (thumbnail for games/videos, then images)."""
         import os
         from django.conf import settings
         from urllib.parse import urlparse
         request = self.context.get('request')
         
-        # まず、画像のサムネイルを確認（ゲーム以外の画像投稿の場合）
-        if not obj.game_url and (obj.image or obj.image_url):
+        # 画像投稿: 生成サムネイルを優先
+        if not obj.game_url and not obj.video_url and (obj.image or obj.image_url):
             thumbnail_url = self.get_image_thumbnail_url(obj)
             if thumbnail_url:
                 return thumbnail_url
         
-        # ゲームの場合はサムネイルを優先
-        if obj.game_url and obj.thumbnail:
-            try:
-                # サムネイルファイルの存在確認
-                if hasattr(obj.thumbnail, 'path'):
-                    if not os.path.exists(obj.thumbnail.path):
-                        # ファイルが存在しない場合はNoneを返す（DBクリアはオプション）
-                        if getattr(settings, 'CLEAN_INVALID_MEDIA_URLS', False):
-                            obj.thumbnail = None
-                            obj.save(update_fields=['thumbnail'])
-                        return None
-                    else:
-                        if request:
-                            from toybox.image_utils import build_https_absolute_uri
-                            return build_https_absolute_uri(request, obj.thumbnail.url)
-                        thumbnail_url = obj.thumbnail.url
-                        # HTTPをHTTPSに置き換え
-                        if thumbnail_url.startswith('http://'):
-                            thumbnail_url = thumbnail_url.replace('http://', 'https://', 1)
-                        return thumbnail_url
-            except (ValueError, AttributeError, OSError) as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f'Failed to get thumbnail URL for submission {obj.id}: {str(e)}')
-                # フォールバック: image_urlを使用
-                if obj.image_url:
-                    # image_urlの存在確認
-                    try:
-                        if obj.image_url.startswith('http'):
-                            parsed = urlparse(obj.image_url)
-                            file_path = parsed.path
-                        else:
-                            file_path = obj.image_url
-                        
-                        if file_path.startswith('/uploads/submissions/'):
-                            filename = file_path.replace('/uploads/submissions/', '')
-                            full_path = settings.MEDIA_ROOT / 'submissions' / filename
-                            if full_path.exists():
-                                return obj.image_url
-                            else:
-                                if getattr(settings, 'CLEAN_INVALID_MEDIA_URLS', False):
-                                    obj.image_url = None
-                                    obj.save(update_fields=['image_url'])
-                                return None
-                    except Exception:
-                        pass
+        # ゲーム・動画: 設定済みサムネイル（ImageField）を優先
+        if (obj.game_url or obj.video_url) and obj.thumbnail:
+            stored = self._get_stored_thumbnail_url(obj, request)
+            if stored:
+                return stored
         
-        # image_urlを優先（レガシーまたは外部URL）
+        # image_url（動画ポスター・ゲームサムネイル等）
         if obj.image_url:
             try:
                 # image_urlの存在確認
